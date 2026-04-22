@@ -138,6 +138,8 @@ export interface KataGoCandidate {
   winrate: number
   scoreLead: number
   visits: number
+  order: number
+  prior: number
   pv: string[]
 }
 

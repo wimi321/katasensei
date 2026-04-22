@@ -17,6 +17,8 @@ interface KataGoResponse {
     winrate?: number
     scoreLead?: number
     visits?: number
+    order?: number
+    prior?: number
     pv?: string[]
   }>
 }
@@ -58,11 +60,13 @@ function root(response: KataGoResponse): { winrate: number; scoreLead: number } 
 }
 
 function candidates(response: KataGoResponse): KataGoCandidate[] {
-  return (response.moveInfos ?? []).slice(0, 5).map((move) => ({
+  return (response.moveInfos ?? []).slice(0, 8).map((move, index) => ({
     move: move.move ?? '',
     winrate: Number(move.winrate ?? 0.5) * 100,
     scoreLead: Number(move.scoreLead ?? 0),
     visits: Number(move.visits ?? 0),
+    order: Number(move.order ?? index),
+    prior: Number(move.prior ?? 0) * 100,
     pv: (move.pv ?? []).slice(0, 12)
   }))
 }

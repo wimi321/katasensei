@@ -1,39 +1,17 @@
 import type { AppSettings, LlmSettingsTestRequest, LlmSettingsTestResult } from '@main/lib/types'
 import { getSettings } from '@main/lib/store'
+import {
+  completionTokenCount,
+  extractText,
+  finishReason,
+  formatUsage,
+  hasToolCall,
+  responseShapeDiagnostics,
+  type ChatResponse
+} from './llmResponse'
 
 const tinyPng =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/luzK4wAAAABJRU5ErkJggg=='
-
-interface ChatChoice {
-  finish_reason?: string | null
-  native_finish_reason?: string | null
-  text?: string
-  message?: {
-    content?: ChatMessageContent
-    refusal?: string | null
-    reasoning_content?: string | null
-    tool_calls?: unknown[]
-  }
-}
-
-type ChatContentPart =
-  | string
-  | {
-      type?: string
-      text?: string | { value?: string }
-      content?: string
-    }
-
-type ChatMessageContent = string | ChatContentPart[] | null
-
-interface ChatResponse {
-  choices?: ChatChoice[]
-  output_text?: string
-  output?: Array<{
-    content?: ChatContentPart[]
-  }>
-  usage?: unknown
-}
 
 interface ChatBody {
   model: string
@@ -42,6 +20,7 @@ interface ChatBody {
   max_completion_tokens?: number
   max_tokens?: number
   reasoning_effort?: 'low'
+  modalities?: ['text']
 }
 
 interface RequestVariant {
@@ -51,94 +30,6 @@ interface RequestVariant {
 
 function isReasoningModel(model: string): boolean {
   return /(^|[-_.:/])gpt-5($|[-_.:/])|^o\d|[-_.:/]o\d|reason|r1/i.test(model)
-}
-
-function textFromPart(part: ChatContentPart): string {
-  if (typeof part === 'string') {
-    return part
-  }
-  if (typeof part.text === 'string') {
-    return part.text
-  }
-  if (part.text && typeof part.text.value === 'string') {
-    return part.text.value
-  }
-  if (typeof part.content === 'string') {
-    return part.content
-  }
-  return ''
-}
-
-function textFromContent(content: ChatMessageContent | undefined): string {
-  if (typeof content === 'string') {
-    return content.trim()
-  }
-  if (Array.isArray(content)) {
-    return content.map(textFromPart).join('\n').trim()
-  }
-  return ''
-}
-
-function extractText(json: ChatResponse): string {
-  const choice = json.choices?.[0]
-  const messageText = textFromContent(choice?.message?.content)
-  if (messageText) {
-    return messageText
-  }
-  if (typeof choice?.text === 'string' && choice.text.trim()) {
-    return choice.text.trim()
-  }
-  if (typeof json.output_text === 'string' && json.output_text.trim()) {
-    return json.output_text.trim()
-  }
-  const outputText = json.output
-    ?.flatMap((item) => item.content ?? [])
-    .map(textFromPart)
-    .join('\n')
-    .trim()
-  return outputText ?? ''
-}
-
-function formatUsage(usage: unknown): string {
-  if (!usage || typeof usage !== 'object') {
-    return '无 usage'
-  }
-  const compact: Record<string, unknown> = {}
-  for (const key of ['prompt_tokens', 'completion_tokens', 'total_tokens', 'output_tokens'] as const) {
-    const value = (usage as Record<string, unknown>)[key]
-    if (typeof value === 'number') {
-      compact[key] = value
-    }
-  }
-  const details = (usage as Record<string, unknown>).completion_tokens_details
-  if (details && typeof details === 'object') {
-    const reasoningTokens = (details as Record<string, unknown>).reasoning_tokens
-    if (typeof reasoningTokens === 'number') {
-      compact.reasoning_tokens = reasoningTokens
-    }
-  }
-  return Object.keys(compact).length ? JSON.stringify(compact) : 'usage 格式未知'
-}
-
-function completionTokenCount(usage: unknown): number | null {
-  if (!usage || typeof usage !== 'object') {
-    return null
-  }
-  for (const key of ['completion_tokens', 'output_tokens'] as const) {
-    const value = (usage as Record<string, unknown>)[key]
-    if (typeof value === 'number') {
-      return value
-    }
-  }
-  return null
-}
-
-function finishReason(json: ChatResponse): string {
-  return String(json.choices?.[0]?.finish_reason ?? json.choices?.[0]?.native_finish_reason ?? 'unknown')
-}
-
-function hasToolCall(json: ChatResponse): boolean {
-  return Boolean(json.choices?.[0]?.message?.tool_calls && json.choices[0]?.message?.tool_calls?.length)
 }
 
 function shouldRetryEmpty(json: ChatResponse, budget: number): boolean {
@@ -153,11 +44,21 @@ function shouldRetryEmpty(json: ChatResponse, budget: number): boolean {
   return used !== null && used >= Math.floor(budget * 0.9)
 }
 
+function shouldTryNextVariantAfterEmpty(json: ChatResponse): boolean {
+  const reason = finishReason(json).toLowerCase()
+  if (reason === 'content_filter' || hasToolCall(json)) {
+    return false
+  }
+  const used = completionTokenCount(json.usage)
+  return used !== null && used > 0
+}
+
 function emptyResponseError(json: ChatResponse, model: string): Error {
   const choice = json.choices?.[0]
   const diagnostics = [
     `finish_reason=${finishReason(json)}`,
-    formatUsage(json.usage)
+    formatUsage(json.usage),
+    responseShapeDiagnostics(json)
   ]
   if (choice?.message?.refusal) {
     diagnostics.push(`refusal=${choice.message.refusal.slice(0, 120)}`)
@@ -177,6 +78,7 @@ function requestVariants(model: string, messages: unknown[], maxTokens: number):
   const variants: RequestVariant[] = reasoning
     ? [
         { label: 'max_completion_tokens+reasoning_effort', body: { ...base, max_completion_tokens: maxTokens, reasoning_effort: 'low' } },
+        { label: 'max_completion_tokens+text_modality', body: { ...base, max_completion_tokens: maxTokens, modalities: ['text'] } },
         { label: 'max_completion_tokens', body: { ...base, max_completion_tokens: maxTokens } },
         { label: 'max_tokens', body: { ...base, max_tokens: maxTokens } }
       ]
@@ -198,7 +100,7 @@ function requestVariants(model: string, messages: unknown[], maxTokens: number):
 }
 
 function retryableBodyError(text: string): boolean {
-  return /max_completion_tokens|max_tokens|temperature|reasoning_effort|unsupported|unrecognized|unknown parameter/i.test(text)
+  return /max_completion_tokens|max_tokens|temperature|reasoning_effort|modalities|unsupported|unrecognized|unknown parameter/i.test(text)
 }
 
 function expandedTokenBudget(maxTokens: number): number {
@@ -220,7 +122,8 @@ async function postChat(
   let lastEmptyResponse: ChatResponse | null = null
 
   for (const budget of budgets) {
-    for (const variant of requestVariants(settings.llmModel, messages, budget)) {
+    const variants = requestVariants(settings.llmModel, messages, budget)
+    for (const [variantIndex, variant] of variants.entries()) {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
@@ -243,6 +146,9 @@ async function postChat(
         return content
       }
       lastEmptyResponse = json
+      if (variantIndex < variants.length - 1 && shouldTryNextVariantAfterEmpty(json)) {
+        continue
+      }
       if (budget < budgets[budgets.length - 1] && shouldRetryEmpty(json, budget)) {
         break
       }

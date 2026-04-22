@@ -179,7 +179,10 @@ label,
 }
 
 .topbar-actions {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: min(100%, 360px);
 }
 
 .topbar-actions .primary-button,
@@ -376,7 +379,7 @@ label,
 
 .board-workspace {
   display: grid;
-  grid-template-rows: 62px minmax(0, 1fr) 150px;
+  grid-template-rows: auto minmax(0, 1fr) 150px;
   min-width: 0;
   min-height: 0;
   background: var(--surface-0);
@@ -395,6 +398,7 @@ label,
 .topbar {
   min-height: 62px;
   padding: 9px 16px;
+  flex-wrap: wrap;
 }
 
 .topbar > div:first-child {
@@ -429,9 +433,9 @@ label,
 
 .board-matchbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.88fr) minmax(150px, auto) minmax(0, 0.88fr);
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: min(760px, 100%);
   min-height: 40px;
   padding: 5px 8px;
@@ -487,12 +491,13 @@ label,
 
 .match-state {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
+  justify-content: center;
   gap: 6px;
   min-width: 0;
-  max-width: 360px;
+  max-width: min(360px, 100%);
   color: #a7afb7;
-  white-space: nowrap;
 }
 
 .match-state strong {
@@ -501,11 +506,14 @@ label,
 }
 
 .match-state small {
-  margin-left: 4px;
+  flex-basis: 100%;
+  margin-left: 0;
   min-width: 0;
   overflow: hidden;
   color: #c7ad70;
+  text-align: center;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
 }
 
@@ -577,35 +585,48 @@ label,
   stroke: #17191a;
 }
 
-.candidate circle {
-  stroke: #f8f4ea;
-  stroke-width: 2.4;
-  opacity: 0.96;
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.38));
+.candidate {
+  pointer-events: none;
 }
 
-.candidate--1 circle {
-  fill: #66c783;
+.candidate-halo {
+  fill: rgb(5 9 11 / 0.76);
+  stroke: rgb(255 246 223 / 0.58);
+  stroke-width: 1.7;
+  filter: drop-shadow(0 3px 5px rgb(0 0 0 / 0.42));
 }
 
-.candidate--2 circle {
-  fill: #5aa8d6;
+.candidate-stone {
+  stroke: rgb(255 249 231 / 0.88);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.36));
 }
 
-.candidate--3 circle {
+.candidate--1 .candidate-stone {
+  fill: #57c4d5;
+}
+
+.candidate--2 .candidate-stone {
+  fill: #6fca7f;
+}
+
+.candidate--3 .candidate-stone {
   fill: #d6b45f;
 }
 
-.candidate--4 circle {
+.candidate--4 .candidate-stone {
+  fill: #d28b54;
+}
+
+.candidate--5 .candidate-stone {
   fill: #b783d9;
 }
 
-.candidate--5 circle {
+.candidate--6 .candidate-stone {
   fill: #8f9ba8;
 }
 
 .candidate text {
-  font-size: 16px;
   font-weight: 900;
   text-anchor: middle;
   dominant-baseline: middle;
@@ -613,8 +634,25 @@ label,
   pointer-events: none;
 }
 
-.candidate-rank {
-  fill: #0f1315;
+.candidate-winrate {
+  fill: #071013;
+  font-size: 14px;
+}
+
+.candidate-visits {
+  fill: rgb(7 16 19 / 0.88);
+  font-size: 10px;
+}
+
+.candidate-order-bg {
+  fill: #f7f0de;
+  stroke: rgb(8 12 14 / 0.55);
+  stroke-width: 1.2;
+}
+
+.candidate-order {
+  fill: #11161a;
+  font-size: 10px;
 }
 
 .timeline-panel {

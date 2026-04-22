@@ -897,6 +897,19 @@ function formatScoreLead(scoreLead: number | undefined): string {
   return `${scoreLead > 0 ? '黑' : '白'}+${Math.abs(scoreLead).toFixed(1)}`
 }
 
+function formatVisits(visits: number): string {
+  if (!Number.isFinite(visits) || visits <= 0) {
+    return '0'
+  }
+  if (visits >= 1_000_000) {
+    return `${(visits / 1_000_000).toFixed(visits >= 10_000_000 ? 0 : 1)}m`
+  }
+  if (visits >= 1_000) {
+    return `${(visits / 1_000).toFixed(visits >= 10_000 ? 0 : 1)}k`
+  }
+  return String(Math.round(visits))
+}
+
 function sideToPlay(record: GameRecord, moveNumber: number): StoneColor {
   if (moveNumber <= 0) {
     return 'B'
@@ -909,7 +922,7 @@ function formatCandidate(candidate: KataGoCandidate | undefined): string {
   if (!candidate) {
     return '候选点待分析'
   }
-  return `${candidate.move} · ${candidate.winrate.toFixed(1)}% · ${candidate.scoreLead >= 0 ? '黑' : '白'}+${Math.abs(candidate.scoreLead).toFixed(1)}`
+  return `${candidate.move} · ${candidate.winrate.toFixed(1)}% · ${candidate.scoreLead >= 0 ? '黑' : '白'}+${Math.abs(candidate.scoreLead).toFixed(1)} · ${formatVisits(candidate.visits)}搜`
 }
 
 function evaluationSeverity(item: KataGoMoveAnalysis): 'quiet' | 'inaccuracy' | 'mistake' | 'blunder' {
@@ -1181,9 +1194,14 @@ function GoBoard({ record, moveNumber, analysis }: { record: GameRecord; moveNum
   const step = (viewSize - gridInset * 2) / (size - 1)
   const starPoints = getStarPoints(size)
   const lastMove = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
-  const candidates = boardCandidateMoves(analysis)
-    .slice(0, 5)
-    .map((candidate, index) => ({ ...candidate, index, point: gtpToPoint(candidate.move, size) }))
+  const candidateMoves = boardCandidateMoves(analysis).slice(0, 6)
+  const maxVisits = Math.max(...candidateMoves.map((candidate) => candidate.visits), 1)
+  const candidates = candidateMoves.map((candidate, index) => ({
+    ...candidate,
+    index,
+    point: gtpToPoint(candidate.move, size),
+    searchShare: clamp(candidate.visits / maxVisits, 0.08, 1)
+  }))
   const coordinates = Array.from({ length: size }, (_, index) => index)
 
   return (
@@ -1265,14 +1283,25 @@ function GoBoard({ record, moveNumber, analysis }: { record: GameRecord; moveNum
         }
         const x = gridInset + candidate.point.col * step
         const y = gridInset + candidate.point.row * step
+        const radius = step * (candidate.index === 0 ? 0.49 : 0.4 + candidate.searchShare * 0.07)
+        const orderX = x + radius * 0.7
+        const orderY = y - radius * 0.7
         return (
           <g key={`${candidate.move}-${candidate.index}`} className={`candidate candidate--${candidate.index + 1}`}>
             <title>
-              {`${candidate.index + 1}选 ${candidate.move} · 胜率 ${candidate.winrate.toFixed(1)}% · 目差 ${candidate.scoreLead.toFixed(1)} · ${candidate.visits} visits${candidate.pv.length ? ` · PV ${candidate.pv.join(' ')}` : ''}`}
+              {`${candidate.index + 1}选 ${candidate.move} · 胜率 ${candidate.winrate.toFixed(1)}% · 目差 ${candidate.scoreLead.toFixed(1)} · 搜索 ${formatVisits(candidate.visits)} · 先验 ${candidate.prior.toFixed(1)}%${candidate.pv.length ? ` · PV ${candidate.pv.join(' ')}` : ''}`}
             </title>
-            <circle cx={x} cy={y} r={step * 0.41} />
-            <text className="candidate-rank" x={x} y={y + 1}>
-              {`${candidate.index + 1}选`}
+            <circle className="candidate-halo" cx={x} cy={y} r={radius + step * 0.065} opacity={0.28 + candidate.searchShare * 0.28} />
+            <circle className="candidate-stone" cx={x} cy={y} r={radius} opacity={0.72 + candidate.searchShare * 0.24} />
+            <circle className="candidate-order-bg" cx={orderX} cy={orderY} r={step * 0.155} />
+            <text className="candidate-order" x={orderX} y={orderY}>
+              {candidate.index + 1}
+            </text>
+            <text className="candidate-winrate" x={x} y={y - radius * 0.22}>
+              {candidate.winrate.toFixed(1)}
+            </text>
+            <text className="candidate-visits" x={x} y={y + radius * 0.34}>
+              {formatVisits(candidate.visits)}
             </text>
           </g>
         )
@@ -1454,22 +1483,36 @@ async function renderBoardPng(record: GameRecord, moveNumber: number, analysis: 
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   const candidateColors = ['#66c783', '#5aa8d6', '#d6b45f', '#b783d9', '#8f9ba8']
-  for (const [index, candidate] of boardCandidateMoves(analysis).slice(0, 5).entries()) {
+  const imageCandidates = boardCandidateMoves(analysis).slice(0, 6)
+  const maxImageVisits = Math.max(...imageCandidates.map((candidate) => candidate.visits), 1)
+  for (const [index, candidate] of imageCandidates.entries()) {
     const point = gtpToPoint(candidate.move, size)
     if (!point) {
       continue
     }
     const x = margin + point.col * step
     const y = margin + point.row * step
+    const searchShare = clamp(candidate.visits / maxImageVisits, 0.08, 1)
+    const radius = step * (index === 0 ? 0.46 : 0.38 + searchShare * 0.06)
     ctx.fillStyle = candidateColors[index] ?? '#8f9ba8'
     ctx.beginPath()
-    ctx.arc(x, y, step * 0.36, 0, Math.PI * 2)
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
     ctx.fill()
     ctx.strokeStyle = '#f4f2ec'
     ctx.lineWidth = 3
     ctx.stroke()
     ctx.fillStyle = '#101417'
-    ctx.fillText(`${index + 1}选`, x, y + 1)
+    ctx.font = 'bold 19px Avenir Next, PingFang SC, sans-serif'
+    ctx.fillText(candidate.winrate.toFixed(1), x, y - radius * 0.16)
+    ctx.font = 'bold 15px Avenir Next, PingFang SC, sans-serif'
+    ctx.fillText(formatVisits(candidate.visits), x, y + radius * 0.38)
+    ctx.fillStyle = '#f8f4ea'
+    ctx.beginPath()
+    ctx.arc(x + radius * 0.72, y - radius * 0.72, step * 0.13, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#101417'
+    ctx.font = 'bold 13px Avenir Next, PingFang SC, sans-serif'
+    ctx.fillText(String(index + 1), x + radius * 0.72, y - radius * 0.72)
   }
 
   ctx.fillStyle = '#1f1a12'
