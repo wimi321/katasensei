@@ -659,13 +659,19 @@ label,
 
 .evaluation-canvas {
   width: 100%;
-  height: 130px;
+  height: 138px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: #0d1013;
   outline: none;
-  cursor: crosshair;
+  cursor: grab;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025), var(--shadow-raised);
+  touch-action: none;
+  user-select: none;
+}
+
+.evaluation-canvas.is-dragging {
+  cursor: grabbing;
 }
 
 .evaluation-canvas:focus-visible {
@@ -697,10 +703,15 @@ label,
   stroke: #697178;
   opacity: 0.2;
   stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.evaluation-grid--horizontal {
+  opacity: 0.18;
 }
 
 .evaluation-grid--vertical {
-  opacity: 0.14;
+  opacity: 0.11;
 }
 
 .evaluation-grid--center {
@@ -743,6 +754,20 @@ label,
   font-weight: 700;
   dominant-baseline: middle;
   pointer-events: none;
+}
+
+.evaluation-axis-label {
+  fill: #8f9aa2;
+  font-size: 10px;
+  font-weight: 900;
+  text-anchor: end;
+}
+
+.evaluation-move-label {
+  fill: #7c878f;
+  font-size: 10px;
+  font-weight: 800;
+  text-anchor: middle;
 }
 
 .evaluation-empty-copy {

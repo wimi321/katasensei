@@ -942,24 +942,40 @@ function EvaluationGraph({
   loadingLabel: string
   onMove: (value: number) => void
 }): ReactElement {
+  const [dragging, setDragging] = useState(false)
+  const draggingRef = useRef(false)
   const sortedEvaluations = evaluations.slice().sort((left, right) => left.moveNumber - right.moveNumber)
   const currentAnalysis = analysis ?? sortedEvaluations.find((item) => item.moveNumber === moveNumber) ?? null
   const hasEvaluations = sortedEvaluations.length > 0
   const width = 720
-  const height = 148
-  const plotLeft = 12
-  const plotRight = 12
-  const plotTop = 12
-  const plotBottom = 116
-  const barTop = 124
-  const barBottom = 140
+  const height = 156
+  const plotLeft = 42
+  const plotRight = 34
+  const plotTop = 16
+  const plotBottom = 112
+  const barTop = 123
+  const barBottom = 138
   const plotWidth = width - plotLeft - plotRight
   const plotHeight = plotBottom - plotTop
   const centerY = plotTop + plotHeight / 2
-  const domainMoves = Math.max(totalMoves, 15)
+  const domainMoves = Math.max(totalMoves, 1)
   const xForMove = (move: number): number => plotLeft + (clamp(move, 0, domainMoves) / domainMoves) * plotWidth
   const lossScale = roundedScale(Math.max(...sortedEvaluations.map((item) => Math.max(0, item.playedMove?.scoreLoss ?? 0)), 0), 5, 5)
   const yForWinrate = (winrate: number): number => clamp(plotTop + ((100 - winrate) / 100) * plotHeight, plotTop, plotBottom)
+  const winrateTicks = [
+    { label: '黑100', value: 100 },
+    { label: '75', value: 75 },
+    { label: '50', value: 50 },
+    { label: '25', value: 25 },
+    { label: '白100', value: 0 }
+  ]
+  const moveTicks = Array.from(new Set([
+    0,
+    Math.round(totalMoves * 0.25),
+    Math.round(totalMoves * 0.5),
+    Math.round(totalMoves * 0.75),
+    totalMoves
+  ])).filter((tick) => tick >= 0 && tick <= totalMoves)
   const winrateSamples = sortedEvaluations.length > 0
     ? [
         { move: Math.max(0, sortedEvaluations[0].moveNumber - 1), winrate: sortedEvaluations[0].before.winrate },
@@ -982,33 +998,75 @@ function EvaluationGraph({
     ? `第 ${moveNumber} 手，黑胜率 ${currentAnalysis.after.winrate.toFixed(1)}%，${leadText}`
     : (loading ? `KataGo 正在快速生成整盘胜率图${loadingLabel ? ` · ${loadingLabel}` : ''}` : '等待 KataGo 分析')
 
-  function handlePointer(event: PointerEvent<SVGSVGElement>): void {
+  function moveFromPointer(event: PointerEvent<SVGSVGElement>): number {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const svgX = ((event.clientX - rect.left) / rect.width) * width
+    const ratio = clamp((svgX - plotLeft) / plotWidth, 0, 1)
+    return Math.round(ratio * totalMoves)
+  }
+
+  function selectMoveFromPointer(event: PointerEvent<SVGSVGElement>): void {
     if (totalMoves < 1) {
       return
     }
-    const rect = event.currentTarget.getBoundingClientRect()
-    const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1)
-    onMove(Math.round(ratio * totalMoves))
+    onMove(moveFromPointer(event))
+  }
+
+  function handlePointerDown(event: PointerEvent<SVGSVGElement>): void {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    draggingRef.current = true
+    setDragging(true)
+    selectMoveFromPointer(event)
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>): void {
+    if (!draggingRef.current) {
+      return
+    }
+    selectMoveFromPointer(event)
+  }
+
+  function handlePointerEnd(event: PointerEvent<SVGSVGElement>): void {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    draggingRef.current = false
+    setDragging(false)
+    selectMoveFromPointer(event)
   }
 
   return (
     <div className="evaluation-graph">
       <svg
-        className="evaluation-canvas"
+        className={`evaluation-canvas ${dragging ? 'is-dragging' : ''}`}
         viewBox={`0 0 ${width} ${height}`}
         role="slider"
         aria-label="KataGo 评估图"
         aria-valuemin={0}
         aria-valuemax={totalMoves}
         aria-valuenow={moveNumber}
+        aria-valuetext={currentLabel}
         tabIndex={0}
-        onPointerDown={handlePointer}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') {
+            event.preventDefault()
             onMove(Math.max(0, moveNumber - 1))
           }
           if (event.key === 'ArrowRight') {
+            event.preventDefault()
             onMove(Math.min(totalMoves, moveNumber + 1))
+          }
+          if (event.key === 'Home') {
+            event.preventDefault()
+            onMove(0)
+          }
+          if (event.key === 'End') {
+            event.preventDefault()
+            onMove(totalMoves)
           }
         }}
       >
@@ -1029,11 +1087,21 @@ function EvaluationGraph({
         <rect className="evaluation-plot" x="0" y="0" width={width} height={height} rx="6" />
         <rect className="evaluation-zone evaluation-zone--black" x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight / 2} />
         <rect className="evaluation-zone evaluation-zone--white" x={plotLeft} y={centerY} width={plotWidth} height={plotHeight / 2} />
-        {[0.25, 0.75].map((tick) => (
-          <line key={`h-${tick}`} className="evaluation-grid evaluation-grid--horizontal" x1={plotLeft} y1={plotTop + tick * plotHeight} x2={width - plotRight} y2={plotTop + tick * plotHeight} />
+        {winrateTicks.map((tick) => (
+          <g key={`winrate-tick-${tick.value}`}>
+            <line className="evaluation-grid evaluation-grid--horizontal" x1={plotLeft} y1={yForWinrate(tick.value)} x2={width - plotRight} y2={yForWinrate(tick.value)} />
+            <text className="evaluation-axis-label" x={plotLeft - 8} y={yForWinrate(tick.value)}>
+              {tick.label}
+            </text>
+          </g>
         ))}
-        {[0, 0.25, 0.5, 0.75, 1].map((tick) => (
-          <line key={`v-${tick}`} className="evaluation-grid evaluation-grid--vertical" x1={plotLeft + tick * plotWidth} y1={plotTop} x2={plotLeft + tick * plotWidth} y2={barBottom} />
+        {moveTicks.map((tick) => (
+          <g key={`move-tick-${tick}`}>
+            <line className="evaluation-grid evaluation-grid--vertical" x1={xForMove(tick)} y1={plotTop} x2={xForMove(tick)} y2={barBottom} />
+            <text className="evaluation-move-label" x={xForMove(tick)} y={barBottom + 6}>
+              {tick}
+            </text>
+          </g>
         ))}
         <line className="evaluation-grid evaluation-grid--center" x1={plotLeft} y1={centerY} x2={width - plotRight} y2={centerY} />
 
@@ -1067,14 +1135,14 @@ function EvaluationGraph({
         <circle className="evaluation-current-dot" cx={currentX} cy={currentY} r="5.2" />
         {currentAnalysis ? (
           <g className="evaluation-readout-panel">
-            <rect className="evaluation-readout-bg" x="22" y="18" width="276" height="34" rx="7" />
-            <text className="evaluation-readout evaluation-readout--black" x="36" y="35">
+            <rect className="evaluation-readout-bg" x={plotLeft + 12} y="18" width="276" height="34" rx="7" />
+            <text className="evaluation-readout evaluation-readout--black" x={plotLeft + 26} y="35">
               {`黑 ${blackWinrate?.toFixed(1)}%`}
             </text>
-            <text className="evaluation-readout evaluation-readout--white" x="108" y="35">
+            <text className="evaluation-readout evaluation-readout--white" x={plotLeft + 98} y="35">
               {`白 ${whiteWinrate?.toFixed(1)}%`}
             </text>
-            <text className="evaluation-readout evaluation-readout--lead" x="182" y="35">
+            <text className="evaluation-readout evaluation-readout--lead" x={plotLeft + 172} y="35">
               {leadText}
             </text>
           </g>
