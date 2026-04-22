@@ -136,7 +136,7 @@ textarea {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  box-shadow: 0 8px 18px rgb(0 0 0 / 0.24);
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.18));
 }
 
 .teacher-head span,
