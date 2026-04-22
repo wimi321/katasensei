@@ -12,6 +12,10 @@ import { analyzeGameQuick, analyzePosition } from './services/katago'
 
 let mainWindow: BrowserWindow | null = null
 
+function assetPath(fileName: string): string {
+  return join(__dirname, '../../assets', fileName)
+}
+
 function assertManagedPath(filePath: string): string {
   const root = resolve(appHome)
   const target = resolve(filePath)
@@ -29,6 +33,7 @@ async function createWindow(): Promise<void> {
     minWidth: 1180,
     minHeight: 760,
     title: 'KataSensei',
+    icon: assetPath('icon.png'),
     backgroundColor: '#0f1115',
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
@@ -67,6 +72,10 @@ async function dashboard(): Promise<DashboardData> {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock?.setIcon(assetPath('icon.png'))
+  }
+
   ipcMain.handle('dashboard:get', async () => dashboard())
 
   ipcMain.handle('settings:update', async (_event, payload: Partial<AppSettings>) => {

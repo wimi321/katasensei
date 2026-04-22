@@ -5,6 +5,7 @@ import type {
   DashboardData,
   GameMove,
   GameRecord,
+  KataGoCandidate,
   KataGoMoveAnalysis,
   KataGoModelPresetId,
   LibraryGame,
@@ -14,6 +15,7 @@ import type {
 import lizzieBlackStoneUrl from './assets/lizzie/black.png'
 import lizzieBoardUrl from './assets/lizzie/board.png'
 import lizzieWhiteStoneUrl from './assets/lizzie/white.png'
+import logoUrl from '../../../assets/logo.svg'
 
 const emptyDashboard: DashboardData = {
   settings: {
@@ -65,6 +67,17 @@ function gameDisplayName(game: LibraryGame): string {
   const black = safePlayerName(game.black, '黑方')
   const white = safePlayerName(game.white, '白方')
   return `${black} vs ${white}`
+}
+
+function boardCandidateMoves(analysis: KataGoMoveAnalysis | null): KataGoCandidate[] {
+  if (!analysis) {
+    return []
+  }
+  return analysis.after.topMoves.length > 0 ? analysis.after.topMoves : analysis.before.topMoves
+}
+
+function analysisHasCandidates(analysis: KataGoMoveAnalysis | undefined | null): boolean {
+  return Boolean(analysis && (analysis.before.topMoves.length > 0 || analysis.after.topMoves.length > 0))
 }
 
 export function App(): ReactElement {
@@ -154,7 +167,7 @@ export function App(): ReactElement {
       setGraphProgress(`${done}/${progress.totalPositions} 局面`)
       rememberEvaluation(progress.evaluation)
       if (progress.evaluation.moveNumber === defaultMoveNumber) {
-        setAnalysis((current) => current?.before.topMoves.length ? current : progress.evaluation)
+        setAnalysis((current) => analysisHasCandidates(current) ? current : progress.evaluation)
       }
     })
     try {
@@ -170,14 +183,14 @@ export function App(): ReactElement {
       setEvaluations((current) => {
         const merged = { ...current }
         for (const item of quickEvaluations) {
-          if (!merged[item.moveNumber]?.before.topMoves.length) {
+          if (!analysisHasCandidates(merged[item.moveNumber])) {
             merged[item.moveNumber] = item
           }
         }
         return merged
       })
       const preferred = nextMap[defaultMoveNumber] ?? quickEvaluations[quickEvaluations.length - 1] ?? null
-      setAnalysis((current) => current?.before.topMoves.length ? current : preferred)
+      setAnalysis((current) => analysisHasCandidates(current) ? current : preferred)
     } catch (cause) {
       if (graphRunId.current === runId) {
         setError(`胜率图生成失败: ${String(cause)}`)
@@ -278,7 +291,7 @@ export function App(): ReactElement {
   function rememberEvaluation(nextAnalysis: KataGoMoveAnalysis): void {
     setEvaluations((current) => ({
       ...current,
-      [nextAnalysis.moveNumber]: current[nextAnalysis.moveNumber]?.before.topMoves.length && !nextAnalysis.before.topMoves.length
+      [nextAnalysis.moveNumber]: analysisHasCandidates(current[nextAnalysis.moveNumber]) && !analysisHasCandidates(nextAnalysis)
         ? current[nextAnalysis.moveNumber]
         : nextAnalysis
     }))
@@ -417,7 +430,12 @@ export function App(): ReactElement {
           <button className="icon-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏">
             {libraryCollapsed ? '>' : '<'}
           </button>
-          {!libraryCollapsed ? <strong>KataSensei</strong> : null}
+          {!libraryCollapsed ? (
+            <div className="brand-mark">
+              <img src={logoUrl} alt="" aria-hidden="true" />
+              <strong>KataSensei</strong>
+            </div>
+          ) : null}
         </div>
         {!libraryCollapsed ? (
           <LibraryPanel
@@ -795,6 +813,8 @@ function BoardMatchBar({ record, moveNumber, analysis }: { record: GameRecord; m
   const white = safePlayerName(record.game.white, '白方')
   const current = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
   const scoreLead = analysis?.after.scoreLead
+  const bestCandidate = boardCandidateMoves(analysis)[0]
+  const nextColor = sideToPlay(record, moveNumber) === 'B' ? '黑' : '白'
   return (
     <div className="board-matchbar">
       <div className="player-chip player-chip--black">
@@ -806,7 +826,7 @@ function BoardMatchBar({ record, moveNumber, analysis }: { record: GameRecord; m
         <strong>{moveNumber}</strong>
         <span>/ {record.moves.length}</span>
         <span>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</span>
-        <small>{formatScoreLead(scoreLead)}</small>
+        <small>{bestCandidate ? `${nextColor}先 · 1选 ${formatCandidate(bestCandidate)}` : formatScoreLead(scoreLead)}</small>
       </div>
       <div className="player-chip player-chip--white">
         <span className="player-stone" aria-hidden="true" />
@@ -833,6 +853,21 @@ function formatScoreLead(scoreLead: number | undefined): string {
     return '均势'
   }
   return `${scoreLead > 0 ? '黑' : '白'}+${Math.abs(scoreLead).toFixed(1)}`
+}
+
+function sideToPlay(record: GameRecord, moveNumber: number): StoneColor {
+  if (moveNumber <= 0) {
+    return 'B'
+  }
+  const lastMove = record.moves[Math.min(moveNumber, record.moves.length) - 1]
+  return lastMove?.color === 'B' ? 'W' : 'B'
+}
+
+function formatCandidate(candidate: KataGoCandidate | undefined): string {
+  if (!candidate) {
+    return '候选点待分析'
+  }
+  return `${candidate.move} · ${candidate.winrate.toFixed(1)}% · ${candidate.scoreLead >= 0 ? '黑' : '白'}+${Math.abs(candidate.scoreLead).toFixed(1)}`
 }
 
 function evaluationSeverity(item: KataGoMoveAnalysis): 'quiet' | 'inaccuracy' | 'mistake' | 'blunder' {
@@ -999,7 +1034,9 @@ function GoBoard({ record, moveNumber, analysis }: { record: GameRecord; moveNum
   const step = (viewSize - gridInset * 2) / (size - 1)
   const starPoints = getStarPoints(size)
   const lastMove = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
-  const candidates = analysis?.before.topMoves.slice(0, 3).map((candidate, index) => ({ ...candidate, index, point: gtpToPoint(candidate.move, size) })) ?? []
+  const candidates = boardCandidateMoves(analysis)
+    .slice(0, 5)
+    .map((candidate, index) => ({ ...candidate, index, point: gtpToPoint(candidate.move, size) }))
   const coordinates = Array.from({ length: size }, (_, index) => index)
 
   return (
@@ -1083,9 +1120,12 @@ function GoBoard({ record, moveNumber, analysis }: { record: GameRecord; moveNum
         const y = gridInset + candidate.point.row * step
         return (
           <g key={`${candidate.move}-${candidate.index}`} className={`candidate candidate--${candidate.index + 1}`}>
-            <circle cx={x} cy={y} r={step * 0.34} />
-            <text className="candidate-rank" x={x} y={y + 5}>
-              {candidate.index + 1}
+            <title>
+              {`${candidate.index + 1}选 ${candidate.move} · 胜率 ${candidate.winrate.toFixed(1)}% · 目差 ${candidate.scoreLead.toFixed(1)} · ${candidate.visits} visits${candidate.pv.length ? ` · PV ${candidate.pv.join(' ')}` : ''}`}
+            </title>
+            <circle cx={x} cy={y} r={step * 0.41} />
+            <text className="candidate-rank" x={x} y={y + 1}>
+              {`${candidate.index + 1}选`}
             </text>
           </g>
         )
@@ -1263,22 +1303,26 @@ async function renderBoardPng(record: GameRecord, moveNumber: number, analysis: 
     }
   }
 
-  ctx.font = 'bold 28px Avenir Next, sans-serif'
+  ctx.font = 'bold 22px Avenir Next, PingFang SC, sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  for (const [index, candidate] of (analysis?.before.topMoves ?? []).slice(0, 3).entries()) {
+  const candidateColors = ['#66c783', '#5aa8d6', '#d6b45f', '#b783d9', '#8f9ba8']
+  for (const [index, candidate] of boardCandidateMoves(analysis).slice(0, 5).entries()) {
     const point = gtpToPoint(candidate.move, size)
     if (!point) {
       continue
     }
     const x = margin + point.col * step
     const y = margin + point.row * step
-    ctx.fillStyle = index === 0 ? '#66c783' : index === 1 ? '#5aa8d6' : '#d6b45f'
+    ctx.fillStyle = candidateColors[index] ?? '#8f9ba8'
     ctx.beginPath()
-    ctx.arc(x, y, step * 0.34, 0, Math.PI * 2)
+    ctx.arc(x, y, step * 0.36, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = '#fff'
-    ctx.fillText(String(index + 1), x, y + 1)
+    ctx.strokeStyle = '#f4f2ec'
+    ctx.lineWidth = 3
+    ctx.stroke()
+    ctx.fillStyle = '#101417'
+    ctx.fillText(`${index + 1}选`, x, y + 1)
   }
 
   ctx.fillStyle = '#1f1a12'

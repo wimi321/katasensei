@@ -258,6 +258,7 @@ export async function analyzePosition(
   const beforeRoot = root(beforeResponse)
   const afterRoot = root(afterResponse)
   const topMoves = candidates(beforeResponse)
+  const afterTopMoves = candidates(afterResponse)
   const best = topMoves[0]
   const { winrateLoss, scoreLoss } = playedLoss(currentMove, best, afterRoot)
 
@@ -270,7 +271,10 @@ export async function analyzePosition(
       ...beforeRoot,
       topMoves
     },
-    after: afterRoot,
+    after: {
+      ...afterRoot,
+      topMoves: afterTopMoves
+    },
     playedMove: currentMove
       ? {
           move: currentMove.gtp,
@@ -310,6 +314,7 @@ export async function analyzeGameQuick(
   }
 
   const roots = new Map<number, { winrate: number; scoreLead: number }>()
+  const topMovesByPosition = new Map<number, KataGoCandidate[]>()
   const emitted = new Set<number>()
   const idPrefix = `${gameId}-quick-`
 
@@ -319,6 +324,8 @@ export async function analyzeGameQuick(
     if (!before || !after || moveNumber < 1 || moveNumber > moves.length) {
       return null
     }
+    const beforeTopMoves = topMovesByPosition.get(moveNumber - 1) ?? []
+    const afterTopMoves = topMovesByPosition.get(moveNumber) ?? []
     const currentMove = moves[moveNumber - 1]
     const winrateSwing = Math.abs(after.winrate - before.winrate)
     const scoreSwing = Math.abs(after.scoreLead - before.scoreLead)
@@ -329,9 +336,12 @@ export async function analyzeGameQuick(
       currentMove,
       before: {
         ...before,
-        topMoves: []
+        topMoves: beforeTopMoves
       },
-      after,
+      after: {
+        ...after,
+        topMoves: afterTopMoves
+      },
       playedMove: {
         move: currentMove.gtp,
         winrate: after.winrate,
@@ -369,6 +379,7 @@ export async function analyzeGameQuick(
     }
     try {
       roots.set(position, root(response))
+      topMovesByPosition.set(position, candidates(response))
       emitIfReady(position)
       emitIfReady(position + 1)
     } catch {
@@ -378,6 +389,9 @@ export async function analyzeGameQuick(
 
   for (let moveNumber = 0; moveNumber <= moves.length; moveNumber += 1) {
     const response = responses.get(`${gameId}-quick-${moveNumber}`)
+    if (response && !topMovesByPosition.has(moveNumber)) {
+      topMovesByPosition.set(moveNumber, candidates(response))
+    }
     if (response && !roots.has(moveNumber)) {
       try {
         roots.set(moveNumber, root(response))

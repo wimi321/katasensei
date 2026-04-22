@@ -54,6 +54,7 @@
   "build": {
     "appId": "com.katasensei.desktop",
     "productName": "KataSensei",
+    "icon": "assets/icon",
     "directories": {
       "output": "release/${version}"
     },
@@ -99,6 +100,7 @@
       ]
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -116,6 +118,7 @@
       ]
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": [
         "AppImage",
         "deb",

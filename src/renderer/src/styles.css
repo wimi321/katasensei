@@ -99,6 +99,20 @@ textarea {
   font-size: 15px;
 }
 
+.brand-mark {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+}
+
+.brand-mark img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.24);
+}
+
 .teacher-head span,
 .topbar p,
 .game-row small,
@@ -371,6 +385,8 @@ label,
   display: flex;
   align-items: baseline;
   gap: 6px;
+  min-width: 0;
+  max-width: 360px;
   color: #a7afb7;
   white-space: nowrap;
 }
@@ -382,7 +398,10 @@ label,
 
 .match-state small {
   margin-left: 4px;
+  min-width: 0;
+  overflow: hidden;
   color: #c7ad70;
+  text-overflow: ellipsis;
   font-size: 12px;
 }
 
@@ -455,9 +474,10 @@ label,
 }
 
 .candidate circle {
-  stroke: #f4f2ec;
-  stroke-width: 2;
+  stroke: #f8f4ea;
+  stroke-width: 2.4;
   opacity: 0.96;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.38));
 }
 
 .candidate--1 circle {
@@ -472,10 +492,21 @@ label,
   fill: #d6b45f;
 }
 
+.candidate--4 circle {
+  fill: #b783d9;
+}
+
+.candidate--5 circle {
+  fill: #8f9ba8;
+}
+
 .candidate text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
   text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 0;
+  pointer-events: none;
 }
 
 .candidate-rank {

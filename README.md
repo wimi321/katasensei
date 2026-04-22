@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/logo.png" alt="KataSensei logo" width="132" height="132" />
+</p>
+
 # KataSensei
 
 > 像 Cursor / Claude Code 一样会调用工具的 AI 围棋老师。KataGo 负责事实判断，多模态 LLM 负责教学表达，学生画像负责长期进步。

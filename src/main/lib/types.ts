@@ -154,6 +154,7 @@ export interface KataGoMoveAnalysis {
   after: {
     winrate: number
     scoreLead: number
+    topMoves: KataGoCandidate[]
   }
   playedMove?: {
     move: string

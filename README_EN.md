@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/logo.png" alt="KataSensei logo" width="132" height="132" />
+</p>
+
 # KataSensei
 
 > An agentic Go teacher for desktop. KataGo judges the position, a multimodal LLM explains the lesson, and a long-term student profile keeps the coaching consistent.
