@@ -13,9 +13,12 @@ import type {
   KataGoMoveAnalysis,
   ReviewRequest,
   ReviewResult,
+  StudentProfile,
   TeacherRunRequest,
   TeacherRunResult
 } from '@main/lib/types'
+import type { DiagnosticsReport } from '@main/services/diagnostics/types'
+import type { KnowledgeSearchQuery, KnowledgeSearchResult } from '@main/services/knowledge/schema'
 
 const api = {
   getDashboard: (): Promise<DashboardData> => ipcRenderer.invoke('dashboard:get'),
@@ -32,6 +35,12 @@ const api = {
     ipcRenderer.on('katago:analyze-game-quick-progress', listener)
     return () => ipcRenderer.removeListener('katago:analyze-game-quick-progress', listener)
   },
+  getDiagnostics: (): Promise<DiagnosticsReport> => ipcRenderer.invoke('diagnostics:get'),
+  listStudents: (): Promise<StudentProfile[]> => ipcRenderer.invoke('students:list'),
+  resolveStudentByFoxNickname: (nickname: string): Promise<StudentProfile> => ipcRenderer.invoke('students:resolve-fox', nickname),
+  attachGameToStudent: (payload: { gameId: string; studentId: string }): Promise<StudentProfile> => ipcRenderer.invoke('students:attach-game', payload),
+  addStudentAlias: (payload: { studentId: string; alias: string }): Promise<StudentProfile> => ipcRenderer.invoke('students:alias', payload),
+  searchKnowledge: (payload: KnowledgeSearchQuery): Promise<KnowledgeSearchResult[]> => ipcRenderer.invoke('knowledge:search', payload),
   runTeacherTask: (payload: TeacherRunRequest): Promise<TeacherRunResult> => ipcRenderer.invoke('teacher:run', payload),
   testLlmSettings: (payload: LlmSettingsTestRequest): Promise<LlmSettingsTestResult> => ipcRenderer.invoke('llm:test', payload),
   openPath: (filePath: string): Promise<void> => ipcRenderer.invoke('path:open', filePath)

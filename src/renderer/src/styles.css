@@ -1006,6 +1006,23 @@ label,
   border-top: 1px solid var(--line-strong);
 }
 
+.tool-log summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.tool-log:not([open]) {
+  padding-bottom: 0;
+}
+
+.tool-log:not([open]) .tool-log-row,
+.tool-log:not([open]) .report-path {
+  display: none;
+}
+
 .tool-log-row {
   display: flex;
   flex-direction: column;

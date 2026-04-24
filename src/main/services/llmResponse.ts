@@ -110,11 +110,18 @@ export function extractText(json: ChatResponse): string {
     choice?.message?.content_parts,
     choice?.message?.output_text,
     choice?.message?.text,
+    (choice?.message as Record<string, unknown> | undefined)?.parsed,
+    (choice?.message as Record<string, unknown> | undefined)?.answer,
     choice?.text,
     choice?.content,
+    (choice as Record<string, unknown> | undefined)?.delta,
     json.output_text,
     json.message?.content,
-    json.content
+    json.content,
+    (json as Record<string, unknown>).result,
+    (json as Record<string, unknown>).response,
+    (json as Record<string, unknown>).reply,
+    (json as Record<string, unknown>).answer
   ]
 
   for (const candidate of directCandidates) {

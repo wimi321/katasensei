@@ -9,6 +9,15 @@ import { applyDetectedDefaults, detectSystemProfile } from './services/systemPro
 import { runTeacherTask } from './services/teacherAgent'
 import { testLlmSettings } from './services/llm'
 import { analyzeGameQuick, analyzePosition } from './services/katago'
+import { collectDiagnostics } from './services/diagnostics'
+import { searchKnowledgeCards } from './services/knowledge/searchLocal'
+import {
+  attachGameToStudent,
+  listStudents,
+  resolveStudentByFoxNickname,
+  resolveStudentByName,
+  upsertStudentAlias
+} from './services/studentProfile'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -99,6 +108,13 @@ app.whenReady().then(() => {
     }
     const imported = picked.filePaths.map((filePath) => importSgfFile(filePath, 'upload', 'Local upload'))
     upsertGames(imported)
+    const defaultPlayer = getSettings().defaultPlayerName.trim()
+    if (defaultPlayer) {
+      const student = resolveStudentByName(defaultPlayer, 'sgf')
+      for (const game of imported) {
+        attachGameToStudent(game.id, student.studentId)
+      }
+    }
     return dashboard()
   })
 
@@ -113,9 +129,19 @@ app.whenReady().then(() => {
   ipcMain.handle('fox:sync', async (_event, payload: FoxSyncRequest) => {
     const result = await syncFoxGames(payload)
     upsertGames(result.saved)
+    const student = resolveStudentByFoxNickname(result.nickname || payload.keyword)
+    for (const game of result.saved) {
+      attachGameToStudent(game.id, student.studentId)
+    }
     return { dashboard: await dashboard(), result }
   })
 
+  ipcMain.handle('diagnostics:get', async () => collectDiagnostics())
+  ipcMain.handle('students:list', async () => listStudents())
+  ipcMain.handle('students:resolve-fox', async (_event, nickname: string) => resolveStudentByFoxNickname(nickname))
+  ipcMain.handle('students:attach-game', async (_event, payload: { gameId: string; studentId: string }) => attachGameToStudent(payload.gameId, payload.studentId))
+  ipcMain.handle('students:alias', async (_event, payload: { studentId: string; alias: string }) => upsertStudentAlias(payload.studentId, payload.alias))
+  ipcMain.handle('knowledge:search', async (_event, payload) => searchKnowledgeCards(payload))
   ipcMain.handle('review:start', async (_event, payload: ReviewRequest) => runReview(payload))
   ipcMain.handle('katago:analyze-position', async (_event, payload: AnalyzePositionRequest) =>
     analyzePosition(payload.gameId, payload.moveNumber, payload.maxVisits ?? 500)

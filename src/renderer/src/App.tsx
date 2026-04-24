@@ -12,10 +12,15 @@ import type {
   StoneColor,
   TeacherRunResult
 } from '@main/lib/types'
+import type { DiagnosticsReport } from '@main/services/diagnostics/types'
 import lizzieBlackStoneUrl from './assets/lizzie/black.png'
 import lizzieBoardUrl from './assets/lizzie/board.png'
 import lizzieWhiteStoneUrl from './assets/lizzie/white.png'
 import logoUrl from '../../../assets/logo.svg'
+import { DiagnosticsPanel } from './features/diagnostics/DiagnosticsPanel'
+import { TeacherResultCard } from './features/teacher/TeacherResultCard'
+import './features/diagnostics/diagnostics.css'
+import './features/teacher/teacher-result.css'
 
 const emptyDashboard: DashboardData = {
   settings: {
@@ -103,6 +108,8 @@ export function App(): ReactElement {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [libraryCollapsed, setLibraryCollapsed] = useState(false)
   const [llmTestMessage, setLlmTestMessage] = useState('')
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsReport | null>(null)
+  const [diagnosticsDismissed, setDiagnosticsDismissed] = useState(false)
   const graphRunId = useRef('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -114,6 +121,7 @@ export function App(): ReactElement {
 
   useEffect(() => {
     void refresh()
+    void refreshDiagnostics()
   }, [])
 
   const selectedGame = useMemo(
@@ -144,6 +152,14 @@ export function App(): ReactElement {
       }
     } catch (cause) {
       setError(`初始化失败: ${String(cause)}`)
+    }
+  }
+
+  async function refreshDiagnostics(): Promise<void> {
+    try {
+      setDiagnostics(await window.katasensei.getDiagnostics())
+    } catch (cause) {
+      setError(`启动诊断失败: ${String(cause)}`)
     }
   }
 
@@ -438,6 +454,14 @@ export function App(): ReactElement {
     }
   ]
 
+  if (diagnostics && diagnostics.overall === 'blocked' && !diagnosticsDismissed) {
+    return <DiagnosticsPanel report={diagnostics} onRetry={() => void refreshDiagnostics()} onContinue={() => setDiagnosticsDismissed(true)} />
+  }
+
+  if (diagnostics && diagnostics.overall === 'fixable' && !diagnosticsDismissed) {
+    return <DiagnosticsPanel report={diagnostics} onRetry={() => void refreshDiagnostics()} onContinue={() => setDiagnosticsDismissed(true)} />
+  }
+
   return (
     <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
       <aside className="library-rail">
@@ -691,6 +715,7 @@ function TeacherPanel({
         {messages.map((message) => (
           <article key={message.id} className={`message message--${message.role}`}>
             <div className="message-meta">{message.role === 'teacher' ? '老师' : '学生'}</div>
+            {message.result?.structured ? <TeacherResultCard result={message.result.structured} /> : null}
             <div className="message-copy">{message.content}</div>
             {message.result ? <ToolLogList result={message.result} /> : null}
           </article>
@@ -801,7 +826,8 @@ function ToolLogList({ result }: { result: TeacherRunResult }): ReactElement {
     skipped: '跳过'
   }
   return (
-    <div className="tool-log">
+    <details className="tool-log">
+      <summary>工具执行日志 · {result.toolLogs.length} 步</summary>
       {result.toolLogs.map((log) => (
         <div key={log.id} className={`tool-log-row tool-log-row--${log.status}`}>
           <span>
@@ -812,7 +838,7 @@ function ToolLogList({ result }: { result: TeacherRunResult }): ReactElement {
         </div>
       ))}
       {result.reportPath ? <small className="report-path">报告: {result.reportPath}</small> : null}
-    </div>
+    </details>
   )
 }
 

@@ -170,9 +170,18 @@ export interface KataGoMoveAnalysis {
 
 export interface StudentProfile {
   id: string
+  studentId: string
   name: string
+  displayName: string
+  primaryFoxNickname?: string
+  aliases: string[]
+  createdFrom: 'fox' | 'sgf' | 'manual' | 'legacy'
   userLevel: CoachUserLevel
   gamesReviewed: number
+  weaknessStats: Record<string, number>
+  recentPatterns: string[]
+  trainingFocus: string[]
+  recentGameIds: string[]
   commonMistakes: Array<{ tag: string; count: number }>
   trainingThemes: string[]
   typicalMoves: Array<{
@@ -183,6 +192,36 @@ export interface StudentProfile {
     lossScore: number
   }>
   updatedAt: string
+  createdAt: string
+  lastAnalyzedAt?: string
+}
+
+export interface TeacherKeyMistake {
+  moveNumber?: number
+  color?: StoneColor
+  played?: string
+  recommended?: string
+  errorType: string
+  severity: 'inaccuracy' | 'mistake' | 'blunder'
+  evidence: string
+  explanation: string
+}
+
+export interface StructuredTeacherResult {
+  taskType: 'current-move' | 'full-game' | 'recent-games' | 'freeform'
+  headline: string
+  summary: string
+  keyMistakes: TeacherKeyMistake[]
+  correctThinking: string[]
+  drills: string[]
+  followupQuestions: string[]
+  markdown: string
+  knowledgeCardIds: string[]
+  profileUpdates: {
+    errorTypes: string[]
+    patterns: string[]
+    trainingFocus: string[]
+  }
 }
 
 export interface TeacherRunRequest {
@@ -224,6 +263,7 @@ export interface TeacherRunResult {
   analysis?: KataGoMoveAnalysis
   knowledge: KnowledgePacket[]
   studentProfile?: StudentProfile
+  structured?: StructuredTeacherResult
   reportPath?: string
 }
 

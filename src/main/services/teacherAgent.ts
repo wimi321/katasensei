@@ -9,6 +9,7 @@ import type {
   KnowledgePacket,
   LibraryGame,
   ReviewArtifact,
+  StructuredTeacherResult,
   StudentProfile,
   TeacherRunRequest,
   TeacherRunResult,
@@ -18,7 +19,7 @@ import { analyzePosition } from './katago'
 import { searchKnowledge } from './knowledge'
 import { readGameRecord } from './sgf'
 import { callMultimodalTeacher, callTeacherText } from './llm'
-import { getStudentProfile, updateStudentProfile } from './studentProfile'
+import { getStudentProfile, readStudentForGame, updateStudentProfile } from './studentProfile'
 import { runReview } from './review'
 import { applyDetectedDefaults, detectSystemProfile } from './systemProfile'
 
@@ -318,7 +319,7 @@ function genericKnowledgeForPrompt(prompt: string, profile: StudentProfile): Kno
     lossScore: /失误|错|问题|弱点|坏/.test(prompt) ? 5 : 2,
     judgement: /严重|崩|大错|败着/.test(prompt) ? 'blunder' : 'mistake',
     contextTags: [...themes, ...prompt.split(/[，。！？\s,.!?]/).filter((token) => token.length >= 2).slice(0, 8)],
-    maxResults: 6
+    maxResults: 4
   })
 }
 
@@ -332,13 +333,149 @@ function saveReport(id: string, title: string, markdown: string, extra: Record<s
   return markdownPath
 }
 
+function firstMarkdownLine(markdown: string, fallback: string): string {
+  return markdown
+    .split('\n')
+    .map((line) => line.replace(/^#+\s*/, '').trim())
+    .find(Boolean) ?? fallback
+}
+
+function formatCandidateForPrompt(candidate: KataGoMoveAnalysis['before']['topMoves'][number]): string {
+  return `${candidate.move}（胜率 ${candidate.winrate.toFixed(1)}%，目差 ${candidate.scoreLead.toFixed(1)}，搜索 ${candidate.visits}）`
+}
+
+function severityFromJudgement(judgement: KataGoMoveAnalysis['judgement']): 'inaccuracy' | 'mistake' | 'blunder' {
+  if (judgement === 'blunder') {
+    return 'blunder'
+  }
+  if (judgement === 'mistake') {
+    return 'mistake'
+  }
+  return 'inaccuracy'
+}
+
+function structuredCurrentMoveResult(
+  title: string,
+  markdown: string,
+  analysis: KataGoMoveAnalysis,
+  knowledge: KnowledgePacket[]
+): StructuredTeacherResult {
+  const best = analysis.before.topMoves[0]
+  const mistake = analysis.playedMove && analysis.playedMove.winrateLoss > 0.5
+    ? [{
+        moveNumber: analysis.moveNumber,
+        color: analysis.currentMove?.color,
+        played: analysis.playedMove.move,
+        recommended: best?.move,
+        errorType: tagsFromAnalysis(analysis, analysis.currentMove)[0] ?? '形势判断',
+        severity: severityFromJudgement(analysis.judgement),
+        evidence: `胜率损失 ${analysis.playedMove.winrateLoss.toFixed(1)}%，目差损失 ${analysis.playedMove.scoreLoss.toFixed(1)}。`,
+        explanation: best
+          ? `实战 ${analysis.playedMove.move} 的效率低于 KataGo 1 选 ${best.move}。`
+          : `实战 ${analysis.playedMove.move} 造成了明显损失。`
+      }]
+    : []
+  return {
+    taskType: 'current-move',
+    headline: title,
+    summary: firstMarkdownLine(markdown, best ? `KataGo 当前首选 ${best.move}。` : '当前局面已完成分析。'),
+    keyMistakes: mistake,
+    correctThinking: [
+      best ? `先比较 1 选 ${formatCandidateForPrompt(best)}。` : '先确认当前局面的最大价值点。',
+      analysis.before.topMoves[1] ? `再看 2 选 ${formatCandidateForPrompt(analysis.before.topMoves[1])}，理解不同方案的代价。` : '把实战手和候选点放在同一张棋盘上比较。'
+    ],
+    drills: knowledge.slice(0, 3).map((card) => `${card.title}: ${card.summary}`),
+    followupQuestions: [
+      '把这手的前两选变化拆开讲',
+      '这类问题下次怎么提前发现'
+    ],
+    markdown,
+    knowledgeCardIds: knowledge.map((card) => card.id),
+    profileUpdates: {
+      errorTypes: mistake.map((item) => item.errorType),
+      patterns: mistake.map((item) => item.explanation),
+      trainingFocus: knowledge.slice(0, 3).map((card) => card.title)
+    }
+  }
+}
+
+function structuredIssueResult(
+  taskType: StructuredTeacherResult['taskType'],
+  title: string,
+  markdown: string,
+  issues: BatchIssue[],
+  knowledge: KnowledgePacket[],
+  profile: StudentProfile
+): StructuredTeacherResult {
+  const keyMistakes = issues
+    .filter((issue) => issue.loss > 0)
+    .slice(0, 5)
+    .map((issue) => ({
+      moveNumber: issue.moveNumber,
+      played: issue.playedMove,
+      recommended: issue.bestMove,
+      errorType: issue.moveNumber <= 40 ? '布局方向' : issue.loss >= 15 ? '重大错手' : '形势判断',
+      severity: issue.loss >= 15 ? 'blunder' as const : issue.loss >= 8 ? 'mistake' as const : 'inaccuracy' as const,
+      evidence: `胜率损失约 ${issue.loss.toFixed(1)}%，KataGo 建议 ${issue.bestMove || '未知'}。`,
+      explanation: `${issue.game.black} vs ${issue.game.white} 第 ${issue.moveNumber} 手，实战 ${issue.playedMove || '未知'} 可作为复盘样本。`
+    }))
+  const profileThemes = themesFromProfile(profile)
+  return {
+    taskType,
+    headline: title,
+    summary: firstMarkdownLine(markdown, keyMistakes.length ? `共定位 ${keyMistakes.length} 个重点问题手。` : '本次没有稳定的大损问题。'),
+    keyMistakes,
+    correctThinking: profileThemes.slice(0, 4),
+    drills: knowledge.slice(0, 4).map((card) => `${card.title}: ${card.summary}`),
+    followupQuestions: [
+      '按损失最大的一手展开变化',
+      '把这些问题整理成一周训练表'
+    ],
+    markdown,
+    knowledgeCardIds: knowledge.map((card) => card.id),
+    profileUpdates: {
+      errorTypes: keyMistakes.map((item) => item.errorType),
+      patterns: keyMistakes.map((item) => item.explanation),
+      trainingFocus: [...profileThemes, ...knowledge.slice(0, 2).map((card) => card.title)].slice(0, 6)
+    }
+  }
+}
+
+function structuredFreeformResult(
+  title: string,
+  markdown: string,
+  knowledge: KnowledgePacket[],
+  profile: StudentProfile
+): StructuredTeacherResult {
+  return {
+    taskType: 'freeform',
+    headline: title,
+    summary: firstMarkdownLine(markdown, '老师任务已完成。'),
+    keyMistakes: [],
+    correctThinking: themesFromProfile(profile).slice(0, 4),
+    drills: knowledge.slice(0, 4).map((card) => `${card.title}: ${card.summary}`),
+    followupQuestions: [
+      '基于这个结论继续分析当前棋谱',
+      '生成下一次训练重点'
+    ],
+    markdown,
+    knowledgeCardIds: knowledge.map((card) => card.id),
+    profileUpdates: {
+      errorTypes: [],
+      patterns: [],
+      trainingFocus: knowledge.slice(0, 3).map((card) => card.title)
+    }
+  }
+}
+
 async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[], id: string): Promise<TeacherRunResult> {
   if (!request.gameId) {
     throw new Error('当前手分析需要先选择棋谱。')
   }
   const game = getGames().find((item) => item.id === request.gameId)
-  const studentName = detectStudentName(request, game)
-  const profile = getStudentProfile(studentName)
+  const boundProfile = readStudentForGame(request.gameId)
+  const studentName = boundProfile?.displayName ?? detectStudentName(request, game)
+  const profile = boundProfile ?? getStudentProfile(studentName)
   const record = game ? readGameRecord(game) : undefined
   const moveNumber = Math.max(0, Math.min(request.moveNumber ?? record?.moves.length ?? 0, record?.moves.length ?? 0))
 
@@ -364,7 +501,8 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
     userLevel: profile.userLevel,
     lossScore: analysis.playedMove?.scoreLoss,
     judgement: analysis.judgement,
-    contextTags: tagsFromAnalysis(analysis, analysis.currentMove)
+    contextTags: tagsFromAnalysis(analysis, analysis.currentMove),
+    maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条知识卡片。`)
 
@@ -391,7 +529,11 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
   }
 
   const updatedProfile = updateStudentProfile(studentName, {
+    reviewedGames: 1,
     mistakeTags: tagsFromAnalysis(analysis, analysis.currentMove),
+    recentPatterns: tagsFromAnalysis(analysis, analysis.currentMove).map((tag) => `第 ${moveNumber} 手出现${tag}相关问题`),
+    trainingFocus: knowledge.slice(0, 3).map((card) => card.title),
+    gameId: request.gameId,
     typicalMoves: analysis.playedMove
       ? [{
           gameId: request.gameId,
@@ -407,7 +549,8 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
   finishTool(profileLog, 'done', `累计复盘 ${updatedProfile.gamesReviewed} 盘，记录 ${updatedProfile.commonMistakes.length} 类问题。`)
 
   const title = `第 ${moveNumber} 手分析`
-  const reportPath = saveReport(id, title, markdown, { analysis, knowledge, studentProfile: updatedProfile })
+  const structured = structuredCurrentMoveResult(title, markdown, analysis, knowledge)
+  const reportPath = saveReport(id, title, markdown, { analysis, knowledge, studentProfile: updatedProfile, structured })
   return {
     id,
     mode: 'current-move',
@@ -417,6 +560,7 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
     analysis,
     knowledge,
     studentProfile: updatedProfile,
+    structured,
     reportPath
   }
 }
@@ -472,6 +616,11 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
   const profileUpdate = updateStudentProfile(studentName, {
     reviewedGames: games.length,
     mistakeTags: profileTagsFromIssues(issues.filter((issue) => issue.loss > 0)),
+    recentPatterns: issues
+      .filter((issue) => issue.loss > 0)
+      .slice(0, 8)
+      .map((issue) => `${issue.game.black} vs ${issue.game.white} 第${issue.moveNumber}手 ${issue.playedMove} 损失 ${issue.loss.toFixed(1)}%`),
+    trainingFocus: profileTagsFromIssues(issues.filter((issue) => issue.loss > 0)).slice(0, 6),
     typicalMoves: issues
       .filter((issue) => issue.loss > 0)
       .slice(0, 8)
@@ -497,7 +646,7 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
     lossScore: Math.max(...issues.map((issue) => issue.loss), 0) / 2,
     judgement: issues.some((issue) => issue.loss >= 15) ? 'blunder' : 'mistake',
     contextTags: ['布局', '方向', '手筋', '形势判断', ...themes],
-    maxResults: 6
+    maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条训练参考。`)
 
@@ -525,7 +674,8 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
   }
 
   const title = `${studentName} 最近 ${games.length} 盘画像`
-  const reportPath = saveReport(id, title, markdown, { games, issues, knowledge, studentProfile: profileUpdate })
+  const structured = structuredIssueResult('recent-games', title, markdown, issues, knowledge, profileUpdate)
+  const reportPath = saveReport(id, title, markdown, { games, issues, knowledge, studentProfile: profileUpdate, structured })
   return {
     id,
     mode: 'freeform',
@@ -534,6 +684,7 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
     toolLogs: logs,
     knowledge,
     studentProfile: profileUpdate,
+    structured,
     reportPath
   }
 }
@@ -546,8 +697,9 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
   if (!game) {
     throw new Error('找不到当前棋谱。')
   }
-  const studentName = detectStudentName(request, game)
-  const profile = getStudentProfile(studentName)
+  const boundProfile = readStudentForGame(game.id)
+  const studentName = boundProfile?.displayName ?? detectStudentName(request, game)
+  const profile = boundProfile ?? getStudentProfile(studentName)
 
   const sgfLog = startTool(logs, 'sgf.readGameRecord', '读取整盘棋谱', `读取 ${game.black} vs ${game.white} 的主线。`)
   const record = readGameRecord(game)
@@ -567,6 +719,9 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
   const updatedProfile = updateStudentProfile(studentName, {
     reviewedGames: 1,
     mistakeTags: profileTagsFromIssues(issues),
+    recentPatterns: issues.slice(0, 8).map((issue) => `${game.black} vs ${game.white} 第${issue.moveNumber}手 ${issue.playedMove} 推荐 ${issue.bestMove}`),
+    trainingFocus: profileTagsFromIssues(issues).slice(0, 6),
+    gameId: game.id,
     typicalMoves: issues.slice(0, 8).map((issue) => ({
       gameId: game.id,
       moveNumber: issue.moveNumber,
@@ -588,7 +743,7 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
     lossScore: Math.max(...issues.map((issue) => issue.loss), 0) / 2,
     judgement: issues.some((issue) => issue.loss >= 15) ? 'blunder' : 'mistake',
     contextTags: ['整盘复盘', '关键手', '形势判断', ...profileTagsFromIssues(issues)],
-    maxResults: 6
+    maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条知识卡片。`)
 
@@ -623,7 +778,8 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
   }
 
   const title = `${game.black} vs ${game.white} 整盘复盘`
-  const reportPath = saveReport(id, title, markdown, { game, issues, knowledge, studentProfile: updatedProfile })
+  const structured = structuredIssueResult('full-game', title, markdown, issues, knowledge, updatedProfile)
+  const reportPath = saveReport(id, title, markdown, { game, issues, knowledge, studentProfile: updatedProfile, structured })
   return {
     id,
     mode: 'freeform',
@@ -632,6 +788,7 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
     toolLogs: logs,
     knowledge,
     studentProfile: updatedProfile,
+    structured,
     reportPath
   }
 }
@@ -653,7 +810,7 @@ async function runTrainingPlan(request: TeacherRunRequest, logs: TeacherToolLog[
     lossScore: 4,
     judgement: 'mistake',
     contextTags: themes,
-    maxResults: 6
+    maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条知识卡片。`)
 
@@ -679,7 +836,8 @@ async function runTrainingPlan(request: TeacherRunRequest, logs: TeacherToolLog[
   }
 
   const title = `${studentName} 训练计划`
-  const reportPath = saveReport(id, title, markdown, { studentProfile: profile, knowledge })
+  const structured = structuredFreeformResult(title, markdown, knowledge, profile)
+  const reportPath = saveReport(id, title, markdown, { studentProfile: profile, knowledge, structured })
   return {
     id,
     mode: 'freeform',
@@ -688,6 +846,7 @@ async function runTrainingPlan(request: TeacherRunRequest, logs: TeacherToolLog[
     toolLogs: logs,
     knowledge,
     studentProfile: profile,
+    structured,
     reportPath
   }
 }
@@ -818,7 +977,8 @@ async function runOpenEndedTask(request: TeacherRunRequest, logs: TeacherToolLog
   }
 
   const title = `${studentName} 开放任务`
-  const reportPath = saveReport(id, title, markdown, { studentProfile: profile, currentGameContext: recordSummary, environment: environmentSummary, knowledge, webSnippets, availableTools: toolCatalogPayload() })
+  const structured = structuredFreeformResult(title, markdown, knowledge, profile)
+  const reportPath = saveReport(id, title, markdown, { studentProfile: profile, currentGameContext: recordSummary, environment: environmentSummary, knowledge, webSnippets, availableTools: toolCatalogPayload(), structured })
   return {
     id,
     mode: 'freeform',
@@ -827,6 +987,7 @@ async function runOpenEndedTask(request: TeacherRunRequest, logs: TeacherToolLog
     toolLogs: logs,
     knowledge,
     studentProfile: profile,
+    structured,
     reportPath
   }
 }
