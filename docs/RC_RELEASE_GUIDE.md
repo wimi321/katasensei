@@ -1,4 +1,4 @@
-# KataSensei P0 Release Candidate Guide
+# KataSensei v0.2.0-beta.1 P0 Release Candidate Guide
 
 ## 1. 目标
 
@@ -10,7 +10,7 @@ P0 RC 的目标不是功能扩张，而是验证：
 4. 用户能输入野狐昵称同步棋谱。
 5. 当前手、整盘、最近 10 局分析能跑通。
 6. 学生画像能根据野狐昵称持续更新。
-7. Windows + macOS 均可用。
+7. macOS arm64/x64 和 Windows x64 均可用。
 
 ## 2. 发布前必做
 
@@ -41,6 +41,8 @@ data/katago/bin/win32-x64/katago.exe
 data/katago/models/<default-b18-model>.bin.gz
 ```
 
+Windows ARM64 暂不支持。不要发布 `win-arm64` 安装包，除非后续补齐 `data/katago/bin/win32-arm64/katago.exe`、manifest 支持和 release 检查。
+
 然后运行：
 
 ```bash
@@ -64,6 +66,15 @@ pnpm dist:win
 node scripts/verify_release_artifacts.mjs --mode=release
 ```
 
+P0 beta Windows 产物应为：
+
+```text
+KataSensei-0.2.0-beta.1-win-x64.exe
+KataSensei-0.2.0-beta.1-win-x64-portable.exe
+```
+
+`win-arm64` 产物在 P0 beta 阶段视为发布阻塞项。
+
 ## 5. 人工 Smoke
 
 详见：
@@ -71,6 +82,8 @@ node scripts/verify_release_artifacts.mjs --mode=release
 - `docs/RELEASE_SMOKE_MATRIX.md`
 - `docs/VISUAL_QA_CAPTURE_GUIDE.md`
 - `docs/KATAGO_RELEASE_ASSETS_CHECKLIST.md`
+- `docs/WINDOWS_SMOKE_TEST.md`
+- `docs/VISUAL_QA_EVIDENCE_TEMPLATE.md`
 
 ## 6. Release Candidate 命名
 
@@ -86,6 +99,11 @@ v0.2.0-beta.1
 
 - Windows 或 macOS 无法启动。
 - KataGo release asset 缺失。
+- Windows ARM64 产物被生成或上传。
+- macOS 未签名/未公证且准备公开发布。
+- Windows 安装包未签名且准备公开发布。
+- Windows 11 x64 真机 smoke 未完成。
+- 视觉 QA evidence 未完成。
 - SGF 导入后无法打开棋局。
 - 野狐昵称同步失败且没有可理解错误。
 - 老师分析输出为空或无法展示。

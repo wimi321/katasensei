@@ -4,7 +4,7 @@ All notable changes to KataSensei will be documented here.
 
 This project follows semantic versioning once public releases begin.
 
-## 0.1.0 - Unreleased
+## 0.2.0-beta.1 - P0 Beta Candidate
 
 ### Added
 
@@ -22,6 +22,8 @@ This project follows semantic versioning once public releases begin.
 - Markdown and JSON report output.
 - Cross-platform CI for macOS, Windows, and Linux.
 - GitHub Release workflow for macOS, Windows, and Linux artifacts.
+- P0 release readiness checks for automation, assets, installers, signing, Windows smoke, and visual QA.
+- Local release evidence collection under `release-evidence/`.
 
 ### Fixed
 
@@ -29,3 +31,10 @@ This project follows semantic versioning once public releases begin.
 - Fox-style SGF komi values such as `KM[375]`.
 - SGF parser incorrectly reading comments and variations as mainline moves.
 - Board and winrate graph layout overlap in the center workspace.
+
+### Known Issues
+
+- Windows ARM64 is not supported in the P0 beta because the bundled KataGo manifest only supports Windows x64.
+- macOS public distribution requires Developer ID signing and notarization before tagging.
+- Windows public distribution should use an EV/OV certificate or Microsoft Trusted Signing; unsigned installers are internal beta only.
+- Windows 11 x64 real-machine smoke and visual QA evidence are required before creating `v0.2.0-beta.1`.

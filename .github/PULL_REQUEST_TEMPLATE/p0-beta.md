@@ -31,7 +31,9 @@
 ## Manual QA
 
 - [ ] macOS app launches
-- [ ] Windows app launches
+- [ ] macOS app is signed and notarized before public beta
+- [ ] Windows 11 x64 app launches
+- [ ] Windows installer is signed before public beta, or explicitly marked internal/unsigned beta
 - [ ] SGF import works
 - [ ] Fox nickname sync works
 - [ ] Current move analysis works
@@ -42,14 +44,16 @@
 - [ ] Candidate tooltip works
 - [ ] Key move navigation works
 - [ ] Winrate timeline click/drag works
+- [ ] Visual QA evidence captured
 
 ## Release asset status
 
 - [ ] macOS KataGo binary prepared
-- [ ] Windows KataGo binary prepared
+- [ ] Windows x64 KataGo binary prepared
 - [ ] Default b18 model prepared
 - [ ] Asset checksums recorded
 - [ ] Release package smoke test passed
+- [ ] No Windows ARM64 artifact is generated or uploaded for P0 beta
 
 ## Risk / Notes
 

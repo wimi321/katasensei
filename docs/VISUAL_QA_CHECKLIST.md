@@ -1,4 +1,20 @@
-# Sprint 4 Visual QA Checklist
+# P0 Beta Visual QA Checklist
+
+Visual QA is manual required before tagging `v0.2.0-beta.1`. Keep screenshots in `release-evidence/` or attach them to the PR/release discussion. Do not commit local screenshots by default.
+
+## 必备截图
+
+- [ ] DiagnosticsGate
+- [ ] Main workbench
+- [ ] GoBoardV2
+- [ ] CandidateTooltip
+- [ ] WinrateTimelineV2
+- [ ] BoardInsightPanel
+- [ ] TeacherRunCardPro
+- [ ] TeacherKeyMoveActions
+- [ ] SGF bind dialog
+- [ ] Student rail card
+- [ ] Settings readiness panel
 
 ## 棋盘
 
@@ -35,14 +51,24 @@
 - [ ] 缺 LLM 不阻塞基础使用
 - [ ] 缺 KataGo 的提示可理解
 - [ ] KataGo 资源状态展示路径和建议动作
+- [ ] Release readiness 明确显示 publicBetaReady=false，直到签名、Windows smoke、视觉 QA 都完成
 
 ## 截图建议
 
-发布前至少留 6 张截图：
+发布前至少留 11 张截图：
 
 1. 首启诊断 ready/warning 状态。
-2. SGF 导入并绑定学生。
-3. 野狐昵称同步后的学生卡。
-4. 当前手分析：棋盘 + 老师卡片。
-5. 整盘复盘：关键手列表 + 胜率图。
-6. 最近 10 局训练计划。
+2. 设置页 readiness panel。
+3. 主工作台三栏布局。
+4. SGF 导入并绑定学生。
+5. 野狐昵称同步后的学生卡。
+6. 当前手分析：棋盘 + 老师卡片。
+7. 候选点 tooltip。
+8. 胜率图点击/拖拽状态。
+9. BoardInsightPanel。
+10. 整盘复盘：关键手列表 + 胜率图。
+11. 最近 10 局训练计划。
+
+## Evidence
+
+Use `docs/VISUAL_QA_EVIDENCE_TEMPLATE.md` to record the final result.

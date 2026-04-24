@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = process.cwd()
 const args = new Set(process.argv.slice(2))
 const modeArg = process.argv.find((arg) => arg.startsWith('--mode='))
 const mode = modeArg ? modeArg.split('=')[1] : (args.has('--release') ? 'release' : 'dev')
-const releaseDir = join(root, 'release')
+const releaseRoot = join(root, 'release')
+const packageVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
+const versionReleaseDir = join(releaseRoot, packageVersion)
+const releaseDir = existsSync(versionReleaseDir) ? versionReleaseDir : releaseRoot
 const minSizeBytes = Number(process.env.KATASENSEI_MIN_ARTIFACT_BYTES ?? 1024 * 1024)
 
 function walk(dir) {
@@ -35,12 +38,16 @@ function isPackagedArtifact(file) {
 }
 
 const artifacts = files.filter(isPackagedArtifact)
-const mac = artifacts.filter((file) => /\.(dmg|zip)$/i.test(file) && /mac|darwin|KataSensei/i.test(file))
-const win = artifacts.filter((file) => /\.(exe|zip)$/i.test(file) && /win|KataSensei/i.test(file))
+const macArm64Dmg = artifacts.filter((file) => /mac-arm64\.dmg$/i.test(file))
+const macX64Dmg = artifacts.filter((file) => /mac-x64\.dmg$/i.test(file))
+const winX64Installer = artifacts.filter((file) => /win-x64\.exe$/i.test(file) && !/portable/i.test(file))
+const winArm64 = artifacts.filter((file) => /win-arm64/i.test(file))
 const tiny = artifacts.filter((file) => statSync(file).size < minSizeBytes)
 
 console.log(`Release artifact smoke (${mode})`)
-console.log(`Found ${artifacts.length} artifact candidates under release/`)
+console.log(`packageVersion=${packageVersion}`)
+console.log(`scanDir=${releaseDir.replace(root + '/', '')}`)
+console.log(`Found ${artifacts.length} artifact candidates`)
 for (const artifact of artifacts) {
   const size = statSync(artifact).size
   console.log(`- ${artifact.replace(root + '/', '')} (${Math.round(size / 1024)} KB)`)
@@ -53,8 +60,11 @@ if (artifacts.length === 0) {
   else warnings.push('No release artifacts found in dev mode')
 }
 if (mode === 'release') {
-  if (mac.length === 0) failures.push('No macOS artifact found (.dmg or .zip)')
-  if (win.length === 0) failures.push('No Windows artifact found (.exe or .zip)')
+  if (!existsSync(versionReleaseDir)) failures.push(`No release directory found for package version ${packageVersion}`)
+  if (macArm64Dmg.length === 0) failures.push('No macOS arm64 DMG found')
+  if (macX64Dmg.length === 0) failures.push('No macOS x64 DMG found')
+  if (winX64Installer.length === 0) failures.push('No Windows x64 installer found')
+  if (winArm64.length > 0) failures.push(`Windows ARM64 artifacts are not supported for P0 beta: ${winArm64.map((file) => file.replace(root + '/', '')).join(', ')}`)
   if (tiny.length > 0) failures.push(`Artifact too small: ${tiny.map((file) => file.replace(root + '/', '')).join(', ')}`)
 } else if (tiny.length > 0) {
   warnings.push(`Artifact too small: ${tiny.map((file) => file.replace(root + '/', '')).join(', ')}`)

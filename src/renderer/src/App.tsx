@@ -1053,6 +1053,7 @@ function SettingsDrawer({
       <KataGoAssetsPanel status={katagoAssets} onRefresh={onRefreshKataGoAssets} />
       <BetaAcceptancePanel
         items={betaItems}
+        flags={releaseReadiness?.flags}
         onRunChecks={() => {
           void refreshReleaseReadiness()
           onRefreshKataGoAssets()

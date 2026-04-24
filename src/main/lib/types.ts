@@ -133,9 +133,20 @@ export interface ReleaseReadinessItem {
   detail?: string
 }
 
+export interface ReleaseReadinessFlags {
+  automationReady: boolean
+  assetsReady: boolean
+  installersReady: boolean
+  signingReady: boolean
+  windowsSmokeReady: boolean
+  visualQaReady: boolean
+  publicBetaReady: boolean
+}
+
 export interface ReleaseReadinessResult {
   status: ReleaseReadinessStatus
   items: ReleaseReadinessItem[]
+  flags: ReleaseReadinessFlags
 }
 
 export interface ReviewRequest {

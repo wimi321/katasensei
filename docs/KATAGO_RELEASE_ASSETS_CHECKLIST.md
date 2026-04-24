@@ -5,6 +5,7 @@
 - 不把大 binary/model 普通 Git 提交。
 - Release 时准备平台对应 binary 和默认 b18 model。
 - 安装包必须包含运行所需资源。
+- P0 beta 支持 macOS arm64/x64 和 Windows x64。Windows ARM64 暂不支持。
 
 ## 资源布局
 
@@ -48,6 +49,7 @@ Release 前应记录：
 
 - manifest 指向不存在的文件
 - Windows 打包没有 `katago.exe`
+- 生成或上传了 `win-arm64` beta 产物
 - macOS 打包没有可执行权限
 - 默认模型缺失
 - release mode 下检查仍只有 warning 而不是 ready

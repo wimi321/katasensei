@@ -1,4 +1,4 @@
-# KataSensei P0 Beta Release Checklist
+# KataSensei v0.2.0-beta.1 P0 Beta Release Checklist
 
 ## 1. 必备检查
 
@@ -10,11 +10,16 @@
 - [ ] `node scripts/check_katago_assets.mjs --mode=release` 通过
 - [ ] `node scripts/p0_beta_acceptance.mjs` 通过
 - [ ] `node scripts/package_artifact_smoke.mjs --mode=release` 通过
+- [ ] `node scripts/p0_release_candidate_check.mjs --mode=release` 通过，且人工 gate 结论已记录
+- [ ] `node scripts/verify_release_artifacts.mjs --mode=release` 通过
 
 ## 2. macOS
 
 - [ ] arm64 安装包可启动
 - [ ] x64 安装包可启动
+- [ ] DMG 通过 `hdiutil verify`
+- [ ] App 通过 `codesign --verify --deep --strict`
+- [ ] DMG 通过 notarization 和 stapler validate
 - [ ] 内置 KataGo 可执行
 - [ ] 默认模型可读
 - [ ] 首启诊断 ready 或 warning 可解释
@@ -27,6 +32,8 @@
 ## 3. Windows
 
 - [ ] x64 安装包可启动
+- [ ] 没有生成或上传 win-arm64 产物
+- [ ] 安装包签名通过 `signtool verify`，或明确标记 unsigned/internal beta
 - [ ] 中文路径下可启动
 - [ ] 内置 KataGo 可执行
 - [ ] 默认模型可读
@@ -38,6 +45,7 @@
 
 ## 4. UI 验收
 
+- [ ] `docs/VISUAL_QA_EVIDENCE_TEMPLATE.md` 已填写
 - [ ] 棋盘不再像开发工具
 - [ ] 候选点不遮挡主要棋子
 - [ ] 候选点 tooltip 清楚
@@ -52,12 +60,26 @@
 - [ ] `docs/KATAGO_ASSETS.md` 完整
 - [ ] `docs/DIAGNOSTICS.md` 完整
 - [ ] `docs/TEACHER_RUNTIME.md` 完整
+- [ ] `docs/MACOS_SIGNING_NOTARIZATION.md` 完整
+- [ ] `docs/WINDOWS_CODE_SIGNING.md` 完整
+- [ ] `docs/WINDOWS_SMOKE_TEST.md` 完整
 - [ ] Release notes 写明 Beta 限制
 
-## 6. 发布前禁止项
+## 6. Public Beta Gate
+
+- [ ] `automationReady=true`
+- [ ] `assetsReady=true`
+- [ ] `installersReady=true`
+- [ ] `signingReady=true`
+- [ ] `windowsSmokeReady=true`
+- [ ] `visualQaReady=true`
+- [ ] `publicBetaReady=true`
+
+## 7. 发布前禁止项
 
 - [ ] 没有 token/API key
 - [ ] 没有 `.env`
 - [ ] 没有 zip 包误提交
 - [ ] 没有 node_modules/out/release 误提交
 - [ ] 没有未经策略确认的大模型/大二进制普通 Git 提交
+- [ ] 没有直接发布 Windows ARM64 产物

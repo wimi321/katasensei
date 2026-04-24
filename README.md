@@ -171,11 +171,13 @@ release/<version>/
 发布标签会触发 GitHub Actions，分别在 macOS、Windows、Linux runner 上构建安装包，并把产物上传到 GitHub Release：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0-beta.1
+git push origin v0.2.0-beta.1
 ```
 
-注意：正式面向普通用户分发前，还需要配置 macOS 签名/公证、Windows 代码签名和自动更新策略。
+P0 beta 首发支持 macOS arm64/x64 和 Windows x64。Windows ARM64 暂不支持。
+
+注意：公开发布前，还需要完成 macOS 签名/公证、Windows 代码签名、Windows 真机 smoke、视觉 QA evidence 和自动更新策略。
 
 ## 隐私与安全
 

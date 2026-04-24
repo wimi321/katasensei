@@ -2,7 +2,7 @@
 
 ## Summary
 
-This PR productizes KataSensei P0 into a Windows/macOS beta-ready Go teacher workbench.
+This PR productizes KataSensei P0 into a macOS arm64/x64 and Windows x64 beta candidate Go teacher workbench.
 
 It adds:
 
@@ -15,6 +15,7 @@ It adds:
 - Structured teacher runtime and teacher cards
 - Board UI v2, winrate timeline v2, candidate tooltip, key move navigation
 - P0 beta and release candidate smoke checks
+- Release blocker gates for signing, Windows smoke, and visual QA evidence
 
 ## Verification
 
@@ -32,5 +33,7 @@ It adds:
 ## Known limitations before public release
 
 - Real KataGo binary/model must be prepared in release packaging; large assets are not committed through normal Git.
+- Windows ARM64 is not supported in `v0.2.0-beta.1`.
 - Windows/macOS manual installer smoke test is still required.
+- macOS signing/notarization and Windows signing evidence are still required before public release.
 - Visual QA screenshots are still required before tagging beta release.

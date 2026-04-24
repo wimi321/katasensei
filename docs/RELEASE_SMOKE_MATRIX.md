@@ -40,6 +40,10 @@
 | 最近 10 局分析成功 |  |  |
 | 学生画像重启后保留 |  |  |
 
+## Windows ARM64
+
+P0 beta 不支持 Windows ARM64。若 release 目录或 GitHub Release 中出现 `win-arm64` 产物，视为发布阻塞项。
+
 ## 失败记录模板
 
 ```text

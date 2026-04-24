@@ -8,6 +8,7 @@ const args = new Set(process.argv.slice(2))
 const modeArg = process.argv.find((arg) => arg.startsWith('--mode='))
 const mode = modeArg ? modeArg.split('=')[1] : (args.has('--release') ? 'release' : 'dev')
 const json = args.has('--json')
+const p0BetaVersion = '0.2.0-beta.1'
 
 const results = []
 
@@ -74,6 +75,12 @@ function checkPackageJson() {
     return
   }
   push('pass', 'package-json', 'package.json is readable')
+  push(
+    pkg.version === p0BetaVersion ? 'pass' : 'fail',
+    'package-version',
+    `package version is ${p0BetaVersion}`,
+    `Found ${pkg.version ?? 'missing'}`
+  )
   const scripts = pkg.scripts ?? {}
   for (const script of ['typecheck', 'build', 'check', 'dist:mac', 'dist:win']) {
     push(scripts[script] ? 'pass' : 'fail', `script:${script}`, `package script ${script} exists`)
@@ -97,6 +104,23 @@ function checkPackageJson() {
   } else {
     push('warning', 'builder:asarUnpack', 'electron-builder unpacks data/katago', 'KataGo should not run from inside asar')
   }
+
+  const winTargets = build.win?.target ?? []
+  const winTargetText = JSON.stringify(winTargets)
+  const hasWinX64 = winTargetText.includes('x64')
+  const hasWinArm64 = winTargetText.includes('arm64')
+  push(hasWinX64 ? 'pass' : 'fail', 'builder:win-x64', 'Windows x64 target is configured')
+  push(!hasWinArm64 ? 'pass' : 'fail', 'builder:no-win-arm64', 'Windows ARM64 target is disabled for P0 beta')
+
+  const artifactName = String(build.artifactName ?? '')
+  push(
+    artifactName.includes('${version}') && artifactName.includes('${os}') && artifactName.includes('${arch}')
+      ? 'pass'
+      : 'warning',
+    'builder:artifact-name',
+    'artifactName includes version, os, and arch',
+    artifactName
+  )
 }
 
 function checkCoreFiles() {
@@ -146,11 +170,55 @@ function checkDocs() {
     'docs/RELEASE_BETA_CHECKLIST.md',
     'docs/VISUAL_QA_CHECKLIST.md',
     'docs/KATAGO_ASSETS.md',
-    'docs/P0_STATUS.md'
+    'docs/P0_STATUS.md',
+    'docs/MACOS_SIGNING_NOTARIZATION.md',
+    'docs/WINDOWS_CODE_SIGNING.md',
+    'docs/WINDOWS_SMOKE_TEST.md',
+    'docs/VISUAL_QA_EVIDENCE_TEMPLATE.md',
+    'docs/RELEASE_NOTES_v0.2.0-beta.1.md'
   ]
   for (const path of docs) file(path, { required: false })
   file('docs/RC_RELEASE_GUIDE.md', { required: false })
   file('docs/RELEASE_SMOKE_MATRIX.md', { required: false })
+}
+
+function checkManualReleaseBlockers() {
+  const signingEvidence =
+    process.env.KATASENSEI_SIGNING_READY === '1' ||
+    existsSync(join(root, 'release-evidence', 'signing-ready.json'))
+  const windowsSmokeEvidence =
+    process.env.KATASENSEI_WINDOWS_SMOKE_READY === '1' ||
+    existsSync(join(root, 'release-evidence', 'windows-smoke-ready.json'))
+  const visualQaEvidence =
+    process.env.KATASENSEI_VISUAL_QA_READY === '1' ||
+    existsSync(join(root, 'release-evidence', 'visual-qa-ready.json'))
+
+  push(
+    signingEvidence ? 'pass' : 'warning',
+    'manual:signing-ready',
+    'macOS and Windows signing evidence is present',
+    signingEvidence ? '' : 'Manual blocker before public beta: signed/notarized macOS app and signed Windows installer not verified'
+  )
+  push(
+    windowsSmokeEvidence ? 'pass' : 'warning',
+    'manual:windows-smoke-ready',
+    'Windows real-machine smoke evidence is present',
+    windowsSmokeEvidence ? '' : 'Manual blocker before tag: Windows 11 x64 smoke test required'
+  )
+  push(
+    visualQaEvidence ? 'pass' : 'warning',
+    'manual:visual-qa-ready',
+    'Visual QA evidence is present',
+    visualQaEvidence ? '' : 'Manual blocker before public beta: visual screenshots/checklist required'
+  )
+  push(
+    signingEvidence && windowsSmokeEvidence && visualQaEvidence ? 'pass' : 'warning',
+    'manual:public-beta-ready',
+    'Public beta manual gates are complete',
+    signingEvidence && windowsSmokeEvidence && visualQaEvidence
+      ? ''
+      : 'publicBetaReady=false until signing, Windows smoke, and visual QA evidence are all present'
+  )
 }
 
 function checkKatagoAssets() {
@@ -204,7 +272,14 @@ function checkNoObviousSecrets() {
 
   const git = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' })
   if (git.status === 0) {
-    const risky = git.stdout.split('\n').filter((line) => /\.zip$|\.env|node_modules|release\//.test(line))
+    const risky = git.stdout.split('\n').filter((line) => {
+      const path = line.slice(3).trim().split(' -> ').pop() ?? ''
+      return (
+        /(^|\/)\.env/.test(path) ||
+        /^(node_modules|out|release)\//.test(path) ||
+        /\.(zip|dmg|exe)$/i.test(path)
+      )
+    })
     push(risky.length === 0 ? 'pass' : 'fail', 'git:no-risky-files', 'No obvious risky files staged/modified', risky.join('\n'))
   } else {
     push('warning', 'git:status', 'git status available')
@@ -217,6 +292,7 @@ checkKnowledgeCards()
 checkWorkflow()
 checkDocs()
 checkKatagoAssets()
+checkManualReleaseBlockers()
 checkNoObviousSecrets()
 
 const failures = results.filter((item) => item.status === 'fail')

@@ -2,7 +2,15 @@
 
 ## P0 decision
 
-KataSensei P0 should ship with a bundled KataGo binary and one default model. The default model should be the b18 recommended model already referenced by the project.
+KataSensei P0 beta should ship with a bundled KataGo binary and one default model. The default model should be the b18 recommended model already referenced by the project.
+
+Supported P0 beta platforms:
+
+- macOS arm64
+- macOS x64
+- Windows x64
+
+Windows ARM64 is not supported for `v0.2.0-beta.1`.
 
 ## Repository policy
 
@@ -22,6 +30,8 @@ data/katago/
   bin/win32-x64/katago.exe
   models/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz
 ```
+
+Do not add or publish `bin/win32-arm64/katago.exe` until a tested official or trusted Windows ARM64 KataGo runtime is available and the manifest/check scripts are updated.
 
 ## Scripts
 
