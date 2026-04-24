@@ -1,3 +1,7 @@
+@import './styles/design-tokens.css';
+@import './features/board/board-v2.css';
+@import './features/teacher/teacher-pro.css';
+
 :root {
   color-scheme: dark;
   font-family: 'Avenir Next', 'PingFang SC', 'Noto Sans SC', sans-serif;
@@ -431,6 +435,15 @@ label,
   min-height: 0;
 }
 
+.board-table--v2 {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.board-table--v2 .ks-board-insight {
+  width: min(760px, 100%);
+}
+
 .board-matchbar {
   display: grid;
   grid-template-columns: minmax(0, 0.88fr) minmax(150px, auto) minmax(0, 0.88fr);
@@ -662,6 +675,10 @@ label,
   padding: 8px 14px 10px;
   border-top: 1px solid var(--line-soft);
   background: linear-gradient(180deg, #12161b, #0f1317);
+}
+
+.timeline-panel .ks-timeline-v2 {
+  width: 100%;
 }
 
 .move-controls {

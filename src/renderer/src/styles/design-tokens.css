@@ -1,0 +1,43 @@
+:root {
+  --ks-bg-app: #090b0f;
+  --ks-bg-panel: #10151b;
+  --ks-bg-panel-2: #151b22;
+  --ks-bg-elevated: #1a222b;
+  --ks-border-soft: rgba(255, 255, 255, 0.075);
+  --ks-border-strong: rgba(255, 255, 255, 0.14);
+  --ks-text-main: #f4efe7;
+  --ks-text-muted: #a9b2bb;
+  --ks-text-faint: #737f89;
+  --ks-gold: #d8b567;
+  --ks-gold-strong: #ebcf86;
+  --ks-green: #63d18c;
+  --ks-blue: #72b7e6;
+  --ks-red: #ed6b61;
+  --ks-orange: #db9862;
+  --ks-purple: #b68ee8;
+  --ks-radius-sm: 8px;
+  --ks-radius-md: 12px;
+  --ks-radius-lg: 18px;
+  --ks-shadow-soft: 0 16px 44px rgba(0, 0, 0, 0.32);
+  --ks-shadow-hard: 0 24px 70px rgba(0, 0, 0, 0.46);
+  --ks-font-ui: 'Avenir Next', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+.ks-surface-card {
+  border: 1px solid var(--ks-border-soft);
+  border-radius: var(--ks-radius-md);
+  background: linear-gradient(180deg, rgba(27, 35, 44, 0.94), rgba(15, 20, 26, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), var(--ks-shadow-soft);
+}
+
+.ks-mini-label {
+  color: var(--ks-text-faint);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ks-value-strong {
+  color: var(--ks-text-main);
+  font-weight: 900;
+}

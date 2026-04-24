@@ -19,11 +19,16 @@ import lizzieBlackStoneUrl from './assets/lizzie/black.png'
 import lizzieBoardUrl from './assets/lizzie/board.png'
 import lizzieWhiteStoneUrl from './assets/lizzie/white.png'
 import logoUrl from '../../../assets/logo.svg'
+import { BoardInsightPanel } from './features/board/BoardInsightPanel'
+import { GoBoardV2 } from './features/board/GoBoardV2'
+import { WinrateTimelineV2 } from './features/board/WinrateTimelineV2'
 import { DiagnosticsGate } from './features/diagnostics/DiagnosticsGate'
 import { StudentBindingDialog } from './features/student/StudentBindingDialog'
 import { StudentRailCard } from './features/student/StudentRailCard'
 import { KataGoAssetsPanel } from './features/settings/KataGoAssetsPanel'
+import { TeacherComposerPro } from './features/teacher/TeacherComposerPro'
 import { TeacherRunCard } from './features/teacher/TeacherRunCard'
+import { TeacherRunCardPro } from './features/teacher/TeacherRunCardPro'
 import './features/diagnostics/diagnostics.css'
 import './features/student/student.css'
 import './features/teacher/teacher-run-card.css'
@@ -577,9 +582,14 @@ export function App(): ReactElement {
 
           <section className="board-stage">
             {record ? (
-              <div className="board-table">
+              <div className="board-table board-table--v2">
                 <BoardMatchBar record={record} moveNumber={moveNumber} analysis={analysis} />
-                <GoBoard record={record} moveNumber={moveNumber} analysis={analysis} />
+                {record.boardSize >= 2 ? (
+                  <GoBoardV2 record={record} moveNumber={moveNumber} analysis={analysis} />
+                ) : (
+                  <GoBoard record={record} moveNumber={moveNumber} analysis={analysis} />
+                )}
+                <BoardInsightPanel analysis={analysis} moveNumber={moveNumber} loading={busy === 'teacher' || graphBusy} />
               </div>
             ) : (
               <div className="empty-board">导入 SGF 后开始复盘</div>
@@ -587,15 +597,26 @@ export function App(): ReactElement {
           </section>
 
           <section className="timeline-panel">
-            <EvaluationGraph
-              analysis={analysis}
-              evaluations={Object.values(evaluations)}
-              moveNumber={moveNumber}
-              totalMoves={record?.moves.length ?? 0}
-              loading={graphBusy}
-              loadingLabel={graphProgress}
-              onMove={jumpToMove}
-            />
+            {record ? (
+              <WinrateTimelineV2
+                evaluations={Object.values(evaluations)}
+                currentMoveNumber={moveNumber}
+                totalMoves={record.moves.length}
+                loading={graphBusy}
+                loadingLabel={graphProgress}
+                onMove={jumpToMove}
+              />
+            ) : (
+              <EvaluationGraph
+                analysis={analysis}
+                evaluations={Object.values(evaluations)}
+                moveNumber={moveNumber}
+                totalMoves={0}
+                loading={graphBusy}
+                loadingLabel={graphProgress}
+                onMove={jumpToMove}
+              />
+            )}
           </section>
         </main>
 
@@ -629,7 +650,7 @@ export function App(): ReactElement {
         onSkip={() => setStudentBinding(null)}
         onBindExisting={(input) => void bindImportedGameToExisting(input)}
         onCreateStudent={(input) => void createStudentAndBind(input)}
-        />
+      />
     </DiagnosticsGate>
   )
 }
@@ -816,34 +837,37 @@ function TeacherPanel({
           <article key={message.id} className={`message message--${message.role}`}>
             <div className="message-meta">{message.role === 'teacher' ? '老师' : '学生'}</div>
             {message.result ? (
-              <TeacherRunCard
-                result={message.result.structuredResult ?? message.result.structured ?? null}
-                toolLogs={message.result.toolLogs}
-                onJumpToMove={onJumpToMove}
-              />
-            ) : null}
-            <div className="message-copy">{message.content}</div>
+              (message.result.structuredResult ?? message.result.structured) ? (
+                <TeacherRunCardPro result={message.result} markdown={message.content} />
+              ) : (
+                <>
+                  <TeacherRunCard result={null} toolLogs={message.result.toolLogs} onJumpToMove={onJumpToMove} />
+                  <div className="message-copy">{message.content}</div>
+                </>
+              )
+            ) : (
+              <div className="message-copy">{message.content}</div>
+            )}
           </article>
         ))}
         {busy === 'teacher' ? (
           <div className="message message--teacher message--running">
             <div className="message-meta">老师</div>
-            <div className="message-copy">正在规划任务、调用工具和整理讲解...</div>
+            <TeacherRunCardPro running markdown="正在规划任务、调用工具和整理讲解..." />
           </div>
         ) : null}
       </div>
 
       {error ? <div className="error-line">{error}</div> : null}
-      <form className="composer" onSubmit={onSubmit}>
-        <textarea
-          value={prompt}
-          onChange={(event) => onPrompt(event.target.value)}
-          placeholder="让老师分析最近10盘棋、找常见问题、做训练计划..."
-        />
-        <button className="primary-button" type="submit" disabled={busy !== '' || !prompt.trim()}>
-          发送
-        </button>
-      </form>
+      <TeacherComposerPro
+        value={prompt}
+        busy={busy !== ''}
+        onChange={onPrompt}
+        onSubmit={onSubmit}
+        onQuickPrompt={(text) => {
+          onPrompt(text)
+        }}
+      />
     </div>
   )
 }

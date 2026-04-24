@@ -1,0 +1,377 @@
+.ks-board-shell {
+  position: relative;
+  display: grid;
+  width: min(100%, calc(100vh - 330px), 720px);
+  min-width: min(360px, 100%);
+  aspect-ratio: 1;
+  place-items: center;
+}
+
+.ks-board-shell--compact {
+  width: min(100%, 560px);
+}
+
+.ks-go-board-v2 {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+}
+
+.ks-board-drop {
+  fill: #090b0f;
+}
+
+.ks-board-surface-v2 {
+  fill: url(#ks-board-wood);
+  stroke: rgba(54, 24, 4, 0.72);
+  stroke-width: 2.4;
+}
+
+.ks-grid-lines line {
+  stroke: rgba(35, 20, 10, 0.76);
+  stroke-width: 1.55;
+  shape-rendering: crispEdges;
+}
+
+.ks-star-points circle {
+  fill: rgba(39, 22, 11, 0.82);
+}
+
+.ks-board-coordinates-v2 text {
+  fill: rgba(43, 25, 13, 0.78);
+  font-size: 18px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.ks-stone circle:first-child {
+  filter: drop-shadow(0 7px 9px rgba(0, 0, 0, 0.34));
+  stroke-width: 1.1;
+}
+
+.ks-stone--B circle:first-child {
+  fill: url(#ks-black-stone);
+  stroke: rgba(255, 255, 255, 0.09);
+}
+
+.ks-stone--W circle:first-child {
+  fill: url(#ks-white-stone);
+  stroke: rgba(31, 27, 22, 0.28);
+}
+
+.ks-last-move {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ks-last-move--B {
+  stroke: rgba(246, 239, 226, 0.96);
+}
+
+.ks-last-move--W {
+  stroke: rgba(19, 22, 25, 0.92);
+}
+
+.ks-candidate {
+  cursor: default;
+  pointer-events: auto;
+}
+
+.ks-candidate-ring {
+  fill: rgba(4, 8, 11, 0.72);
+  stroke: rgba(255, 241, 204, 0.64);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 6px 9px rgba(0, 0, 0, 0.36));
+}
+
+.ks-candidate-disc {
+  stroke: rgba(255, 250, 230, 0.82);
+  stroke-width: 2;
+}
+
+.ks-candidate--primary .ks-candidate-disc {
+  fill: #62d3e4;
+}
+
+.ks-candidate--secondary .ks-candidate-disc {
+  fill: #72d58d;
+}
+
+.ks-candidate--quiet .ks-candidate-disc {
+  fill: #d9b663;
+  opacity: 0.84;
+}
+
+.ks-candidate-rank,
+.ks-candidate-sub {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  font-weight: 950;
+}
+
+.ks-candidate-rank {
+  fill: #0a1115;
+  font-size: 15px;
+}
+
+.ks-candidate-sub {
+  fill: rgba(7, 14, 18, 0.9);
+  font-size: 8.5px;
+  letter-spacing: -0.02em;
+}
+
+.ks-keymove circle {
+  fill: none;
+  stroke-width: 4.2;
+  stroke-dasharray: 8 6;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.36));
+}
+
+.ks-keymove text {
+  fill: #fff3d1;
+  font-size: 16px;
+  font-weight: 950;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.72);
+  stroke-width: 4px;
+}
+
+.ks-keymove--blunder circle {
+  stroke: var(--ks-red, #ed6b61);
+}
+
+.ks-keymove--mistake circle {
+  stroke: var(--ks-orange, #db9862);
+}
+
+.ks-keymove--inaccuracy circle,
+.ks-keymove--turning-point circle {
+  stroke: var(--ks-gold, #d8b567);
+}
+
+.ks-board-tooltip {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid var(--ks-border-soft, rgba(255,255,255,.08));
+  border-radius: 12px;
+  background: rgba(10, 14, 18, 0.86);
+  color: var(--ks-text-main, #f4efe7);
+  box-shadow: var(--ks-shadow-soft, 0 16px 44px rgba(0,0,0,.32));
+  backdrop-filter: blur(12px);
+}
+
+.ks-board-tooltip strong {
+  font-size: 13px;
+}
+
+.ks-board-tooltip span {
+  color: var(--ks-text-muted, #a9b2bb);
+  font-size: 12px;
+}
+
+.ks-timeline-v2 {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ks-timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ks-text-muted, #a9b2bb);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ks-timeline-head span {
+  color: var(--ks-text-main, #f4efe7);
+}
+
+.ks-timeline-canvas {
+  width: 100%;
+  height: 154px;
+  border: 1px solid var(--ks-border-soft, rgba(255,255,255,.08));
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), var(--ks-shadow-soft, 0 16px 44px rgba(0,0,0,.32));
+}
+
+.ks-timeline-grid {
+  stroke: rgba(198, 210, 218, 0.16);
+  stroke-width: 1;
+}
+
+.ks-timeline-grid--vertical {
+  opacity: 0.56;
+}
+
+.ks-timeline-center {
+  stroke: rgba(235, 207, 134, 0.42);
+  stroke-width: 1.2;
+}
+
+.ks-timeline-line {
+  fill: none;
+  stroke: var(--ks-gold-strong, #ebcf86);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px rgba(235, 207, 134, 0.22));
+}
+
+.ks-timeline-loss rect {
+  transform-origin: center;
+  opacity: 0.74;
+}
+
+.ks-timeline-loss--blunder rect {
+  fill: var(--ks-red, #ed6b61);
+}
+
+.ks-timeline-loss--mistake rect {
+  fill: var(--ks-orange, #db9862);
+}
+
+.ks-timeline-loss--inaccuracy rect,
+.ks-timeline-loss--turning-point rect {
+  fill: var(--ks-gold, #d8b567);
+}
+
+.ks-timeline-dot {
+  stroke: #0c1116;
+  stroke-width: 2;
+}
+
+.ks-timeline-dot--blunder {
+  fill: var(--ks-red, #ed6b61);
+}
+
+.ks-timeline-dot--mistake {
+  fill: var(--ks-orange, #db9862);
+}
+
+.ks-timeline-current {
+  stroke: rgba(244, 232, 194, 0.82);
+  stroke-width: 1.4;
+}
+
+.ks-timeline-current-label-bg {
+  fill: rgba(11, 15, 20, 0.92);
+  stroke: rgba(235, 207, 134, 0.38);
+}
+
+.ks-timeline-current-label,
+.ks-timeline-empty {
+  fill: var(--ks-text-main, #f4efe7);
+  font-size: 12px;
+  font-weight: 950;
+  text-anchor: middle;
+}
+
+.ks-timeline-empty {
+  fill: var(--ks-text-muted, #a9b2bb);
+  font-size: 14px;
+}
+
+.ks-board-insight {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 760px);
+  padding: 12px;
+}
+
+.ks-board-insight__head,
+.ks-board-insight__metrics,
+.ks-board-candidate-row {
+  display: flex;
+  align-items: center;
+}
+
+.ks-board-insight__head {
+  justify-content: space-between;
+  color: var(--ks-text-main, #f4efe7);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ks-board-insight__head small,
+.ks-board-insight__metrics small,
+.ks-board-candidate-row small,
+.ks-board-insight__candidates p {
+  color: var(--ks-text-muted, #a9b2bb);
+  font-size: 12px;
+}
+
+.ks-board-insight__metrics {
+  gap: 8px;
+}
+
+.ks-board-insight__metrics > div {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--ks-border-soft, rgba(255,255,255,.08));
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ks-board-insight__metrics small,
+.ks-board-insight__metrics strong {
+  display: block;
+}
+
+.ks-board-insight__metrics strong {
+  color: var(--ks-text-main, #f4efe7);
+  font-size: 18px;
+}
+
+.ks-board-insight__candidates {
+  display: grid;
+  gap: 7px;
+}
+
+.ks-board-candidate-row {
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--ks-border-soft, rgba(255,255,255,.08));
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.ks-board-candidate-row span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ks-gold, #d8b567);
+  color: #0d1116;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.ks-board-candidate-row strong {
+  color: var(--ks-text-main, #f4efe7);
+  min-width: 38px;
+}
+
+.ks-board-candidate-row--primary span {
+  background: #62d3e4;
+}
+
+.ks-board-candidate-row--secondary span {
+  background: #72d58d;
+}
