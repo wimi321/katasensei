@@ -45,6 +45,26 @@
   text-align: right;
 }
 
+.candidate-tooltip__pv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  color: var(--ks-text-muted, #9da7ae);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.candidate-tooltip__pv strong {
+  color: var(--ks-text-main, #f2efe7);
+  font-weight: 650;
+  text-align: right;
+  word-break: keep-all;
+}
+
 .candidate-tooltip p {
   margin: 8px 0 0;
   color: var(--ks-text-muted, #9da7ae);

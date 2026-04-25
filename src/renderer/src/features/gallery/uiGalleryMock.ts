@@ -80,11 +80,11 @@ export const galleryAnalysis: KataGoMoveAnalysis = {
     winrate: 0.56,
     scoreLead: 3.1,
     topMoves: [
-      { move: 'Q10', winrate: 0.61, scoreLead: 4.8, visits: 1824, order: 1, prior: 0.21, pv: ['Q10', 'Q8', 'O10'] },
-      { move: 'K16', winrate: 0.57, scoreLead: 3.6, visits: 1096, order: 2, prior: 0.16, pv: ['K16', 'N17', 'J14'] },
-      { move: 'C10', winrate: 0.53, scoreLead: 1.5, visits: 684, order: 3, prior: 0.11, pv: ['C10', 'D8'] },
-      { move: 'R9', winrate: 0.49, scoreLead: -0.5, visits: 276, order: 4, prior: 0.08, pv: ['R9', 'Q8'] },
-      { move: 'H3', winrate: 0.47, scoreLead: -1.1, visits: 164, order: 5, prior: 0.05, pv: ['H3', 'J3'] }
+      { move: 'Q10', winrate: 0.61, scoreLead: 4.8, visits: 1824, order: 1, prior: 0.21, pv: ['Q10', 'Q8', 'O10', 'O8', 'R12', 'R11', 'P12', 'Q12', 'R9', 'P9', 'Q7', 'N10'] },
+      { move: 'K16', winrate: 0.57, scoreLead: 3.6, visits: 1096, order: 2, prior: 0.16, pv: ['K16', 'N17', 'J14', 'Q10', 'Q8', 'O10', 'P11', 'N11', 'R9', 'R10'] },
+      { move: 'C10', winrate: 0.53, scoreLead: 1.5, visits: 684, order: 3, prior: 0.11, pv: ['C10', 'D8', 'Q10', 'Q8', 'O10', 'O8', 'F10', 'G10'] },
+      { move: 'R9', winrate: 0.49, scoreLead: -0.5, visits: 276, order: 4, prior: 0.08, pv: ['R9', 'Q8', 'Q10', 'O10', 'R12', 'P12'] },
+      { move: 'H3', winrate: 0.47, scoreLead: -1.1, visits: 164, order: 5, prior: 0.05, pv: ['H3', 'J3', 'C10', 'D8', 'Q10', 'Q8'] }
     ]
   },
   after: {

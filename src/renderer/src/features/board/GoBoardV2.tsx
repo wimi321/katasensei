@@ -1,8 +1,10 @@
-import type { PointerEvent, ReactElement } from 'react'
+import type { MouseEvent, PointerEvent, ReactElement } from 'react'
 import { useMemo, useState } from 'react'
 import type { GameRecord, KataGoMoveAnalysis } from '@main/lib/types'
 import {
+  candidateVariationMoves,
   getBoardSize,
+  moveToColor,
   normalizeWinrate,
   renderCandidates,
   renderPlayedMove,
@@ -10,7 +12,8 @@ import {
   type BoardPoint,
   type RenderCandidate,
   type RenderKeyMove,
-  type RenderPlayedMove
+  type RenderPlayedMove,
+  type RenderVariationMove
 } from './boardGeometry'
 import { CandidateTooltip, type CandidateTooltipMove, type CandidateTooltipPosition } from './CandidateTooltip'
 import './board-v2.css'
@@ -36,8 +39,10 @@ const STAR_CONFIG: Record<number, number[]> = {
 
 type HoveredCandidate = {
   candidate: CandidateTooltipMove
+  renderCandidate: RenderCandidate
   position: CandidateTooltipPosition
 } | null
+type BoardHoverEvent = PointerEvent<SVGSVGElement> | MouseEvent<SVGSVGElement>
 
 function valueOf(record: unknown, key: string): unknown {
   return typeof record === 'object' && record !== null ? (record as Record<string, unknown>)[key] : undefined
@@ -61,6 +66,7 @@ function starPoints(boardSize: number): BoardPoint[] {
 }
 
 function toTooltipMove(candidate: RenderCandidate): CandidateTooltipMove {
+  const rawPv = valueOf(candidate.raw, 'pv')
   return {
     order: candidate.rank,
     move: String(valueOf(candidate.raw, 'move') ?? candidate.label),
@@ -69,6 +75,7 @@ function toTooltipMove(candidate: RenderCandidate): CandidateTooltipMove {
     scoreLead: valueOf(candidate.raw, 'scoreLead') as number | undefined,
     visits: valueOf(candidate.raw, 'visits') as number | undefined,
     prior: valueOf(candidate.raw, 'prior') as number | undefined,
+    pv: Array.isArray(rawPv) ? rawPv.map(String).slice(0, 14) : undefined,
     note: candidate.rank === 1 ? 'KataGo 当前首选。' : undefined
   }
 }
@@ -126,6 +133,18 @@ function tooltipPosition(point: { x: number; y: number }, svg: SVGSVGElement): C
   }
 }
 
+function svgCursorPoint(event: BoardHoverEvent): { x: number; y: number } | null {
+  const svg = event.currentTarget
+  const matrix = svg.getScreenCTM()?.inverse()
+  if (!matrix) {
+    return null
+  }
+  const point = svg.createSVGPoint()
+  point.x = event.clientX
+  point.y = event.clientY
+  return point.matrixTransform(matrix)
+}
+
 function CandidateMark({
   candidate,
   boardSize,
@@ -149,8 +168,8 @@ function CandidateMark({
         const svg = event.currentTarget.ownerSVGElement
         onHover?.(candidate, svg ? tooltipPosition(p, svg) : { x: p.x, y: p.y })
       }}
-      onPointerLeave={() => onHover?.(null)}
     >
+      <circle className="ks-candidate-hitarea" r="34" />
       <circle className="ks-candidate-soft-glow" r="25" />
       <circle className="ks-candidate-ring" r="23.6" />
       <circle className="ks-candidate-disc" r="21.8" />
@@ -169,6 +188,36 @@ function KeyMoveMark({ mark, boardSize }: { mark: RenderKeyMove; boardSize: numb
     <g className={`ks-keymove ks-keymove--${mark.severity}`} transform={`translate(${p.x} ${p.y})`}>
       <circle r="31" />
       <text y="-33">{mark.label}</text>
+    </g>
+  )
+}
+
+function VariationPreview({ moves, boardSize }: { moves: RenderVariationMove[]; boardSize: number }): ReactElement | null {
+  if (moves.length === 0) {
+    return null
+  }
+  const points = moves.map((move) => xy(move, boardSize))
+  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
+  const labelPoint = points[Math.min(points.length - 1, 1)] ?? points[0]
+
+  return (
+    <g className="ks-variation-preview-layer">
+      {points.length > 1 ? <path className="ks-variation-path" d={path} /> : null}
+      {moves.map((move) => {
+        const p = xy(move, boardSize)
+        const label = move.step > 99 ? '99+' : String(move.step)
+        return (
+          <g key={`${move.step}-${move.move}`} className={`ks-variation-stone ks-variation-stone--${move.color} ${move.isFirst ? 'ks-variation-stone--first' : ''}`} transform={`translate(${p.x} ${p.y})`}>
+            <circle className="ks-variation-stone-shadow" r={move.isFirst ? 19.5 : 17.2} />
+            <circle className="ks-variation-stone-body" r={move.isFirst ? 18.3 : 16.2} />
+            <text className="ks-variation-stone-number" y="0.6">{label}</text>
+          </g>
+        )
+      })}
+      <g className="ks-variation-pv-label" transform={`translate(${Math.min(labelPoint.x + 32, VIEWBOX - 96)} ${Math.max(labelPoint.y - 30, 58)})`}>
+        <rect x="-34" y="-13" width="68" height="26" rx="13" />
+        <text y="1">PV {moves.length}手</text>
+      </g>
     </g>
   )
 }
@@ -198,14 +247,46 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
   const stones = useMemo(() => renderStones(record, moveNumber), [record, moveNumber])
   const candidates = useMemo(() => renderCandidates(analysis, boardSize), [analysis, boardSize])
   const playedMove = useMemo(() => renderPlayedMove(analysis, boardSize), [analysis, boardSize])
+  const variationFirstColor = moveToColor(analysis?.currentMove ?? (moveNumber > 0 ? record.moves[moveNumber - 1] : undefined))
+  const activeCandidate = hoveredCandidate
+  const variationMoves = useMemo(
+    () => activeCandidate ? candidateVariationMoves(activeCandidate.renderCandidate, boardSize, variationFirstColor) : [],
+    [activeCandidate, boardSize, variationFirstColor]
+  )
   const lastStone = stones[stones.length - 1]
   const letters = coordinateLetters(boardSize)
   const lines = Array.from({ length: boardSize }, (_, index) => index)
-  const activeCandidate = hoveredCandidate
 
   function handleCandidateHover(candidate: RenderCandidate | null, position?: CandidateTooltipPosition): void {
-    setHoveredCandidate(candidate && position ? { candidate: toTooltipMove(candidate), position } : null)
+    setHoveredCandidate(candidate && position ? { candidate: toTooltipMove(candidate), renderCandidate: candidate, position } : null)
     onCandidateHover?.(candidate)
+  }
+
+  function handleBoardPointerMove(event: BoardHoverEvent): void {
+    const cursor = svgCursorPoint(event)
+    if (!cursor) {
+      return
+    }
+    const cell = INNER / (boardSize - 1)
+    const hitRadius = Math.max(38, cell * 0.78)
+    let nearest: { candidate: RenderCandidate; point: { x: number; y: number }; distance: number } | null = null
+    for (const candidate of candidates) {
+      const point = xy(candidate, boardSize)
+      const distance = Math.hypot(point.x - cursor.x, point.y - cursor.y)
+      if (distance <= hitRadius && (!nearest || distance < nearest.distance)) {
+        nearest = { candidate, point, distance }
+      }
+    }
+    if (!nearest) {
+      if (hoveredCandidate) {
+        handleCandidateHover(null)
+      }
+      return
+    }
+    if (hoveredCandidate?.renderCandidate.rank === nearest.candidate.rank && hoveredCandidate.renderCandidate.label === nearest.candidate.label) {
+      return
+    }
+    handleCandidateHover(nearest.candidate, tooltipPosition(nearest.point, event.currentTarget))
   }
 
   function handlePointerDown(event: PointerEvent<SVGSVGElement>): void {
@@ -227,7 +308,17 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
 
   return (
     <div className={`ks-board-shell ${compact ? 'ks-board-shell--compact' : ''}`}>
-      <svg className="ks-go-board-v2" viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`} role="img" aria-label="围棋棋盘" onPointerDown={handlePointerDown}>
+      <svg
+        className="ks-go-board-v2"
+        viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+        role="img"
+        aria-label="围棋棋盘"
+        onPointerMove={handleBoardPointerMove}
+        onPointerLeave={() => handleCandidateHover(null)}
+        onMouseMove={handleBoardPointerMove}
+        onMouseLeave={() => handleCandidateHover(null)}
+        onPointerDown={handlePointerDown}
+      >
         <defs>
           <linearGradient id="ks-board-wood" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="var(--ks-board-light, #d8ad6b)" />
@@ -327,6 +418,8 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
             )
           })}
         </g>
+
+        <VariationPreview moves={variationMoves} boardSize={boardSize} />
 
         <g className="ks-candidates-layer">
           {candidates.map((candidate) => (

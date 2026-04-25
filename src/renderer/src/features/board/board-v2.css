@@ -154,6 +154,11 @@
   opacity: 0.68;
 }
 
+.ks-candidate-hitarea {
+  fill: transparent;
+  pointer-events: fill;
+}
+
 .ks-candidate-ring {
   fill: rgba(30, 20, 10, 0.16);
   stroke: rgba(255, 248, 224, 0.74);
@@ -207,6 +212,96 @@
   fill: #b83328;
   font-size: 7.2px;
   font-weight: 560;
+}
+
+.ks-variation-preview-layer {
+  pointer-events: none;
+  animation: ks-variation-enter 150ms ease-out both;
+}
+
+.ks-variation-path {
+  fill: none;
+  stroke: rgba(255, 247, 220, 0.62);
+  stroke-width: 3.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 9 9;
+  filter: drop-shadow(0 2px 5px rgba(38, 25, 10, 0.32));
+}
+
+.ks-variation-stone {
+  opacity: 0.94;
+}
+
+.ks-variation-stone-shadow {
+  fill: rgba(30, 18, 8, 0.28);
+  filter: drop-shadow(0 4px 6px rgba(25, 15, 5, 0.3));
+}
+
+.ks-variation-stone-body {
+  stroke-width: 1.2;
+  stroke: rgba(255, 247, 224, 0.76);
+}
+
+.ks-variation-stone--B .ks-variation-stone-body {
+  fill: rgba(9, 11, 12, 0.82);
+  stroke: rgba(255, 247, 224, 0.58);
+}
+
+.ks-variation-stone--W .ks-variation-stone-body {
+  fill: rgba(249, 242, 230, 0.86);
+  stroke: rgba(26, 22, 17, 0.62);
+}
+
+.ks-variation-stone--first .ks-variation-stone-body {
+  stroke-width: 2.1;
+  stroke: rgba(77, 205, 194, 0.95);
+}
+
+.ks-variation-stone-number {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  font-weight: 680;
+  paint-order: stroke;
+  stroke-width: 2.4px;
+}
+
+.ks-variation-stone--B .ks-variation-stone-number {
+  fill: rgba(255, 248, 230, 0.94);
+  stroke: rgba(5, 6, 7, 0.76);
+}
+
+.ks-variation-stone--W .ks-variation-stone-number {
+  fill: rgba(24, 21, 16, 0.92);
+  stroke: rgba(255, 250, 238, 0.78);
+}
+
+.ks-variation-pv-label rect {
+  fill: rgba(17, 19, 18, 0.76);
+  stroke: rgba(255, 247, 224, 0.52);
+  stroke-width: 0.8;
+  filter: drop-shadow(0 5px 11px rgba(34, 20, 8, 0.28));
+}
+
+.ks-variation-pv-label text {
+  fill: rgba(255, 249, 232, 0.9);
+  font-size: 10px;
+  font-weight: 720;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 0;
+}
+
+@keyframes ks-variation-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .ks-keymove circle {

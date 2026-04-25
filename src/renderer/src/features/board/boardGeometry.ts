@@ -22,6 +22,14 @@ export interface RenderCandidate extends BoardPoint {
   raw?: unknown
 }
 
+export interface RenderVariationMove extends BoardPoint {
+  step: number
+  label: string
+  move: string
+  color: StoneColor
+  isFirst: boolean
+}
+
 export interface RenderPlayedMove extends BoardPoint {
   label: string
   move: string
@@ -144,6 +152,10 @@ export function moveToColor(move: GameMove | unknown): StoneColor {
   return color === 'W' ? 'W' : 'B'
 }
 
+export function oppositeColor(color: StoneColor): StoneColor {
+  return color === 'B' ? 'W' : 'B'
+}
+
 export function candidateToPoint(candidate: KataGoCandidate | unknown, boardSize = 19): BoardPoint | null {
   return parseBoardPoint(candidate, boardSize)
 }
@@ -200,6 +212,27 @@ export function renderCandidates(analysis: KataGoMoveAnalysis | null | undefined
       emphasis: index === 0 ? 'primary' : index <= 2 ? 'secondary' : 'quiet',
       raw: candidate
     } satisfies RenderCandidate]
+  })
+}
+
+export function candidateVariationMoves(candidate: RenderCandidate, boardSize = 19, firstColor: StoneColor = 'B', maxLength = 14): RenderVariationMove[] {
+  const rawPv = valueOf(candidate.raw, 'pv') ?? valueOf(candidate.raw, 'variation')
+  const rawMove = valueOf(candidate.raw, 'move') ?? valueOf(candidate.raw, 'gtp') ?? candidate.label
+  const sequence = Array.isArray(rawPv) && rawPv.length > 0 ? rawPv : [rawMove]
+  return sequence.slice(0, maxLength).flatMap((move, index) => {
+    const point = parseBoardPoint(move, boardSize)
+    if (!point) {
+      return []
+    }
+    const color = index % 2 === 0 ? firstColor : oppositeColor(firstColor)
+    return [{
+      ...point,
+      step: index + 1,
+      label: boardPointLabel(point, boardSize),
+      move: String(move).toUpperCase(),
+      color,
+      isFirst: index === 0
+    } satisfies RenderVariationMove]
   })
 }
 

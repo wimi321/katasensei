@@ -21,6 +21,14 @@ test('Sprint 4 UI interaction files exist', () => {
   }
 })
 
+test('Candidate tooltip exposes PV continuation context', () => {
+  const tooltip = read('src/renderer/src/features/board/CandidateTooltip.tsx')
+  const styles = read('src/renderer/src/features/board/sprint4-board.css')
+  assert.match(tooltip, /candidate-tooltip__pv/)
+  assert.match(tooltip, /candidate\.pv/)
+  assert.match(styles, /candidate-tooltip__pv/)
+})
+
 test('Sprint 4 scripts exist', () => {
   assert.equal(existsSync(join(root, 'scripts/p0_beta_acceptance.mjs')), true)
   assert.equal(existsSync(join(root, 'scripts/package_artifact_smoke.mjs')), true)

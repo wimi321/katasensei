@@ -9,6 +9,7 @@ export interface CandidateTooltipMove {
   scoreLead?: number
   visits?: number
   prior?: number
+  pv?: string[]
   note?: string
 }
 
@@ -60,6 +61,12 @@ export function CandidateTooltip({ candidate, position, boardLabel }: CandidateT
         <span>先验</span>
         <strong>{formatPrior(candidate.prior)}</strong>
       </div>
+      {candidate.pv && candidate.pv.length > 0 ? (
+        <div className="candidate-tooltip__pv">
+          <span>PV</span>
+          <strong>{candidate.pv.slice(0, 10).join(' ')}</strong>
+        </div>
+      ) : null}
       {candidate.note ? <p>{candidate.note}</p> : null}
     </div>
   )
