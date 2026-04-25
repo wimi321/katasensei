@@ -33,6 +33,11 @@ type DesktopCommand =
   | 'toggle-library'
   | 'open-ui-gallery'
 
+const remoteDebuggingPort = process.env.KATASENSEI_REMOTE_DEBUGGING_PORT
+if (remoteDebuggingPort && /^\d+$/.test(remoteDebuggingPort)) {
+  app.commandLine.appendSwitch('remote-debugging-port', remoteDebuggingPort)
+}
+
 function assetPath(fileName: string): string {
   return join(__dirname, '../../assets', fileName)
 }

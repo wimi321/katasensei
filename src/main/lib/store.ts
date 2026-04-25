@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AppSettings, LibraryGame } from './types'
 
-export const appHome = join(app.getPath('home'), '.katasensei')
+export const appHome = process.env.KATASENSEI_APP_HOME || join(app.getPath('home'), '.katasensei')
 export const libraryDir = join(appHome, 'library')
 export const reviewsDir = join(appHome, 'reviews')
 export const cacheDir = join(appHome, 'cache')
