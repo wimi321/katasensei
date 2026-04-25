@@ -65,6 +65,7 @@ const api = {
   suggestStudentBindings: (payload: { blackName?: string; whiteName?: string; source?: string; foxNickname?: string }): Promise<StudentBindingSuggestion[]> => ipcRenderer.invoke('student:suggest-bindings', payload),
   bindSgfGameToStudent: (payload: { gameId: string; studentId?: string; createDisplayName?: string; aliasFromPlayerName?: string }): Promise<StudentProfile | null> => ipcRenderer.invoke('student:bind-sgf-game', payload),
   bindFoxGamesToStudent: (payload: { foxNickname: string; gameIds: string[]; aliases?: string[] }): Promise<StudentProfile> => ipcRenderer.invoke('student:bind-fox-games', payload),
+  getStudentForGame: (gameId: string): Promise<StudentProfile | null> => ipcRenderer.invoke('student:for-game', gameId),
   listStudents: (): Promise<StudentProfile[]> => ipcRenderer.invoke('students:list'),
   resolveStudentByFoxNickname: (nickname: string): Promise<StudentProfile> => ipcRenderer.invoke('students:resolve-fox', nickname),
   attachGameToStudent: (payload: { gameId: string; studentId: string }): Promise<StudentProfile> => ipcRenderer.invoke('students:attach-game', payload),

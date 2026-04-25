@@ -18,6 +18,7 @@ import { inspectReleaseReadiness } from './services/release/readiness'
 import {
   attachGameToStudent,
   listStudents,
+  readStudentForGame,
   resolveStudentByFoxNickname,
   resolveStudentByName,
   upsertStudentAlias
@@ -236,6 +237,7 @@ app.whenReady().then(() => {
   ipcMain.handle('student:suggest-bindings', async (_event, payload) => suggestStudentBindings(payload))
   ipcMain.handle('student:bind-sgf-game', async (_event, payload) => bindSgfGameToStudent(payload))
   ipcMain.handle('student:bind-fox-games', async (_event, payload) => bindFoxGamesToStudent(payload))
+  ipcMain.handle('student:for-game', async (_event, gameId: string) => readStudentForGame(gameId))
   ipcMain.handle('students:list', async () => listStudents())
   ipcMain.handle('students:resolve-fox', async (_event, nickname: string) => resolveStudentByFoxNickname(nickname))
   ipcMain.handle('students:attach-game', async (_event, payload: { gameId: string; studentId: string }) => attachGameToStudent(payload.gameId, payload.studentId))

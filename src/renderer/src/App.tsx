@@ -300,9 +300,11 @@ export function App(): ReactElement {
   useEffect(() => {
     if (!selectedGame) {
       setRecord(null)
+      setCurrentStudent(null)
       return
     }
     pauseLiveAnalysis('切换棋谱，准备精读')
+    void loadBoundPlayer(selectedGame.id)
     void loadRecord(selectedGame.id)
   }, [selectedGame?.id])
 
@@ -369,6 +371,20 @@ export function App(): ReactElement {
       }
     } catch (cause) {
       setError(String(cause))
+    }
+  }
+
+  async function loadBoundPlayer(gameId: string): Promise<void> {
+    try {
+      const student = await window.katasensei.getStudentForGame(gameId)
+      if (selectedGameIdRef.current === gameId) {
+        setCurrentStudent(student)
+      }
+    } catch (cause) {
+      if (selectedGameIdRef.current === gameId) {
+        setCurrentStudent(null)
+      }
+      setError(`棋手绑定读取失败: ${String(cause)}`)
     }
   }
 
@@ -473,7 +489,7 @@ export function App(): ReactElement {
       })
       setStudentBinding({ game, suggestions })
     } catch (cause) {
-      setError(`学生绑定建议生成失败: ${String(cause)}`)
+      setError(`棋手绑定建议生成失败: ${String(cause)}`)
     }
   }
 
@@ -490,7 +506,7 @@ export function App(): ReactElement {
       setCurrentStudent(student)
       setStudentBinding(null)
     } catch (cause) {
-      setError(`绑定学生失败: ${String(cause)}`)
+      setError(`绑定棋手失败: ${String(cause)}`)
     }
   }
 
@@ -513,7 +529,7 @@ export function App(): ReactElement {
       setCurrentStudent(student)
       setStudentBinding(null)
     } catch (cause) {
-      setError(`创建学生画像失败: ${String(cause)}`)
+      setError(`创建棋手画像失败: ${String(cause)}`)
     }
   }
 
@@ -918,7 +934,7 @@ export function App(): ReactElement {
         void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')
         break
       case 'analyze-recent':
-        void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')
+        void runTeacherQuickTask('分析当前棋手最近10局围棋，找出常见问题、薄弱环节，并更新棋手画像。')
         break
       case 'toggle-library':
         setLibraryCollapsed((value) => !value)
@@ -1023,6 +1039,7 @@ export function App(): ReactElement {
               onSelect={setSelectedId}
               onSync={() => void syncFox()}
               onFoxKeyword={setFoxKeyword}
+              onChangePlayerBinding={() => selectedGame && void openStudentBinding(selectedGame)}
             />
           ) : null}
         </aside>
@@ -1100,7 +1117,7 @@ export function App(): ReactElement {
             onSubmit={(event) => void sendTeacherPrompt(event)}
             onAnalyze={() => void runCurrentMoveAnalysis()}
             onAnalyzeGame={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')}
-            onAnalyzeRecent={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')}
+            onAnalyzeRecent={() => void runTeacherQuickTask('分析当前棋手最近10局围棋，找出常见问题、薄弱环节，并更新棋手画像。')}
             onSettingsOpen={() => setSettingsOpen(true)}
             onJumpToMove={jumpToMove}
             onAnalyzeMove={(targetMove) => void runMoveAnalysisAt(targetMove)}
@@ -1159,7 +1176,8 @@ function LibraryPanel({
   currentStudent,
   onSelect,
   onSync,
-  onFoxKeyword
+  onFoxKeyword,
+  onChangePlayerBinding
 }: {
   dashboard: DashboardData
   selectedGame?: LibraryGame
@@ -1169,6 +1187,7 @@ function LibraryPanel({
   onSelect: (id: string) => void
   onSync: () => void
   onFoxKeyword: (value: string) => void
+  onChangePlayerBinding: () => void
 }): ReactElement {
   const [page, setPage] = useState(1)
   const pageSize = 14
@@ -1215,6 +1234,8 @@ function LibraryPanel({
         displayName={currentStudent?.displayName}
         primaryFoxNickname={currentStudent?.primaryFoxNickname}
         gameCount={currentStudent?.recentGameIds.length ?? 0}
+        disabled={!selectedGame}
+        onChangeBinding={onChangePlayerBinding}
       />
       <div className="library-list-head">
         <span>{keyword ? '野狐棋谱' : '棋谱库'}</span>
@@ -1332,10 +1353,10 @@ function CommandPalette({
   const commands = useMemo(() => [
     { id: 'analyze-current' as const, title: '分析当前手', detail: '截图棋盘，调用 KataGo，再让老师讲解', shortcut: 'Ctrl/Cmd 1', disabled: !hasRecord || busy !== '' },
     { id: 'analyze-game' as const, title: '分析整盘围棋', detail: '扫描关键问题手和胜负转折点', shortcut: 'Ctrl/Cmd 2', disabled: !hasRecord || busy !== '' },
-    { id: 'analyze-recent' as const, title: '分析近 10 局', detail: '聚合学生稳定问题并更新画像', shortcut: 'Ctrl/Cmd 3', disabled: !hasGames || busy !== '' },
+    { id: 'analyze-recent' as const, title: '分析近 10 局', detail: '聚合棋手稳定问题并更新画像', shortcut: 'Ctrl/Cmd 3', disabled: !hasGames || busy !== '' },
     { id: 'import-sgf' as const, title: '导入 SGF', detail: '从本机文件系统添加棋谱', shortcut: 'Ctrl/Cmd O', disabled: busy !== '' },
     { id: 'open-settings' as const, title: '打开 Preferences', detail: '配置模型、KataGo 资源和发布 readiness', shortcut: 'Ctrl/Cmd ,', disabled: false },
-    { id: 'toggle-library' as const, title: '切换棋谱栏', detail: '收起或展开左侧学生工作区', shortcut: 'Ctrl/Cmd B', disabled: false },
+    { id: 'toggle-library' as const, title: '切换棋谱栏', detail: '收起或展开左侧棋手棋谱栏', shortcut: 'Ctrl/Cmd B', disabled: false },
     { id: 'open-ui-gallery' as const, title: '打开 UI Gallery', detail: '进入内部视觉 QA 样例页', shortcut: 'Ctrl/Cmd Shift G', disabled: false }
   ], [busy, hasGames, hasRecord])
   const filtered = commands.filter((command) => {

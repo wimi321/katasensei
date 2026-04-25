@@ -4,19 +4,31 @@
   z-index: 50;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 0.62);
-  backdrop-filter: blur(8px);
+  background: rgb(32 27 20 / 0.42);
+  backdrop-filter: blur(10px);
 }
 .student-dialog {
   width: min(520px, calc(100vw - 32px));
-  padding: 20px;
-  border: 1px solid var(--line-strong, #343c43);
+  padding: 22px;
+  border: 1px solid rgb(125 96 45 / 0.24);
   border-radius: var(--ks-radius-lg, 18px);
-  background: linear-gradient(180deg, #1a222a, #10161c);
-  box-shadow: 0 28px 86px rgb(0 0 0 / 0.48), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  background:
+    linear-gradient(180deg, rgb(255 251 242 / 0.98), rgb(245 237 222 / 0.98));
+  box-shadow: 0 28px 86px rgb(74 55 29 / 0.24), inset 0 1px 0 rgb(255 255 255 / 0.82);
+  color: var(--text-main, #171614);
 }
-.student-dialog h2 { margin: 0 0 8px; }
-.student-dialog p { color: var(--text-muted, #9da7ae); }
+.student-dialog h2 {
+  margin: 0 0 8px;
+  color: var(--text-main, #171614);
+  font-size: 18px;
+  letter-spacing: 0;
+}
+.student-dialog p {
+  margin: 0;
+  color: var(--text-muted, #6f6860);
+  font-size: 13px;
+  line-height: 1.55;
+}
 .student-player-choice,
 .student-mode-tabs,
 .student-dialog footer {
@@ -24,42 +36,89 @@
   gap: 8px;
   margin-top: 14px;
 }
+.student-dialog label {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  color: var(--text-muted, #6f6860);
+  font-size: 12px;
+  font-weight: 800;
+}
+.student-dialog select,
+.student-dialog input {
+  min-height: 36px;
+  border: 1px solid rgb(124 95 45 / 0.2);
+  border-radius: 8px;
+  background: rgb(255 252 246 / 0.92);
+  color: var(--text-main, #171614);
+  font: inherit;
+  font-size: 13px;
+}
 .student-player-choice button,
 .student-mode-tabs button {
   flex: 1;
   min-height: 34px;
   border-radius: 8px;
-  border: 1px solid var(--line-strong, #343c43);
-  background: #20262c;
-  color: inherit;
+  border: 1px solid rgb(124 95 45 / 0.18);
+  background: rgb(255 252 246 / 0.7);
+  color: var(--text-muted, #6f6860);
+  font-size: 12px;
+  font-weight: 850;
 }
 .student-player-choice button.is-active,
 .student-mode-tabs button.is-active {
   border-color: var(--accent-gold, #d1ad62);
-  background: #2a2519;
+  background: rgb(225 197 136 / 0.26);
+  color: var(--text-main, #171614);
 }
 .student-create-form { display: grid; gap: 10px; margin-top: 14px; }
 .student-dialog footer { justify-content: flex-end; }
 .student-rail-card {
+  min-height: 40px;
+}
+.student-rail-card__button {
   display: grid;
+  width: 100%;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label name action"
+    "label meta action";
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
+  column-gap: 8px;
+  row-gap: 1px;
   padding: 7px 9px;
   border: 1px solid var(--line-soft, #242b31);
   border-radius: 10px;
   background:
     linear-gradient(180deg, rgb(255 252 245 / 0.7), rgb(246 239 226 / 0.82));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.student-rail-card__button:hover:not(:disabled) {
+  border-color: rgb(176 139 72 / 0.48);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.78), 0 8px 20px rgb(86 65 30 / 0.08);
+  transform: translateY(-1px);
+}
+.student-rail-card__button:focus-visible {
+  outline: 2px solid rgb(77 154 138 / 0.45);
+  outline-offset: 2px;
+}
+.student-rail-card__button:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 .student-rail-card span {
+  grid-area: label;
   color: var(--text-faint, #707b84);
   font-size: 10.5px;
   font-weight: 900;
   text-transform: uppercase;
 }
 .student-rail-card strong {
+  grid-area: name;
   overflow: hidden;
   color: var(--text-main, #171614);
   text-overflow: ellipsis;
@@ -68,7 +127,23 @@
   line-height: 1.2;
 }
 .student-rail-card small {
+  grid-area: meta;
+  overflow: hidden;
   color: var(--text-muted, #6f6860);
   font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-rail-card em {
+  grid-area: action;
+  align-self: center;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.5);
+  color: var(--text-muted, #6f6860);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
   white-space: nowrap;
 }

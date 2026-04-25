@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './student.css'
 
 export interface StudentOption {
@@ -21,7 +21,7 @@ export interface StudentBindingDialogProps {
 }
 
 export function StudentBindingDialog(props: StudentBindingDialogProps): ReactElement | null {
-  const [mode, setMode] = useState<'existing' | 'create'>('existing')
+  const [mode, setMode] = useState<'existing' | 'create'>(props.suggestions?.length ? 'existing' : 'create')
   const [studentId, setStudentId] = useState(props.suggestions?.[0]?.id ?? '')
   const [displayName, setDisplayName] = useState('')
   const [foxNickname, setFoxNickname] = useState('')
@@ -33,14 +33,25 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
     return ''
   }, [color, props.blackName, props.whiteName])
 
+  useEffect(() => {
+    if (!props.open) {
+      return
+    }
+    setMode(props.suggestions?.length ? 'existing' : 'create')
+    setStudentId(props.suggestions?.[0]?.id ?? '')
+    setDisplayName('')
+    setFoxNickname('')
+    setColor('')
+  }, [props.open, props.blackName, props.whiteName, props.suggestions?.length, props.suggestions?.[0]?.id])
+
   if (!props.open) return null
 
   return (
     <div className="student-dialog-backdrop" role="presentation">
-      <section className="student-dialog" role="dialog" aria-modal="true" aria-label="绑定学生画像">
+      <section className="student-dialog" role="dialog" aria-modal="true" aria-label="绑定棋手画像">
         <header>
-          <h2>这盘棋绑定到哪个学生？</h2>
-          <p>绑定后，老师会把复盘结果写入学生画像，后续可分析最近 10 局的稳定问题。</p>
+          <h2>这盘棋绑定到哪个棋手？</h2>
+          <p>老师会把复盘结果写入这个棋手的长期画像，之后分析最近 10 局会自动使用同一份上下文。</p>
         </header>
 
         <div className="student-player-choice">
@@ -53,13 +64,13 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
         </div>
 
         <div className="student-mode-tabs">
-          <button className={mode === 'existing' ? 'is-active' : ''} onClick={() => setMode('existing')}>绑定已有学生</button>
-          <button className={mode === 'create' ? 'is-active' : ''} onClick={() => setMode('create')}>创建新学生</button>
+          <button className={mode === 'existing' ? 'is-active' : ''} onClick={() => setMode('existing')}>绑定已有棋手</button>
+          <button className={mode === 'create' ? 'is-active' : ''} onClick={() => setMode('create')}>创建新棋手</button>
         </div>
 
         {mode === 'existing' ? (
           <label>
-            选择学生
+            选择棋手
             <select value={studentId} onChange={(event) => setStudentId(event.target.value)}>
               <option value="">请选择</option>
               {(props.suggestions ?? []).map((student) => (
@@ -72,8 +83,8 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
         ) : (
           <div className="student-create-form">
             <label>
-              学生名
-              <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={playerName || '输入学生名'} />
+              棋手名
+              <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={playerName || '输入棋手名'} />
             </label>
             <label>
               野狐昵称（可选）
@@ -88,7 +99,7 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
           {mode === 'existing' ? (
             <button className="primary-button" disabled={!studentId} onClick={() => props.onBindExisting({ studentId, color: color || undefined, aliasFromPlayerName: playerName })}>绑定</button>
           ) : (
-            <button className="primary-button" disabled={!displayName.trim() && !playerName} onClick={() => props.onCreateStudent({ displayName: displayName.trim() || playerName || '未命名学生', foxNickname: foxNickname.trim() || undefined, color: color || undefined, aliasFromPlayerName: playerName })}>创建并绑定</button>
+            <button className="primary-button" disabled={!displayName.trim() && !playerName} onClick={() => props.onCreateStudent({ displayName: displayName.trim() || playerName || '未命名棋手', foxNickname: foxNickname.trim() || undefined, color: color || undefined, aliasFromPlayerName: playerName })}>创建并绑定</button>
           )}
         </footer>
       </section>

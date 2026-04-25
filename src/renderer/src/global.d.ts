@@ -58,6 +58,7 @@ declare global {
       suggestStudentBindings: (payload: { blackName?: string; whiteName?: string; source?: string; foxNickname?: string }) => Promise<StudentBindingSuggestion[]>
       bindSgfGameToStudent: (payload: { gameId: string; studentId?: string; createDisplayName?: string; aliasFromPlayerName?: string }) => Promise<StudentProfile | null>
       bindFoxGamesToStudent: (payload: { foxNickname: string; gameIds: string[]; aliases?: string[] }) => Promise<StudentProfile>
+      getStudentForGame: (gameId: string) => Promise<StudentProfile | null>
       listStudents: () => Promise<StudentProfile[]>
       resolveStudentByFoxNickname: (nickname: string) => Promise<StudentProfile>
       attachGameToStudent: (payload: { gameId: string; studentId: string }) => Promise<StudentProfile>

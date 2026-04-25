@@ -57,7 +57,7 @@ export function UiGallery(): ReactElement {
         <div>
           <p className="eyebrow">Internal Visual QA</p>
           <h1>KataSensei UI Gallery</h1>
-          <p>固定样例，不依赖真实 KataGo、LLM 或野狐同步。用于检查棋盘、老师智能体、学生栏、诊断与发布状态的视觉质量。</p>
+          <p>固定样例，不依赖真实 KataGo、LLM 或野狐同步。用于检查棋盘、老师智能体、棋手栏、诊断与发布状态的视觉质量。</p>
         </div>
         <a href="/" className="ui-gallery__back">返回应用</a>
       </header>
@@ -115,7 +115,7 @@ export function UiGallery(): ReactElement {
               <button className="teacher-commandbar__primary" type="button">分析当前手</button>
               <button type="button">分析整盘</button>
               <button type="button">分析近 10 局</button>
-              <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 学生画像</span>
+              <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 棋手画像</span>
             </div>
             <div className="message-list agent-thread">
               <article className="message message--student agent-turn agent-turn--student">
@@ -191,7 +191,7 @@ export function UiGallery(): ReactElement {
         <article className="ui-gallery__panel">
           <div className="ui-gallery__panel-head">
             <strong>StudentRailCard</strong>
-            <span>学生工作区</span>
+            <span>棋手棋谱栏</span>
           </div>
           <StudentRailCard
             displayName={galleryStudent.displayName}
@@ -214,7 +214,7 @@ export function UiGallery(): ReactElement {
               checks: [
                 { id: 'katago', title: 'KataGo 引擎', status: 'pass', required: true, detail: '内置引擎和默认模型已找到。' },
                 { id: 'llm', title: 'Claude 兼容代理', status: 'warn', required: false, detail: '尚未保存 API Key。', action: '进入设置页完成图片输入测试。' },
-                { id: 'profile', title: '用户目录', status: 'pass', required: true, detail: '学生画像和报告目录可写。' }
+                { id: 'profile', title: '用户目录', status: 'pass', required: true, detail: '棋手画像和报告目录可写。' }
               ]
             }}
             onRetry={() => undefined}
