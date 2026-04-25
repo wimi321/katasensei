@@ -453,8 +453,8 @@ label,
 }
 
 .rail-body {
-  padding: 12px;
-  gap: 12px;
+  padding: 9px;
+  gap: 8px;
 }
 
 .head-actions,
@@ -586,42 +586,39 @@ label,
   flex: 0 0 auto;
 }
 
-.library-upload-button {
-  width: 100%;
-}
-
 .library-list-head,
 .pagination-row {
   justify-content: space-between;
 }
 
 .library-list-head {
-  min-height: 22px;
+  min-height: 18px;
   color: #e7e1d4;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .library-list-head small,
 .pagination-row {
   color: #9099a1;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .pagination-row {
-  min-height: 34px;
+  min-height: 28px;
 }
 
 .pagination-row .ghost-button {
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 11px;
 }
 
 .game-list {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   min-height: 0;
   overflow: auto;
 }
@@ -640,11 +637,11 @@ label,
 .game-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   width: 100%;
-  padding: 10px 11px;
+  padding: 7px 9px;
   border: 1px solid transparent;
-  border-radius: var(--ks-radius-md);
+  border-radius: 9px;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.035), rgb(255 255 255 / 0.012)),
     #151b21;
@@ -672,7 +669,13 @@ label,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.game-row small {
+  font-size: 10.5px;
+  line-height: 1.25;
 }
 
 .board-workspace {
@@ -1777,13 +1780,14 @@ label small {
 .fox-sync-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 6px;
   align-items: stretch;
 }
 
 .fox-search-button {
   width: 100%;
-  min-height: 36px;
+  min-height: 30px;
+  font-size: 12px;
 }
 
 .empty-list {

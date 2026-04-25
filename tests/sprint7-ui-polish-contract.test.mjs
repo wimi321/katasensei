@@ -70,10 +70,11 @@ test('Desktop app shell exposes native menu commands and workbench chrome', () =
   assert.match(styles, /desktop-statusbar/)
 })
 
-test('StudentRailCard includes training focus and visual QA capture exists', () => {
+test('StudentRailCard stays compact and visual QA capture exists', () => {
   const student = read('src/renderer/src/features/student/StudentRailCard.tsx')
-  assert.match(student, /trainingFocus/)
-  assert.match(student, /student-training-focus/)
+  assert.match(student, /gameCount/)
+  assert.doesNotMatch(student, /trainingFocus/)
+  assert.doesNotMatch(student, /分析最近 10 局/)
   assert.equal(existsSync(join(root, 'scripts/capture_ui_gallery.mjs')), true)
   assert.equal(existsSync(join(root, 'docs/VISUAL_QA_CAPTURE.md')), true)
 })

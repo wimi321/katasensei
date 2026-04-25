@@ -197,10 +197,6 @@ export function UiGallery(): ReactElement {
             displayName={galleryStudent.displayName}
             primaryFoxNickname={galleryStudent.primaryFoxNickname}
             gameCount={galleryStudent.recentGameIds.length}
-            lastAnalyzedAt={galleryStudent.lastAnalyzedAt}
-            weaknessStats={galleryStudent.weaknessStats}
-            trainingFocus={galleryStudent.trainingFocus}
-            onAnalyzeRecent={() => undefined}
           />
           <button className="ghost-button" type="button" onClick={() => setDialogOpen(true)}>打开 SGF 绑定弹窗</button>
         </article>

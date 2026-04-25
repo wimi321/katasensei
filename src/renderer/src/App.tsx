@@ -703,10 +703,8 @@ export function App(): ReactElement {
               busy={busy}
               currentStudent={currentStudent}
               onSelect={setSelectedId}
-              onImport={() => void importSgf()}
               onSync={() => void syncFox()}
               onFoxKeyword={setFoxKeyword}
-              onAnalyzeRecent={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')}
             />
           ) : null}
         </aside>
@@ -839,10 +837,8 @@ function LibraryPanel({
   busy,
   currentStudent,
   onSelect,
-  onImport,
   onSync,
-  onFoxKeyword,
-  onAnalyzeRecent
+  onFoxKeyword
 }: {
   dashboard: DashboardData
   selectedGame?: LibraryGame
@@ -850,13 +846,11 @@ function LibraryPanel({
   busy: string
   currentStudent: StudentProfile | null
   onSelect: (id: string) => void
-  onImport: () => void
   onSync: () => void
   onFoxKeyword: (value: string) => void
-  onAnalyzeRecent: () => void
 }): ReactElement {
   const [page, setPage] = useState(1)
-  const pageSize = 10
+  const pageSize = 14
   const keyword = foxKeyword.trim().toLowerCase()
   const visibleGames = useMemo(() => {
     if (!keyword) {
@@ -896,17 +890,10 @@ function LibraryPanel({
           {busy === 'fox' ? '搜索中' : '搜索野狐棋谱'}
         </button>
       </form>
-      <button className="ghost-button library-upload-button" onClick={onImport} disabled={busy !== ''}>
-        {busy === 'import' ? '导入中' : '上传 SGF'}
-      </button>
       <StudentRailCard
         displayName={currentStudent?.displayName}
         primaryFoxNickname={currentStudent?.primaryFoxNickname}
         gameCount={currentStudent?.recentGameIds.length ?? 0}
-        lastAnalyzedAt={currentStudent?.lastAnalyzedAt}
-        weaknessStats={currentStudent?.weaknessStats}
-        trainingFocus={currentStudent?.trainingFocus}
-        onAnalyzeRecent={onAnalyzeRecent}
       />
       <div className="library-list-head">
         <span>{keyword ? '野狐棋谱' : '棋谱库'}</span>
