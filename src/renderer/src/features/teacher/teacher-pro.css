@@ -335,6 +335,28 @@
   gap: 6px;
 }
 
+.ks-composer-pro__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ks-composer-pro__actions button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--ks-border-soft, rgba(255,255,255,.08));
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.035);
+  color: var(--ks-text-muted, #a9b2bb);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ks-composer-pro__actions button.is-primary {
+  color: #11151a;
+  background: linear-gradient(180deg, var(--ks-gold-strong, #ebcf86), #b99145);
+}
+
 .ks-composer-pro__quick button {
   min-height: 26px;
   padding: 0 8px;

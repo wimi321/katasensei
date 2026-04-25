@@ -136,9 +136,9 @@ function CandidateMark({
       <circle className="ks-candidate-disc" r="23.5" />
       <circle className="ks-candidate-rank-badge" cx="18" cy="-19" r="9.2" />
       <text className="ks-candidate-rank" x="18" y="-19">{candidate.rank}</text>
-      <text className="ks-candidate-winrate" y="-7">{winrate}</text>
-      <text className="ks-candidate-visits" y="5.5">{visits}</text>
-      <text className="ks-candidate-score" y="17">{score}</text>
+      <text className="ks-candidate-winrate" y="-8">{winrate}</text>
+      <text className="ks-candidate-visits" y="4.6">{visits}</text>
+      <text className="ks-candidate-score" y="16.2">{score}</text>
     </g>
   )
 }

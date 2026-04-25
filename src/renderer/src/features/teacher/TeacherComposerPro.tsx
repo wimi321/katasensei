@@ -4,6 +4,12 @@ import './teacher-pro.css'
 interface TeacherComposerProProps {
   value: string
   busy?: boolean
+  actions?: Array<{
+    label: string
+    onClick: () => void
+    disabled?: boolean
+    primary?: boolean
+  }>
   onChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
   onQuickPrompt?: (prompt: string) => void
@@ -16,13 +22,28 @@ const QUICK_PROMPTS = [
   '最近10局共同弱点是什么？'
 ]
 
-export function TeacherComposerPro({ value, busy = false, onChange, onSubmit, onQuickPrompt }: TeacherComposerProProps): ReactElement {
+export function TeacherComposerPro({ value, busy = false, actions = [], onChange, onSubmit, onQuickPrompt }: TeacherComposerProProps): ReactElement {
   return (
     <form className="ks-composer-pro" onSubmit={onSubmit}>
       <div className="ks-composer-pro__chrome">
-        <span>Agent Prompt</span>
-        <small>{busy ? '老师正在执行工具链' : '输入任务，老师会规划并执行'}</small>
+        <span>Ask KataSensei</span>
+        <small>{busy ? 'Running tools...' : 'Ready for a task'}</small>
       </div>
+      {actions.length > 0 ? (
+        <div className="ks-composer-pro__actions" aria-label="老师快捷动作">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className={action.primary ? 'is-primary' : ''}
+              onClick={action.onClick}
+              disabled={busy || action.disabled}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="ks-composer-pro__quick">
         {QUICK_PROMPTS.map((prompt) => (
           <button key={prompt} type="button" onClick={() => onQuickPrompt?.(prompt)} disabled={busy}>
@@ -34,7 +55,7 @@ export function TeacherComposerPro({ value, busy = false, onChange, onSubmit, on
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="让老师执行任务：分析当前手、总结最近 10 局、生成训练计划、解释某个候选点..."
+          placeholder="输入任务，例如：分析当前手、总结最近 10 局、解释第 87 手为什么亏..."
         />
         <button type="submit" disabled={busy || !value.trim()}>
           {busy ? '分析中' : '发送'}

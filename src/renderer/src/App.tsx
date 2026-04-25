@@ -92,6 +92,7 @@ interface LiveAnalysisState {
   status: string
   visits: number
   bestVisits: number
+  visitsPerSecond: number
   targetMoveNumber: number | null
   round: number
 }
@@ -224,6 +225,7 @@ export function App(): ReactElement {
     status: '已暂停',
     visits: 0,
     bestVisits: 0,
+    visitsPerSecond: 0,
     targetMoveNumber: null,
     round: 0
   })
@@ -237,13 +239,14 @@ export function App(): ReactElement {
   const [katagoAssets, setKatagoAssets] = useState<KataGoAssetStatus | null>(null)
   const graphRunId = useRef('')
   const liveAnalysisRunId = useRef('')
+  const userPausedLiveAnalysisRef = useRef(false)
   const moveNumberRef = useRef(moveNumber)
   const selectedGameIdRef = useRef('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'hello',
       role: 'teacher',
-      content: '我会像围棋老师智能体一样工作：看棋盘、读 KataGo、查知识库、记住学生画像。'
+      content: '直接告诉我目标。我会读取棋局、调用 KataGo、检索知识卡，再把结论整理成可以继续追问的复盘线程。'
     }
   ])
 
@@ -285,7 +288,7 @@ export function App(): ReactElement {
       setRecord(null)
       return
     }
-    pauseLiveAnalysis('切换棋谱，已暂停精读')
+    pauseLiveAnalysis('切换棋谱，准备精读')
     void loadRecord(selectedGame.id)
   }, [selectedGame?.id])
 
@@ -338,6 +341,18 @@ export function App(): ReactElement {
       setAnalysis(null)
       setEvaluations({})
       void warmupEvaluationGraph(gameId, next.moves.length)
+      if (!userPausedLiveAnalysisRef.current) {
+        window.setTimeout(() => {
+          if (selectedGameIdRef.current === gameId && !userPausedLiveAnalysisRef.current) {
+            void startLiveAnalysis({
+              gameId,
+              record: next,
+              moveNumber: next.moves.length,
+              manual: false
+            })
+          }
+        }, 120)
+      }
     } catch (cause) {
       setError(String(cause))
     }
@@ -553,32 +568,49 @@ export function App(): ReactElement {
     setAnalysis(evaluations[next] ?? null)
   }
 
-  function pauseLiveAnalysis(message = '已暂停精读'): void {
+  function pauseLiveAnalysis(message = '已暂停精读', manual = false): void {
+    if (manual) {
+      userPausedLiveAnalysisRef.current = true
+    }
     liveAnalysisRunId.current = crypto.randomUUID()
     setLiveAnalysis((current) => ({
       ...current,
       running: false,
-      status: message
+      status: message,
+      visitsPerSecond: 0
     }))
   }
 
-  async function startLiveAnalysis(): Promise<void> {
-    if (!record || !selectedGame) {
+  async function startLiveAnalysis(options: {
+    gameId?: string
+    record?: GameRecord
+    moveNumber?: number
+    manual?: boolean
+  } = {}): Promise<void> {
+    const targetRecord = options.record ?? record
+    const gameId = options.gameId ?? selectedGame?.id
+    if (!targetRecord || !gameId) {
       return
     }
-    const targetMove = Math.max(0, Math.min(record.moves.length, Math.round(moveNumber)))
-    const gameId = selectedGame.id
+    if (options.manual !== false) {
+      userPausedLiveAnalysisRef.current = false
+    }
+    const targetMove = Math.max(0, Math.min(targetRecord.moves.length, Math.round(options.moveNumber ?? moveNumber)))
     const runId = crypto.randomUUID()
     const startedAt = Date.now()
+    let lastSampleAt = performance.now()
+    const cachedAnalysis = options.record ? null : (evaluations[targetMove] ?? analysis)
+    let lastVisitSample = candidateVisitsTotal(cachedAnalysis)
     liveAnalysisRunId.current = runId
     setError('')
     setMoveNumber(targetMove)
-    setAnalysis(evaluations[targetMove] ?? analysis)
+    setAnalysis(cachedAnalysis)
     setLiveAnalysis({
       running: true,
       status: `精读第 ${targetMove} 手`,
-      visits: candidateVisitsTotal(evaluations[targetMove] ?? analysis),
-      bestVisits: candidateBestVisits(evaluations[targetMove] ?? analysis),
+      visits: lastVisitSample,
+      bestVisits: candidateBestVisits(cachedAnalysis),
+      visitsPerSecond: 0,
       targetMoveNumber: targetMove,
       round: 0
     })
@@ -605,6 +637,14 @@ export function App(): ReactElement {
         }
         const totalVisits = candidateVisitsTotal(nextAnalysis)
         const bestVisits = candidateBestVisits(nextAnalysis)
+        const sampledAt = performance.now()
+        const sampleSeconds = Math.max(0.1, (sampledAt - lastSampleAt) / 1000)
+        const visitsDelta = Math.max(0, totalVisits - lastVisitSample)
+        const visitsPerSecond = visitsDelta > 0
+          ? visitsDelta / sampleSeconds
+          : totalVisits / Math.max(0.1, (Date.now() - startedAt) / 1000)
+        lastVisitSample = totalVisits
+        lastSampleAt = sampledAt
         rememberEvaluation(nextAnalysis)
         if (moveNumberRef.current === targetMove) {
           setAnalysis(nextAnalysis)
@@ -614,6 +654,7 @@ export function App(): ReactElement {
           status: `已搜索 ${formatVisits(totalVisits)} · 一选 ${formatVisits(bestVisits)}`,
           visits: totalVisits,
           bestVisits,
+          visitsPerSecond,
           targetMoveNumber: targetMove,
           round: index + 1
         })
@@ -631,6 +672,7 @@ export function App(): ReactElement {
                 : `已运行 ${Math.round(elapsed / 1000)} 秒`,
             visits: totalVisits,
             bestVisits,
+            visitsPerSecond,
             targetMoveNumber: targetMove,
             round: index + 1
           })
@@ -869,7 +911,7 @@ export function App(): ReactElement {
                 liveAnalysis={liveAnalysis}
                 disabled={busy !== ''}
                 onStart={() => void startLiveAnalysis()}
-                onPause={() => pauseLiveAnalysis()}
+                onPause={() => pauseLiveAnalysis('已暂停精读', true)}
               />
             ) : (
               <div className="board-contextbar board-contextbar--empty">
@@ -1299,8 +1341,8 @@ function TeacherPanel({
     <div className="teacher-panel teacher-agent-editor">
       <header className="teacher-editor-head">
         <div className="teacher-editor-title">
-          <span>KataSensei AI Editor</span>
-          <strong>对话式围棋分析线程</strong>
+          <span>Agent thread</span>
+          <strong>KataSensei</strong>
           <div className="teacher-editor-meta">
             <em>{modelName}</em>
             <em>{katagoLabel}</em>
@@ -1313,20 +1355,13 @@ function TeacherPanel({
         </div>
       </header>
 
-      <div className="teacher-commandbar" aria-label="老师快速任务">
-        <button className="teacher-commandbar__primary" onClick={onAnalyze} disabled={busy !== ''}>分析当前手</button>
-        <button onClick={onAnalyzeGame} disabled={busy !== ''}>分析整盘</button>
-        <button onClick={onAnalyzeRecent} disabled={busy !== ''}>分析近 10 局</button>
-        <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 学生画像</span>
-      </div>
-
       <div className="message-list agent-thread">
         {messages.map((message) => (
           <article key={message.id} className={`message message--${message.role} agent-turn agent-turn--${message.role}`}>
             <div className="agent-turn__body">
               <header className="agent-turn__head">
-                <strong>{message.role === 'teacher' ? 'KataSensei' : '你'}</strong>
-                <small>{message.result ? 'turn complete · item stream' : message.role === 'teacher' ? 'assistant note' : 'turn input'}</small>
+                <strong>{message.role === 'teacher' ? 'KataSensei' : 'User'}</strong>
+                <small>{message.result ? 'completed' : message.role === 'teacher' ? 'assistant' : 'prompt'}</small>
               </header>
             {message.result ? (
               (message.result.structuredResult ?? message.result.structured) ? (
@@ -1365,6 +1400,11 @@ function TeacherPanel({
       <TeacherComposerPro
         value={prompt}
         busy={busy !== ''}
+        actions={[
+          { label: '分析当前手', onClick: onAnalyze, primary: true },
+          { label: '分析整盘', onClick: onAnalyzeGame },
+          { label: '分析近 10 局', onClick: onAnalyzeRecent }
+        ]}
         onChange={onPrompt}
         onSubmit={onSubmit}
         onQuickPrompt={(text) => {
@@ -1625,6 +1665,10 @@ function BoardContextBar({
           <span>{status}</span>
           <strong>总 {formatVisits(totalVisits)} · 一选 {formatVisits(bestVisits)}</strong>
         </div>
+        <div className="board-contextbar__metric board-contextbar__metric--speed">
+          <span>速度</span>
+          <strong>{liveAnalysis.running && isCurrentLiveTarget ? formatSearchSpeed(liveAnalysis.visitsPerSecond) : '0/s'}</strong>
+        </div>
       </div>
       <div className="analysis-control-strip" aria-label="KataGo 持续分析控制">
         <button
@@ -1670,6 +1714,16 @@ function formatVisits(visits: number): string {
     return `${(visits / 1_000).toFixed(visits >= 10_000 ? 0 : 1)}k`
   }
   return String(Math.round(visits))
+}
+
+function formatSearchSpeed(visitsPerSecond: number): string {
+  if (!Number.isFinite(visitsPerSecond) || visitsPerSecond <= 0) {
+    return '0/s'
+  }
+  if (visitsPerSecond >= 1000) {
+    return `${(visitsPerSecond / 1000).toFixed(visitsPerSecond >= 10000 ? 0 : 1)}k/s`
+  }
+  return `${Math.round(visitsPerSecond)}/s`
 }
 
 function evaluationSeverity(item: KataGoMoveAnalysis): 'quiet' | 'inaccuracy' | 'mistake' | 'blunder' {
