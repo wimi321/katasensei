@@ -19,6 +19,10 @@ const QUICK_PROMPTS = [
 export function TeacherComposerPro({ value, busy = false, onChange, onSubmit, onQuickPrompt }: TeacherComposerProProps): ReactElement {
   return (
     <form className="ks-composer-pro" onSubmit={onSubmit}>
+      <div className="ks-composer-pro__chrome">
+        <span>Agent Prompt</span>
+        <small>{busy ? '老师正在执行工具链' : '输入任务，老师会规划并执行'}</small>
+      </div>
       <div className="ks-composer-pro__quick">
         {QUICK_PROMPTS.map((prompt) => (
           <button key={prompt} type="button" onClick={() => onQuickPrompt?.(prompt)} disabled={busy}>
@@ -30,7 +34,7 @@ export function TeacherComposerPro({ value, busy = false, onChange, onSubmit, on
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="像问老师一样追问：这手的问题、整盘转折点、最近弱点、下一步训练..."
+          placeholder="让老师执行任务：分析当前手、总结最近 10 局、生成训练计划、解释某个候选点..."
         />
         <button type="submit" disabled={busy || !value.trim()}>
           {busy ? '分析中' : '发送'}

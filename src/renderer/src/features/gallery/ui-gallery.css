@@ -83,6 +83,14 @@
   gap: 12px;
 }
 
+.ui-gallery__agent-shell {
+  height: 720px;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ks-border-soft);
+  border-radius: var(--ks-radius-lg);
+}
+
 .ui-gallery__panel-head {
   display: flex;
   align-items: center;

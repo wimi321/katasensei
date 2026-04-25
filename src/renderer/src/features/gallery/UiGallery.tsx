@@ -92,23 +92,68 @@ export function UiGallery(): ReactElement {
 
         <article className="ui-gallery__panel ui-gallery__panel--teacher">
           <div className="ui-gallery__panel-head">
-            <strong>TeacherRunCardPro</strong>
-            <span>结构化讲解</span>
+            <strong>Teacher Agent Editor</strong>
+            <span>AI 编辑器侧栏</span>
           </div>
-          <TeacherRunCardPro
-            result={galleryTeacherResult}
-            markdown={galleryTeacherResult.markdown}
-            onJumpToMove={setMoveNumber}
-            onAnalyzeMove={setMoveNumber}
-          />
-          <TeacherRunCardPro running markdown="正在读取棋盘、调用 KataGo、检索教学卡并组织讲解..." />
-          <TeacherComposerPro
-            value={composerValue}
-            busy={false}
-            onChange={setComposerValue}
-            onSubmit={noopForm}
-            onQuickPrompt={setComposerValue}
-          />
+          <div className="teacher-panel teacher-agent-editor ui-gallery__agent-shell">
+            <header className="teacher-editor-head">
+              <div className="teacher-agent-mark" aria-hidden="true">KS</div>
+              <div className="teacher-editor-title">
+                <span>KataSensei Agent</span>
+                <strong>围棋老师智能体</strong>
+                <div className="teacher-editor-meta">
+                  <em>gpt-5.4</em>
+                  <em>KataGo ready</em>
+                  <em>Vision LLM ready</em>
+                </div>
+              </div>
+              <div className="teacher-editor-actions">
+                <span className="teacher-status">Ready</span>
+                <button className="icon-button" type="button">⚙</button>
+              </div>
+            </header>
+            <div className="teacher-commandbar">
+              <button className="teacher-commandbar__primary" type="button">分析当前手</button>
+              <button type="button">分析整盘</button>
+              <button type="button">分析近 10 局</button>
+              <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 学生画像</span>
+            </div>
+            <div className="message-list agent-thread">
+              <article className="message message--student agent-turn agent-turn--student">
+                <div className="agent-turn__rail"><span>你</span></div>
+                <div className="agent-turn__body">
+                  <header className="agent-turn__head"><strong>Prompt</strong><small>turn input</small></header>
+                  <div className="message-copy">分析第 24 手，告诉我为什么 KataGo 推荐 Q10，并给一周训练建议。</div>
+                </div>
+              </article>
+              <article className="message message--teacher agent-turn agent-turn--teacher">
+                <div className="agent-turn__rail"><span>AI</span></div>
+                <div className="agent-turn__body">
+                  <header className="agent-turn__head"><strong>KataSensei</strong><small>turn complete · item stream</small></header>
+                  <TeacherRunCardPro
+                    result={galleryTeacherResult}
+                    markdown={galleryTeacherResult.markdown}
+                    onJumpToMove={setMoveNumber}
+                    onAnalyzeMove={setMoveNumber}
+                  />
+                </div>
+              </article>
+              <div className="message message--teacher message--running agent-turn agent-turn--teacher agent-turn--running">
+                <div className="agent-turn__rail"><span>AI</span></div>
+                <div className="agent-turn__body">
+                  <header className="agent-turn__head"><strong>KataSensei</strong><small>turn running · item stream</small></header>
+                  <TeacherRunCardPro running markdown="正在读取棋盘、调用 KataGo、检索教学卡并组织讲解..." />
+                </div>
+              </div>
+            </div>
+            <TeacherComposerPro
+              value={composerValue}
+              busy={false}
+              onChange={setComposerValue}
+              onSubmit={noopForm}
+              onQuickPrompt={setComposerValue}
+            />
+          </div>
         </article>
       </section>
 

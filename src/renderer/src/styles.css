@@ -87,7 +87,7 @@ textarea {
 
 .studio {
   display: grid;
-  grid-template-columns: 272px minmax(560px, 1fr) 410px;
+  grid-template-columns: 272px minmax(560px, 1fr) 440px;
   height: 100vh;
   overflow: hidden;
   background:
@@ -97,7 +97,7 @@ textarea {
 }
 
 .studio--collapsed {
-  grid-template-columns: 48px minmax(560px, 1fr) 410px;
+  grid-template-columns: 48px minmax(560px, 1fr) 440px;
 }
 
 .library-rail,
@@ -965,8 +965,139 @@ label,
 
 .teacher-panel {
   background:
-    radial-gradient(circle at 50% 0%, rgb(118 184 232 / 0.055), transparent 30%),
-    linear-gradient(180deg, #171e25, #10151a);
+    linear-gradient(180deg, #10161c, #0b0f14);
+}
+
+.teacher-agent-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 42% 0%, rgb(95 212 207 / 0.07), transparent 26%),
+    linear-gradient(180deg, #121921, #0a0e13 62%, #090c10);
+}
+
+.teacher-editor-head {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 72px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ks-border-soft);
+  background: rgb(9 13 17 / 0.62);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+.teacher-agent-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgb(95 212 207 / 0.22);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgb(95 212 207 / 0.16), rgb(214 182 110 / 0.06)),
+    rgb(255 255 255 / 0.035);
+  color: var(--ks-teal);
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.22);
+}
+
+.teacher-editor-title {
+  min-width: 0;
+}
+
+.teacher-editor-title > span {
+  color: var(--ks-text-faint);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.teacher-editor-title strong {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--ks-text-main);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.teacher-editor-meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.teacher-editor-meta em {
+  min-width: 0;
+  max-width: 128px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid var(--ks-border-hairline);
+  border-radius: 999px;
+  color: var(--ks-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.teacher-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.teacher-commandbar {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ks-border-soft);
+  background: rgb(7 10 14 / 0.56);
+}
+
+.teacher-commandbar button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--ks-border-soft);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.035);
+  color: var(--ks-text-muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.teacher-commandbar__primary {
+  color: var(--ks-text-inverse) !important;
+  background: linear-gradient(180deg, var(--ks-gold-strong), #b9924a) !important;
+}
+
+.teacher-commandbar span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ks-text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.agent-thread {
+  position: relative;
+  flex: 1;
+  gap: 0;
+  padding: 0;
+  background:
+    linear-gradient(90deg, transparent 31px, rgb(255 255 255 / 0.055) 31px, rgb(255 255 255 / 0.055) 32px, transparent 32px);
 }
 
 .teacher-title {
@@ -1005,6 +1136,13 @@ label,
   overflow: auto;
 }
 
+.message-list.agent-thread {
+  gap: 0;
+  padding: 0;
+  background:
+    linear-gradient(90deg, transparent 31px, rgb(255 255 255 / 0.055) 31px, rgb(255 255 255 / 0.055) 32px, transparent 32px);
+}
+
 .message {
   max-width: 100%;
   border-radius: 8px;
@@ -1014,15 +1152,95 @@ label,
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
 }
 
+.agent-turn {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  max-width: none;
+  margin: 0;
+  padding: 14px 12px;
+  border: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.055);
+  border-radius: 0;
+  background: transparent;
+  line-height: 1.55;
+  white-space: normal;
+  box-shadow: none;
+}
+
+.agent-turn--student {
+  margin-left: 0;
+  background: linear-gradient(90deg, rgb(101 211 145 / 0.055), transparent 42%);
+}
+
+.agent-turn--teacher {
+  background: linear-gradient(90deg, rgb(118 184 232 / 0.035), transparent 42%);
+}
+
+.agent-turn--running {
+  background: linear-gradient(90deg, rgb(214 182 110 / 0.07), transparent 46%);
+}
+
+.agent-turn__rail {
+  display: grid;
+  justify-items: center;
+}
+
+.agent-turn__rail span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--ks-border-soft);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ks-text-muted);
+  font-size: 10.5px;
+  font-weight: 950;
+}
+
+.agent-turn--teacher .agent-turn__rail span {
+  border-color: rgb(118 184 232 / 0.22);
+  color: var(--ks-blue);
+}
+
+.agent-turn--student .agent-turn__rail span {
+  border-color: rgb(101 211 145 / 0.22);
+  color: var(--ks-green);
+}
+
+.agent-turn__body {
+  min-width: 0;
+}
+
+.agent-turn__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.agent-turn__head strong {
+  color: var(--ks-text-main);
+  font-size: 12px;
+}
+
+.agent-turn__head small {
+  color: var(--ks-text-faint);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .message--teacher {
-  border: 1px solid #2d353c;
-  background: linear-gradient(180deg, #1c2329, #171d22);
+  border-color: transparent;
+  background: linear-gradient(90deg, rgb(118 184 232 / 0.035), transparent 42%);
 }
 
 .message--student {
-  margin-left: 42px;
-  border: 1px solid rgb(89 200 138 / 0.22);
-  background: linear-gradient(180deg, #203024, #19231c);
+  margin-left: 0;
+  border-color: transparent;
+  background: linear-gradient(90deg, rgb(89 200 138 / 0.055), transparent 42%);
 }
 
 .message--running {
@@ -1037,7 +1255,14 @@ label,
 }
 
 .message-copy {
-  font-size: 14px;
+  padding: 10px 11px;
+  border: 1px solid var(--ks-border-soft);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.035);
+  color: var(--ks-text-main);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .tool-log {

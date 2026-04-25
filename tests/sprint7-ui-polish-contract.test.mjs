@@ -37,6 +37,13 @@ test('TeacherRunCardPro renders structured product modules', () => {
   assert.match(teacher, /推荐思路/)
   assert.match(teacher, /可继续追问/)
   assert.match(teacher, /ks-teacher-pro-evidence/)
+  const app = read('src/renderer/src/App.tsx')
+  assert.match(app, /teacher-agent-editor/)
+  assert.match(app, /teacher-commandbar/)
+  assert.match(app, /agent-turn/)
+  const composer = read('src/renderer/src/features/teacher/TeacherComposerPro.tsx')
+  assert.match(composer, /Agent Prompt/)
+  assert.match(composer, /ks-composer-pro__chrome/)
 })
 
 test('StudentRailCard includes training focus and visual QA capture exists', () => {

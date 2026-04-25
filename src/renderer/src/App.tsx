@@ -718,6 +718,8 @@ export function App(): ReactElement {
             onPrompt={setPrompt}
             onSubmit={(event) => void sendTeacherPrompt(event)}
             onAnalyze={() => void runCurrentMoveAnalysis()}
+            onAnalyzeGame={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')}
+            onAnalyzeRecent={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')}
             onSettingsOpen={() => setSettingsOpen((value) => !value)}
             onSaveSettings={(form) => void saveSettings(form)}
             onTestLlm={(form) => void testLlmSettings(form)}
@@ -867,6 +869,8 @@ function TeacherPanel({
   onPrompt,
   onSubmit,
   onAnalyze,
+  onAnalyzeGame,
+  onAnalyzeRecent,
   onSettingsOpen,
   onSaveSettings,
   onTestLlm,
@@ -885,6 +889,8 @@ function TeacherPanel({
   onPrompt: (value: string) => void
   onSubmit: (event: FormEvent) => void
   onAnalyze: () => void
+  onAnalyzeGame: () => void
+  onAnalyzeRecent: () => void
   onSettingsOpen: () => void
   onSaveSettings: (form: HTMLFormElement) => void
   onTestLlm: (form: HTMLFormElement) => void
@@ -892,21 +898,34 @@ function TeacherPanel({
   onJumpToMove: (moveNumber: number) => void
   onAnalyzeMove: (moveNumber: number) => void
 }): ReactElement {
+  const modelName = dashboard.settings.llmModel || '未选择模型'
+  const katagoLabel = katagoAssets?.ready || dashboard.systemProfile.katagoReady ? 'KataGo ready' : 'KataGo missing'
+  const llmLabel = dashboard.systemProfile.hasLlmApiKey ? 'Vision LLM ready' : 'LLM setup needed'
+  const hasRunningTask = busy === 'teacher'
   return (
-    <div className="teacher-panel">
-      <div className="teacher-head">
-        <div className="teacher-title">
-          <strong>AI 围棋老师</strong>
-          <span className={`teacher-status ${busy === 'teacher' ? 'is-running' : ''}`}>{busy === 'teacher' ? '执行中' : '待命'}</span>
+    <div className="teacher-panel teacher-agent-editor">
+      <header className="teacher-editor-head">
+        <div className="teacher-agent-mark" aria-hidden="true">KS</div>
+        <div className="teacher-editor-title">
+          <span>KataSensei Agent</span>
+          <strong>围棋老师智能体</strong>
+          <div className="teacher-editor-meta">
+            <em>{modelName}</em>
+            <em>{katagoLabel}</em>
+            <em>{llmLabel}</em>
+          </div>
         </div>
-        <div className="head-actions">
-          <button className="ghost-button" onClick={onAnalyze} disabled={busy !== ''}>
-            当前手
-          </button>
-          <button className="icon-button" onClick={onSettingsOpen} title="LLM 配置">
-            ⚙
-          </button>
+        <div className="teacher-editor-actions">
+          <span className={`teacher-status ${hasRunningTask ? 'is-running' : ''}`}>{hasRunningTask ? 'Running' : 'Ready'}</span>
+          <button className="icon-button" onClick={onSettingsOpen} title="LLM 配置">⚙</button>
         </div>
+      </header>
+
+      <div className="teacher-commandbar" aria-label="老师快速任务">
+        <button className="teacher-commandbar__primary" onClick={onAnalyze} disabled={busy !== ''}>分析当前手</button>
+        <button onClick={onAnalyzeGame} disabled={busy !== ''}>分析整盘</button>
+        <button onClick={onAnalyzeRecent} disabled={busy !== ''}>分析近 10 局</button>
+        <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 学生画像</span>
       </div>
 
       {settingsOpen ? (
@@ -921,10 +940,17 @@ function TeacherPanel({
         />
       ) : null}
 
-      <div className="message-list">
+      <div className="message-list agent-thread">
         {messages.map((message) => (
-          <article key={message.id} className={`message message--${message.role}`}>
-            <div className="message-meta">{message.role === 'teacher' ? '老师' : '学生'}</div>
+          <article key={message.id} className={`message message--${message.role} agent-turn agent-turn--${message.role}`}>
+            <div className="agent-turn__rail">
+              <span>{message.role === 'teacher' ? 'AI' : '你'}</span>
+            </div>
+            <div className="agent-turn__body">
+              <header className="agent-turn__head">
+                <strong>{message.role === 'teacher' ? 'KataSensei' : 'Prompt'}</strong>
+                <small>{message.result ? 'turn complete · item stream' : message.role === 'teacher' ? 'assistant note' : 'turn input'}</small>
+              </header>
             {message.result ? (
               (message.result.structuredResult ?? message.result.structured) ? (
                 <TeacherRunCardPro
@@ -942,12 +968,21 @@ function TeacherPanel({
             ) : (
               <div className="message-copy">{message.content}</div>
             )}
+            </div>
           </article>
         ))}
-        {busy === 'teacher' ? (
-          <div className="message message--teacher message--running">
-            <div className="message-meta">老师</div>
-            <TeacherRunCardPro running markdown="正在规划任务、调用工具和整理讲解..." />
+        {hasRunningTask ? (
+          <div className="message message--teacher message--running agent-turn agent-turn--teacher agent-turn--running">
+            <div className="agent-turn__rail">
+              <span>AI</span>
+            </div>
+            <div className="agent-turn__body">
+              <header className="agent-turn__head">
+                <strong>KataSensei</strong>
+                <small>turn running · item stream</small>
+              </header>
+              <TeacherRunCardPro running markdown="正在规划任务、调用工具和整理讲解..." />
+            </div>
           </div>
         ) : null}
       </div>
