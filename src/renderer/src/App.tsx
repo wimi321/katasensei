@@ -1,4 +1,4 @@
-import type { FormEvent, PointerEvent, ReactElement } from 'react'
+import type { FormEvent, KeyboardEvent, PointerEvent, ReactElement } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AnalyzeGameQuickProgress,
@@ -87,6 +87,16 @@ interface StudentBindingState {
   game: LibraryGame
   suggestions: StudentBindingSuggestion[]
 }
+
+type DesktopCommand =
+  | 'open-command-palette'
+  | 'open-settings'
+  | 'import-sgf'
+  | 'analyze-current'
+  | 'analyze-game'
+  | 'analyze-recent'
+  | 'toggle-library'
+  | 'open-ui-gallery'
 
 const letters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'
 
@@ -187,6 +197,7 @@ export function App(): ReactElement {
   const [graphProgress, setGraphProgress] = useState('')
   const [error, setError] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [libraryCollapsed, setLibraryCollapsed] = useState(false)
   const [llmTestMessage, setLlmTestMessage] = useState('')
   const [currentStudent, setCurrentStudent] = useState<StudentProfile | null>(null)
@@ -229,6 +240,27 @@ export function App(): ReactElement {
     }
     void loadRecord(selectedGame.id)
   }, [selectedGame?.id])
+
+  useEffect(() => {
+    const dispose = window.katasensei.onDesktopCommand?.((command) => runDesktopCommand(command))
+    return () => dispose?.()
+  }, [selectedGame?.id, moveNumber, busy, record, dashboard.games.length])
+
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent): void {
+      const key = event.key.toLowerCase()
+      if ((event.metaKey || event.ctrlKey) && key === 'k') {
+        event.preventDefault()
+        setCommandPaletteOpen(true)
+      }
+      if (event.key === 'Escape') {
+        setCommandPaletteOpen(false)
+        setSettingsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   async function refresh(): Promise<void> {
     try {
@@ -541,6 +573,37 @@ export function App(): ReactElement {
     }
   }
 
+  function runDesktopCommand(command: DesktopCommand): void {
+    setCommandPaletteOpen(false)
+    switch (command) {
+      case 'open-command-palette':
+        setCommandPaletteOpen(true)
+        break
+      case 'open-settings':
+        setSettingsOpen(true)
+        break
+      case 'import-sgf':
+        void importSgf()
+        break
+      case 'analyze-current':
+        void runCurrentMoveAnalysis()
+        break
+      case 'analyze-game':
+        void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')
+        break
+      case 'analyze-recent':
+        void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')
+        break
+      case 'toggle-library':
+        setLibraryCollapsed((value) => !value)
+        break
+      case 'open-ui-gallery':
+        window.location.hash = '#/ui-gallery'
+        window.location.reload()
+        break
+    }
+  }
+
   async function sendTeacherPrompt(event: FormEvent): Promise<void> {
     event.preventDefault()
     const text = prompt.trim()
@@ -609,7 +672,14 @@ export function App(): ReactElement {
 
   return (
     <DiagnosticsGate>
-      <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
+      <div className="desktop-shell">
+        <DesktopTitleBar
+          selectedGame={selectedGame}
+          statusItems={statusItems}
+          busy={busy}
+          onCommand={runDesktopCommand}
+        />
+        <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
         <aside className="library-rail">
           <div className="rail-head">
             <button className="icon-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏">
@@ -710,24 +780,49 @@ export function App(): ReactElement {
             messages={messages}
             prompt={prompt}
             busy={busy}
-            settingsOpen={settingsOpen}
             dashboard={dashboard}
             katagoAssets={katagoAssets}
-            llmTestMessage={llmTestMessage}
             error={error}
             onPrompt={setPrompt}
             onSubmit={(event) => void sendTeacherPrompt(event)}
             onAnalyze={() => void runCurrentMoveAnalysis()}
             onAnalyzeGame={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')}
             onAnalyzeRecent={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')}
-            onSettingsOpen={() => setSettingsOpen((value) => !value)}
-            onSaveSettings={(form) => void saveSettings(form)}
-            onTestLlm={(form) => void testLlmSettings(form)}
-            onRefreshKataGoAssets={() => void refreshKataGoAssets()}
+            onSettingsOpen={() => setSettingsOpen(true)}
             onJumpToMove={jumpToMove}
             onAnalyzeMove={(targetMove) => void runMoveAnalysisAt(targetMove)}
           />
         </aside>
+      </div>
+        <DesktopStatusBar
+          selectedGame={selectedGame}
+          record={record}
+          moveNumber={moveNumber}
+          graphBusy={graphBusy}
+          graphProgress={graphProgress}
+          katagoReady={katagoAssets?.ready || dashboard.systemProfile.katagoReady}
+          llmReady={dashboard.systemProfile.hasLlmApiKey}
+          busy={busy}
+        />
+        <CommandPalette
+          open={commandPaletteOpen}
+          busy={busy}
+          hasRecord={Boolean(record)}
+          hasGames={dashboard.games.length > 0}
+          onClose={() => setCommandPaletteOpen(false)}
+          onRun={runDesktopCommand}
+        />
+        <DesktopPreferencesModal
+          open={settingsOpen}
+          dashboard={dashboard}
+          katagoAssets={katagoAssets}
+          busy={busy}
+          llmTestMessage={llmTestMessage}
+          onClose={() => setSettingsOpen(false)}
+          onSave={(form) => void saveSettings(form)}
+          onTest={(form) => void testLlmSettings(form)}
+          onRefreshKataGoAssets={() => void refreshKataGoAssets()}
+        />
       </div>
       <StudentBindingDialog
         open={Boolean(studentBinding)}
@@ -857,14 +952,200 @@ function StatusPills({ items }: { items: StatusPill[] }): ReactElement {
   )
 }
 
+function DesktopTitleBar({
+  selectedGame,
+  statusItems,
+  busy,
+  onCommand
+}: {
+  selectedGame?: LibraryGame
+  statusItems: StatusPill[]
+  busy: string
+  onCommand: (command: DesktopCommand) => void
+}): ReactElement {
+  return (
+    <header className="desktop-titlebar">
+      <div className="desktop-titlebar__brand">
+        <img src={logoUrl} alt="" aria-hidden="true" />
+        <div>
+          <strong>KataSensei</strong>
+          <span>{selectedGame ? gameDisplayName(selectedGame) : 'Desktop Workbench'}</span>
+        </div>
+      </div>
+      <div className="desktop-titlebar__center">
+        <StatusPills items={statusItems} />
+      </div>
+      <div className="desktop-titlebar__actions">
+        <button type="button" onClick={() => onCommand('open-command-palette')}>Command</button>
+        <button type="button" onClick={() => onCommand('import-sgf')}>Import SGF</button>
+        <button type="button" onClick={() => onCommand('open-settings')}>Preferences</button>
+        <span>{busy ? 'Working' : 'Idle'}</span>
+      </div>
+    </header>
+  )
+}
+
+function DesktopStatusBar({
+  selectedGame,
+  record,
+  moveNumber,
+  graphBusy,
+  graphProgress,
+  katagoReady,
+  llmReady,
+  busy
+}: {
+  selectedGame?: LibraryGame
+  record: GameRecord | null
+  moveNumber: number
+  graphBusy: boolean
+  graphProgress: string
+  katagoReady: boolean
+  llmReady: boolean
+  busy: string
+}): ReactElement {
+  return (
+    <footer className="desktop-statusbar">
+      <span>{selectedGame ? gameDisplayName(selectedGame) : 'No game selected'}</span>
+      <span>{record ? `Move ${moveNumber}/${record.moves.length}` : 'Import SGF to start'}</span>
+      <span>{graphBusy ? `Winrate ${graphProgress || 'analyzing'}` : 'Winrate ready'}</span>
+      <span data-ready={katagoReady}>KataGo</span>
+      <span data-ready={llmReady}>Vision LLM</span>
+      <em>{busy ? `Task: ${busy}` : 'Ready'}</em>
+    </footer>
+  )
+}
+
+function CommandPalette({
+  open,
+  busy,
+  hasRecord,
+  hasGames,
+  onClose,
+  onRun
+}: {
+  open: boolean
+  busy: string
+  hasRecord: boolean
+  hasGames: boolean
+  onClose: () => void
+  onRun: (command: DesktopCommand) => void
+}): ReactElement | null {
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    if (open) {
+      setQuery('')
+    }
+  }, [open])
+  const commands = useMemo(() => [
+    { id: 'analyze-current' as const, title: '分析当前手', detail: '截图棋盘，调用 KataGo，再让老师讲解', shortcut: 'Ctrl/Cmd 1', disabled: !hasRecord || busy !== '' },
+    { id: 'analyze-game' as const, title: '分析整盘围棋', detail: '扫描关键问题手和胜负转折点', shortcut: 'Ctrl/Cmd 2', disabled: !hasRecord || busy !== '' },
+    { id: 'analyze-recent' as const, title: '分析近 10 局', detail: '聚合学生稳定问题并更新画像', shortcut: 'Ctrl/Cmd 3', disabled: !hasGames || busy !== '' },
+    { id: 'import-sgf' as const, title: '导入 SGF', detail: '从本机文件系统添加棋谱', shortcut: 'Ctrl/Cmd O', disabled: busy !== '' },
+    { id: 'open-settings' as const, title: '打开 Preferences', detail: '配置模型、KataGo 资源和发布 readiness', shortcut: 'Ctrl/Cmd ,', disabled: false },
+    { id: 'toggle-library' as const, title: '切换棋谱栏', detail: '收起或展开左侧学生工作区', shortcut: 'Ctrl/Cmd B', disabled: false },
+    { id: 'open-ui-gallery' as const, title: '打开 UI Gallery', detail: '进入内部视觉 QA 样例页', shortcut: 'Ctrl/Cmd Shift G', disabled: false }
+  ], [busy, hasGames, hasRecord])
+  const filtered = commands.filter((command) => {
+    const haystack = `${command.title} ${command.detail}`.toLowerCase()
+    return haystack.includes(query.trim().toLowerCase())
+  })
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Escape') {
+      onClose()
+    }
+    if (event.key === 'Enter') {
+      const first = filtered.find((command) => !command.disabled)
+      if (first) {
+        onRun(first.id)
+      }
+    }
+  }
+  if (!open) {
+    return null
+  }
+  return (
+    <div className="desktop-command-palette" role="dialog" aria-modal="true" aria-label="KataSensei command palette" onMouseDown={onClose}>
+      <section className="desktop-command-palette__panel" onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <span>Command Palette</span>
+          <button type="button" onClick={onClose}>Esc</button>
+        </header>
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="输入任务或命令，例如：分析当前手、导入 SGF、打开设置"
+        />
+        <div className="desktop-command-palette__list">
+          {filtered.map((command) => (
+            <button key={command.id} type="button" disabled={command.disabled} onClick={() => onRun(command.id)}>
+              <strong>{command.title}</strong>
+              <small>{command.detail}</small>
+              <em>{command.shortcut}</em>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function DesktopPreferencesModal({
+  open,
+  dashboard,
+  katagoAssets,
+  busy,
+  llmTestMessage,
+  onClose,
+  onSave,
+  onTest,
+  onRefreshKataGoAssets
+}: {
+  open: boolean
+  dashboard: DashboardData
+  katagoAssets: KataGoAssetStatus | null
+  busy: string
+  llmTestMessage: string
+  onClose: () => void
+  onSave: (form: HTMLFormElement) => void
+  onTest: (form: HTMLFormElement) => void
+  onRefreshKataGoAssets: () => void
+}): ReactElement | null {
+  if (!open) {
+    return null
+  }
+  return (
+    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="KataSensei preferences" onMouseDown={onClose}>
+      <section className="desktop-preferences__window" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="desktop-preferences__titlebar">
+          <div>
+            <span>Preferences</span>
+            <strong>桌面运行设置</strong>
+          </div>
+          <button type="button" onClick={onClose}>Close</button>
+        </header>
+        <SettingsDrawer
+          dashboard={dashboard}
+          katagoAssets={katagoAssets}
+          busy={busy}
+          llmTestMessage={llmTestMessage}
+          onSave={onSave}
+          onTest={onTest}
+          onRefreshKataGoAssets={onRefreshKataGoAssets}
+        />
+      </section>
+    </div>
+  )
+}
+
 function TeacherPanel({
   messages,
   prompt,
   busy,
-  settingsOpen,
   dashboard,
   katagoAssets,
-  llmTestMessage,
   error,
   onPrompt,
   onSubmit,
@@ -872,19 +1153,14 @@ function TeacherPanel({
   onAnalyzeGame,
   onAnalyzeRecent,
   onSettingsOpen,
-  onSaveSettings,
-  onTestLlm,
-  onRefreshKataGoAssets,
   onJumpToMove,
   onAnalyzeMove
 }: {
   messages: ChatMessage[]
   prompt: string
   busy: string
-  settingsOpen: boolean
   dashboard: DashboardData
   katagoAssets: KataGoAssetStatus | null
-  llmTestMessage: string
   error: string
   onPrompt: (value: string) => void
   onSubmit: (event: FormEvent) => void
@@ -892,9 +1168,6 @@ function TeacherPanel({
   onAnalyzeGame: () => void
   onAnalyzeRecent: () => void
   onSettingsOpen: () => void
-  onSaveSettings: (form: HTMLFormElement) => void
-  onTestLlm: (form: HTMLFormElement) => void
-  onRefreshKataGoAssets: () => void
   onJumpToMove: (moveNumber: number) => void
   onAnalyzeMove: (moveNumber: number) => void
 }): ReactElement {
@@ -927,18 +1200,6 @@ function TeacherPanel({
         <button onClick={onAnalyzeRecent} disabled={busy !== ''}>分析近 10 局</button>
         <span>Thread: 当前棋局复盘 · Items: KataGo / 截图 / 知识库 / 学生画像</span>
       </div>
-
-      {settingsOpen ? (
-        <SettingsDrawer
-          dashboard={dashboard}
-          katagoAssets={katagoAssets}
-          busy={busy}
-          llmTestMessage={llmTestMessage}
-          onSave={onSaveSettings}
-          onTest={onTestLlm}
-          onRefreshKataGoAssets={onRefreshKataGoAssets}
-        />
-      ) : null}
 
       <div className="message-list agent-thread">
         {messages.map((message) => (

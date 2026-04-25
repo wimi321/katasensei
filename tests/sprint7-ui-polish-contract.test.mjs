@@ -46,6 +46,24 @@ test('TeacherRunCardPro renders structured product modules', () => {
   assert.match(composer, /ks-composer-pro__chrome/)
 })
 
+test('Desktop app shell exposes native menu commands and workbench chrome', () => {
+  const main = read('src/main/index.ts')
+  assert.match(main, /Menu\.setApplicationMenu/)
+  assert.match(main, /desktop:command/)
+  assert.match(main, /CommandOrControl\+K/)
+  const preload = read('src/preload/index.ts')
+  assert.match(preload, /onDesktopCommand/)
+  const app = read('src/renderer/src/App.tsx')
+  assert.match(app, /DesktopTitleBar/)
+  assert.match(app, /CommandPalette/)
+  assert.match(app, /DesktopPreferencesModal/)
+  assert.match(app, /DesktopStatusBar/)
+  const styles = read('src/renderer/src/styles.css')
+  assert.match(styles, /desktop-shell/)
+  assert.match(styles, /desktop-command-palette/)
+  assert.match(styles, /desktop-statusbar/)
+})
+
 test('StudentRailCard includes training focus and visual QA capture exists', () => {
   const student = read('src/renderer/src/features/student/StudentRailCard.tsx')
   assert.match(student, /trainingFocus/)

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions } from 'electron'
 import { isAbsolute, relative, resolve, join } from 'node:path'
 import { appHome, findGame, getGames, getSettings, hasLlmApiKey, replaceSettings, setSettings, upsertGames } from './lib/store'
 import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
@@ -23,6 +23,15 @@ import {
 } from './services/studentProfile'
 
 let mainWindow: BrowserWindow | null = null
+type DesktopCommand =
+  | 'open-command-palette'
+  | 'open-settings'
+  | 'import-sgf'
+  | 'analyze-current'
+  | 'analyze-game'
+  | 'analyze-recent'
+  | 'toggle-library'
+  | 'open-ui-gallery'
 
 function assetPath(fileName: string): string {
   return join(__dirname, '../../assets', fileName)
@@ -47,6 +56,12 @@ async function createWindow(): Promise<void> {
     title: 'KataSensei',
     icon: assetPath('icon.png'),
     backgroundColor: '#0f1115',
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: { x: 18, y: 18 }
+        }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -65,6 +80,74 @@ async function createWindow(): Promise<void> {
   } else {
     await mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+function sendDesktopCommand(command: DesktopCommand): void {
+  mainWindow?.webContents.send('desktop:command', command)
+}
+
+function buildApplicationMenu(): void {
+  const template: MenuItemConstructorOptions[] = [
+    ...(process.platform === 'darwin'
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' },
+            { type: 'separator' },
+            { label: 'Preferences...', accelerator: 'Command+,', click: () => sendDesktopCommand('open-settings') },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' }
+          ]
+        } satisfies MenuItemConstructorOptions]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Import SGF...', accelerator: 'CommandOrControl+O', click: () => sendDesktopCommand('import-sgf') },
+        { type: 'separator' },
+        { label: 'Command Palette...', accelerator: 'CommandOrControl+K', click: () => sendDesktopCommand('open-command-palette') },
+        { label: 'Settings...', accelerator: process.platform === 'darwin' ? 'Command+,' : 'Control+,', click: () => sendDesktopCommand('open-settings') },
+        ...(process.platform === 'darwin' ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }])
+      ]
+    },
+    {
+      label: 'Analyze',
+      submenu: [
+        { label: 'Analyze Current Move', accelerator: 'CommandOrControl+1', click: () => sendDesktopCommand('analyze-current') },
+        { label: 'Analyze Full Game', accelerator: 'CommandOrControl+2', click: () => sendDesktopCommand('analyze-game') },
+        { label: 'Analyze Recent 10 Games', accelerator: 'CommandOrControl+3', click: () => sendDesktopCommand('analyze-recent') }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Toggle Library', accelerator: 'CommandOrControl+B', click: () => sendDesktopCommand('toggle-library') },
+        { label: 'Open UI Gallery', accelerator: 'CommandOrControl+Shift+G', click: () => sendDesktopCommand('open-ui-gallery') },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(process.platform === 'darwin' ? [{ type: 'separator' as const }, { role: 'front' as const }] : [{ role: 'close' as const }])
+      ]
+    }
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 async function dashboard(): Promise<DashboardData> {
@@ -87,6 +170,7 @@ app.whenReady().then(() => {
   if (process.platform === 'darwin') {
     app.dock?.setIcon(assetPath('icon.png'))
   }
+  buildApplicationMenu()
 
   ipcMain.handle('dashboard:get', async () => dashboard())
 

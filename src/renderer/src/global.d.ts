@@ -23,6 +23,16 @@ import type {
 import type { DiagnosticsReport } from '@main/services/diagnostics/types'
 import type { KnowledgeSearchQuery, KnowledgeSearchResult } from '@main/services/knowledge/schema'
 
+type DesktopCommand =
+  | 'open-command-palette'
+  | 'open-settings'
+  | 'import-sgf'
+  | 'analyze-current'
+  | 'analyze-game'
+  | 'analyze-recent'
+  | 'toggle-library'
+  | 'open-ui-gallery'
+
 declare global {
   interface Window {
     katasensei: {
@@ -51,6 +61,7 @@ declare global {
       testLlmSettings: (payload: LlmSettingsTestRequest) => Promise<LlmSettingsTestResult>
       getReleaseReadiness: () => Promise<ReleaseReadinessResult>
       openPath: (filePath: string) => Promise<void>
+      onDesktopCommand?: (handler: (command: DesktopCommand) => void) => () => void
     }
   }
 }

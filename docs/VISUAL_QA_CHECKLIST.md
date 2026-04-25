@@ -25,6 +25,10 @@ See `docs/VISUAL_QA_CAPTURE.md` for automated screenshot capture.
 - [ ] Settings readiness panel
 - [ ] UI Gallery overview
 - [ ] Empty/error/loading states
+- [ ] Desktop titlebar
+- [ ] Command palette
+- [ ] Desktop Preferences modal
+- [ ] Desktop statusbar
 
 ## 棋盘
 

@@ -24,6 +24,16 @@ import type {
 import type { DiagnosticsReport } from '@main/services/diagnostics/types'
 import type { KnowledgeSearchQuery, KnowledgeSearchResult } from '@main/services/knowledge/schema'
 
+export type DesktopCommand =
+  | 'open-command-palette'
+  | 'open-settings'
+  | 'import-sgf'
+  | 'analyze-current'
+  | 'analyze-game'
+  | 'analyze-recent'
+  | 'toggle-library'
+  | 'open-ui-gallery'
+
 const api = {
   getDashboard: (): Promise<DashboardData> => ipcRenderer.invoke('dashboard:get'),
   getGameRecord: (gameId: string): Promise<GameRecord> => ipcRenderer.invoke('library:record', gameId),
@@ -53,7 +63,12 @@ const api = {
   runTeacherTask: (payload: TeacherRunRequest): Promise<TeacherRunResult> => ipcRenderer.invoke('teacher:run', payload),
   testLlmSettings: (payload: LlmSettingsTestRequest): Promise<LlmSettingsTestResult> => ipcRenderer.invoke('llm:test', payload),
   getReleaseReadiness: (): Promise<ReleaseReadinessResult> => ipcRenderer.invoke('release:readiness'),
-  openPath: (filePath: string): Promise<void> => ipcRenderer.invoke('path:open', filePath)
+  openPath: (filePath: string): Promise<void> => ipcRenderer.invoke('path:open', filePath),
+  onDesktopCommand: (handler: (command: DesktopCommand) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: DesktopCommand): void => handler(command)
+    ipcRenderer.on('desktop:command', listener)
+    return () => ipcRenderer.removeListener('desktop:command', listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('katasensei', api)
