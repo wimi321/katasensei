@@ -13,5 +13,5 @@ python3 -m pip install -r scripts/requirements.txt
 echo "[3/4] Preparing KataGo"
 python3 scripts/install_katago_latest.py || true
 
-echo "[4/4] Launching KataSensei"
+echo "[4/4] Launching GoMentor"
 pnpm dev

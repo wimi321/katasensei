@@ -64,12 +64,12 @@ export function inspectReleaseReadiness(projectRoot = process.cwd()): ReleaseRea
   const version = '0.2.0-beta.1'
   const releaseRoot = join(projectRoot, 'release', version)
   const installerCandidates = [
-    `release/${version}/KataSensei-${version}-mac-arm64.dmg`,
-    `release/${version}/KataSensei-${version}-mac-x64.dmg`,
-    `release/${version}/KataSensei-${version}-win-x64.exe`
+    `release/${version}/GoMentor-${version}-mac-arm64.dmg`,
+    `release/${version}/GoMentor-${version}-mac-x64.dmg`,
+    `release/${version}/GoMentor-${version}-win-x64.exe`
   ]
   const missingInstallers = installerCandidates.filter((relativePath) => !existsSync(join(projectRoot, relativePath)))
-  const winArm64Installer = existsSync(join(releaseRoot, `KataSensei-${version}-win-arm64.exe`))
+  const winArm64Installer = existsSync(join(releaseRoot, `GoMentor-${version}-win-arm64.exe`))
   const installersReady = missingInstallers.length === 0 && !winArm64Installer
   items.push(
     installersReady
@@ -86,13 +86,13 @@ export function inspectReleaseReadiness(projectRoot = process.cwd()): ReleaseRea
   )
 
   const signingReady =
-    process.env.KATASENSEI_SIGNING_READY === '1' ||
+    process.env.GOMENTOR_SIGNING_READY === '1' ||
     existsSync(join(projectRoot, 'release-evidence', 'signing-ready.json'))
   const windowsSmokeReady =
-    process.env.KATASENSEI_WINDOWS_SMOKE_READY === '1' ||
+    process.env.GOMENTOR_WINDOWS_SMOKE_READY === '1' ||
     existsSync(join(projectRoot, 'release-evidence', 'windows-smoke-ready.json'))
   const visualQaReady =
-    process.env.KATASENSEI_VISUAL_QA_READY === '1' ||
+    process.env.GOMENTOR_VISUAL_QA_READY === '1' ||
     existsSync(join(projectRoot, 'release-evidence', 'visual-qa-ready.json'))
 
   items.push(

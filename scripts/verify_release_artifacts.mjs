@@ -10,7 +10,7 @@ const releaseRoot = join(root, 'release')
 const packageVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
 const versionReleaseDir = join(releaseRoot, packageVersion)
 const releaseDir = existsSync(versionReleaseDir) ? versionReleaseDir : releaseRoot
-const minSizeBytes = Number(process.env.KATASENSEI_MIN_ARTIFACT_BYTES ?? 1024 * 1024)
+const minSizeBytes = Number(process.env.GOMENTOR_MIN_ARTIFACT_BYTES ?? 1024 * 1024)
 
 function walk(dir) {
   if (!existsSync(dir)) return []

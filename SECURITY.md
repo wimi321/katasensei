@@ -1,16 +1,16 @@
 # Security Policy
 
-KataSensei handles local SGFs, student profiles, API keys, board screenshots, and LLM requests. Please treat privacy and local-system safety as product requirements.
+GoMentor handles local SGFs, student profiles, API keys, board screenshots, and LLM requests. Please treat privacy and local-system safety as product requirements.
 
 ## Supported Versions
 
-KataSensei is currently in early public development. Security fixes target the latest `main` branch until stable releases begin.
+GoMentor is currently in early public development. Security fixes target the latest `main` branch until stable releases begin.
 
 ## Reporting a Vulnerability
 
 Please report vulnerabilities privately through GitHub Security Advisories on the repository:
 
-https://github.com/wimi321/katasensei/security/advisories
+https://github.com/wimi321/GoMentor/security/advisories
 
 Do not open a public issue for vulnerabilities that include exploit details, private SGFs, API keys, personal data, or local paths.
 
@@ -23,4 +23,4 @@ Do not open a public issue for vulnerabilities that include exploit details, pri
 
 ## Local Execution
 
-KataSensei runs local processes such as KataGo. Changes that alter binary discovery, model loading, local file access, shell execution, or automatic installation should receive extra review.
+GoMentor runs local processes such as KataGo. Changes that alter binary discovery, model loading, local file access, shell execution, or automatic installation should receive extra review.

@@ -184,13 +184,13 @@ function checkDocs() {
 
 function checkManualReleaseBlockers() {
   const signingEvidence =
-    process.env.KATASENSEI_SIGNING_READY === '1' ||
+    process.env.GOMENTOR_SIGNING_READY === '1' ||
     existsSync(join(root, 'release-evidence', 'signing-ready.json'))
   const windowsSmokeEvidence =
-    process.env.KATASENSEI_WINDOWS_SMOKE_READY === '1' ||
+    process.env.GOMENTOR_WINDOWS_SMOKE_READY === '1' ||
     existsSync(join(root, 'release-evidence', 'windows-smoke-ready.json'))
   const visualQaEvidence =
-    process.env.KATASENSEI_VISUAL_QA_READY === '1' ||
+    process.env.GOMENTOR_VISUAL_QA_READY === '1' ||
     existsSync(join(root, 'release-evidence', 'visual-qa-ready.json'))
 
   push(

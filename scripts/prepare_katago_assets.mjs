@@ -58,9 +58,9 @@ async function main() {
     throw new Error(`Unsupported platform key: ${key}. Supported: ${Object.keys(manifest.supportedPlatforms ?? {}).join(', ')}`)
   }
 
-  const binarySource = arg('binary', process.env.KATASENSEI_KATAGO_BINARY ?? '')
-  const modelSource = arg('model', process.env.KATASENSEI_KATAGO_MODEL ?? '')
-  const assetDir = arg('asset-dir', process.env.KATASENSEI_KATAGO_ASSET_DIR ?? '')
+  const binarySource = arg('binary', process.env.GOMENTOR_KATAGO_BINARY ?? '')
+  const modelSource = arg('model', process.env.GOMENTOR_KATAGO_MODEL ?? '')
+  const assetDir = arg('asset-dir', process.env.GOMENTOR_KATAGO_ASSET_DIR ?? '')
 
   const binaryFallback = assetDir ? join(resolve(assetDir), platform.binaryPath) : ''
   const modelFallback = assetDir ? join(resolve(assetDir), manifest.modelPath) : ''

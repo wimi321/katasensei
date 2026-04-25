@@ -1,4 +1,4 @@
-# KataSensei Visual QA Capture
+# GoMentor Visual QA Capture
 
 Sprint 7 adds an internal UI Gallery for repeatable visual review. It uses mock data only and does not require real KataGo, LLM, Fox sync, or API keys.
 
@@ -22,7 +22,7 @@ http://localhost:5173/?ui-gallery=1
 If Playwright is available locally, run:
 
 ```bash
-KATASENSEI_UI_GALLERY_URL="http://localhost:5173/#/ui-gallery" \
+GOMENTOR_UI_GALLERY_URL="http://localhost:5173/#/ui-gallery" \
 node scripts/capture_ui_gallery.mjs
 ```
 

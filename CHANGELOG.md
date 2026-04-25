@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to KataSensei will be documented here.
+All notable changes to GoMentor will be documented here.
 
 This project follows semantic versioning once public releases begin.
 

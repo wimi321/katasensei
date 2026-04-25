@@ -1,4 +1,4 @@
-# KataSensei
+# GoMentor
 
 KataGo 분석과 LLM 설명을 결합해서, 바둑 학습자가 단순히 실수 위치만 보는 것이 아니라 왜 나빴는지와 어떻게 고쳐야 하는지까지 이해할 수 있게 해 주는 데스크톱 복기 앱입니다.
 
@@ -28,5 +28,5 @@ pnpm dev
 기본 저장 위치:
 
 ```text
-~/.katasensei/reviews/<game-id>/
+~/.gomentor/reviews/<game-id>/
 ```

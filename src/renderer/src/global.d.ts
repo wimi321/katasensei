@@ -39,7 +39,7 @@ type DesktopCommand =
 
 declare global {
   interface Window {
-    katasensei: {
+    gomentor: {
       getDashboard: () => Promise<DashboardData>
       getGameRecord: (gameId: string) => Promise<GameRecord>
       importLibrary: () => Promise<LibraryImportResult>

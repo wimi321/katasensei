@@ -14,7 +14,7 @@ function isReleaseRuntime(): boolean {
 async function checkWritableHome(): Promise<DiagnosticCheck> {
   try {
     await mkdir(appHome, { recursive: true })
-    const probePath = join(appHome, '.katasensei-write-test')
+    const probePath = join(appHome, '.gomentor-write-test')
     await writeFile(probePath, 'ok', 'utf8')
     await unlink(probePath)
     return {
@@ -171,7 +171,7 @@ function summarize(checks: DiagnosticCheck[]): Pick<DiagnosticsReport, 'overall'
   }
   return {
     overall: 'ready',
-    summary: 'KataSensei 已准备好开始复盘。'
+    summary: 'GoMentor 已准备好开始复盘。'
   }
 }
 

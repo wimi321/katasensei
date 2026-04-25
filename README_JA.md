@@ -1,4 +1,4 @@
-# KataSensei
+# GoMentor
 
 KataGo の判断力と LLM の説明力を組み合わせ、囲碁学習者が「どこで損をしたか」だけでなく「なぜそうなるのか」まで理解できるようにするデスクトップ復盤アプリです。
 
@@ -28,5 +28,5 @@ pnpm dev
 保存先:
 
 ```text
-~/.katasensei/reviews/<game-id>/
+~/.gomentor/reviews/<game-id>/
 ```

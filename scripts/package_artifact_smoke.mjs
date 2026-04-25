@@ -33,7 +33,7 @@ const hasMacX64Dmg = artifacts.some((file) => /mac-x64\.dmg$/i.test(file))
 const hasWinX64Installer = artifacts.some((file) => /win-x64\.exe$/i.test(file) && !/portable/i.test(file))
 const winArm64 = artifacts.filter((file) => /win-arm64/i.test(file))
 
-console.log('\nKataSensei Package Artifact Smoke Check')
+console.log('\nGoMentor Package Artifact Smoke Check')
 console.log('======================================')
 console.log(`mode=${mode}`)
 console.log(`releaseRoot=${releaseRoot}`)

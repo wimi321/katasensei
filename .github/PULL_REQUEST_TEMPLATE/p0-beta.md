@@ -1,4 +1,4 @@
-# KataSensei P0 Beta PR
+# GoMentor P0 Beta PR
 
 ## Summary
 

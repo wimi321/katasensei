@@ -61,9 +61,9 @@ jobs:
       - name: Prepare KataGo assets
         shell: bash
         env:
-          KATASENSEI_KATAGO_ASSET_DIR: ${{ secrets.KATASENSEI_KATAGO_ASSET_DIR }}
-          KATASENSEI_KATAGO_BINARY: ${{ secrets.KATASENSEI_KATAGO_BINARY }}
-          KATASENSEI_KATAGO_MODEL: ${{ secrets.KATASENSEI_KATAGO_MODEL }}
+          GOMENTOR_KATAGO_ASSET_DIR: ${{ secrets.GOMENTOR_KATAGO_ASSET_DIR }}
+          GOMENTOR_KATAGO_BINARY: ${{ secrets.GOMENTOR_KATAGO_BINARY }}
+          GOMENTOR_KATAGO_MODEL: ${{ secrets.GOMENTOR_KATAGO_MODEL }}
         run: |
           node scripts/prepare_katago_assets.mjs
           node scripts/check_katago_assets.mjs --mode=release
@@ -87,7 +87,7 @@ jobs:
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: katasensei-${{ matrix.name }}
+          name: GoMentor-${{ matrix.name }}
           path: |
             release/**/*.AppImage
             release/**/*.deb

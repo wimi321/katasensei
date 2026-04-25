@@ -25,7 +25,7 @@ export function TeacherComposerPro({ value, busy = false, actions = [], onChange
   return (
     <form className="ks-composer-pro" onSubmit={onSubmit}>
       <div className="ks-composer-pro__chrome">
-        <span>Ask KataSensei</span>
+        <span>Ask GoMentor</span>
         <small>{busy ? 'Reading board...' : '自然提问，老师会自己调用工具'}</small>
       </div>
       {actions.length > 0 ? (

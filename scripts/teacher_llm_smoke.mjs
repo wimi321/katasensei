@@ -101,7 +101,7 @@ async function startMockLlmServer(port) {
 }
 
 async function seedSmokeHome(homeRoot) {
-  const appHome = join(homeRoot, '.katasensei')
+  const appHome = join(homeRoot, '.gomentor')
   const libraryDir = join(appHome, 'library', 'upload')
   await mkdir(libraryDir, { recursive: true })
   const sgfPath = join(libraryDir, 'teacher-smoke.sgf')
@@ -134,8 +134,8 @@ function startElectron({ homeRoot, cdpPort }) {
     cwd: root,
     env: {
       ...process.env,
-      KATASENSEI_APP_HOME: join(homeRoot, '.katasensei'),
-      KATASENSEI_REMOTE_DEBUGGING_PORT: String(cdpPort),
+      GOMENTOR_APP_HOME: join(homeRoot, '.gomentor'),
+      GOMENTOR_REMOTE_DEBUGGING_PORT: String(cdpPort),
       ELECTRON_ENABLE_LOGGING: '1'
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -221,7 +221,7 @@ async function evaluateInRenderer(wsUrl, expression, timeoutMs = 180_000) {
 }
 
 async function main() {
-  const homeRoot = await mkdtemp(join(tmpdir(), 'katasensei-teacher-home-'))
+  const homeRoot = await mkdtemp(join(tmpdir(), 'gomentor-teacher-home-'))
   const mockPort = await freePort()
   const cdpPort = await freePort()
   const mock = await startMockLlmServer(mockPort)
@@ -234,13 +234,13 @@ async function main() {
       (async () => {
         const tinyPng = ${JSON.stringify(tinyPng)};
         const baseUrl = 'http://127.0.0.1:${mockPort}/v1';
-        const probe = await window.katasensei.testLlmSettings({
+        const probe = await window.gomentor.testLlmSettings({
           llmBaseUrl: baseUrl,
           llmApiKey: 'smoke-key',
           llmModel: 'gpt-5.4'
         });
         if (!probe.ok) throw new Error('LLM probe failed: ' + probe.message);
-        const dashboard = await window.katasensei.updateSettings({
+        const dashboard = await window.gomentor.updateSettings({
           llmBaseUrl: baseUrl,
           llmApiKey: 'smoke-key',
           llmModel: 'gpt-5.4',
@@ -248,14 +248,14 @@ async function main() {
         });
         const game = dashboard.games[0];
         if (!game) throw new Error('No smoke game loaded');
-        const record = await window.katasensei.getGameRecord(game.id);
+        const record = await window.gomentor.getGameRecord(game.id);
         const moveNumber = Math.min(8, record.moves.length);
-        const analysis = await window.katasensei.analyzePosition({
+        const analysis = await window.gomentor.analyzePosition({
           gameId: game.id,
           moveNumber,
           maxVisits: 24
         });
-        const result = await window.katasensei.runTeacherTask({
+        const result = await window.gomentor.runTeacherTask({
           mode: 'current-move',
           prompt: '请分析当前手，输出结构化 JSON 讲解。',
           gameId: game.id,

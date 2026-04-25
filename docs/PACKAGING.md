@@ -1,6 +1,6 @@
 # Packaging
 
-KataSensei uses `electron-builder` for desktop packaging.
+GoMentor uses `electron-builder` for desktop packaging.
 
 ## Local Commands
 

@@ -1,18 +1,18 @@
 {
-  "name": "katasensei",
+  "name": "gomentor",
   "version": "0.2.0-beta.1",
   "description": "KataGo + multimodal LLM desktop workbench for Go students and teachers.",
   "main": "out/main/index.js",
   "type": "module",
   "author": "haoc",
   "license": "MIT",
-  "homepage": "https://github.com/wimi321/katasensei#readme",
+  "homepage": "https://github.com/wimi321/GoMentor#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wimi321/katasensei.git"
+    "url": "git+https://github.com/wimi321/GoMentor.git"
   },
   "bugs": {
-    "url": "https://github.com/wimi321/katasensei/issues"
+    "url": "https://github.com/wimi321/GoMentor/issues"
   },
   "packageManager": "pnpm@10.30.3",
   "scripts": {
@@ -63,8 +63,8 @@
     "vite": "^7.1.5"
   },
   "build": {
-    "appId": "com.katasensei.desktop",
-    "productName": "KataSensei",
+    "appId": "com.gomentor.desktop",
+    "productName": "GoMentor",
     "icon": "assets/icon",
     "directories": {
       "output": "release/${version}"
@@ -150,7 +150,7 @@
     "publish": {
       "provider": "github",
       "owner": "wimi321",
-      "repo": "katasensei"
+      "repo": "GoMentor"
     }
   }
 }

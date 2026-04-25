@@ -88,10 +88,10 @@ const api = {
   }
 }
 
-contextBridge.exposeInMainWorld('katasensei', api)
+contextBridge.exposeInMainWorld('gomentor', api)
 
 declare global {
   interface Window {
-    katasensei: typeof api
+    gomentor: typeof api
   }
 }

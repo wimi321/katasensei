@@ -98,7 +98,7 @@ function binaryCandidates(): string[] {
   const file = platformBinaryName()
   const roots = resourceRoots()
   return [
-    process.env.KATASENSEI_KATAGO_BIN ?? '',
+    process.env.GOMENTOR_KATAGO_BIN ?? '',
     ...roots.flatMap((root) => [
       join(root, 'bin', platformKey(), file),
       join(root, 'bin', process.platform, file),

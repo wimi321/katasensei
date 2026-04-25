@@ -313,7 +313,7 @@ export function App(): ReactElement {
   }, [selectedGame?.id])
 
   useEffect(() => {
-    const dispose = window.katasensei.onDesktopCommand?.((command) => runDesktopCommand(command))
+    const dispose = window.gomentor.onDesktopCommand?.((command) => runDesktopCommand(command))
     return () => dispose?.()
   }, [selectedGame?.id, moveNumber, busy, record, dashboard.games.length])
 
@@ -335,7 +335,7 @@ export function App(): ReactElement {
 
   async function refresh(): Promise<void> {
     try {
-      const next = await window.katasensei.getDashboard()
+      const next = await window.gomentor.getDashboard()
       setDashboard(next)
       if (!playerName && next.settings.defaultPlayerName) {
         setPlayerName(next.settings.defaultPlayerName)
@@ -347,7 +347,7 @@ export function App(): ReactElement {
 
   async function refreshKataGoAssets(): Promise<void> {
     try {
-      setKatagoAssets(await window.katasensei.inspectKataGoAssets())
+      setKatagoAssets(await window.gomentor.inspectKataGoAssets())
     } catch (cause) {
       setError(`KataGo 资源检查失败: ${String(cause)}`)
     }
@@ -355,7 +355,7 @@ export function App(): ReactElement {
 
   async function loadRecord(gameId: string): Promise<void> {
     try {
-      const next = await window.katasensei.getGameRecord(gameId)
+      const next = await window.gomentor.getGameRecord(gameId)
       setRecord(next)
       setMoveNumber(next.moves.length)
       setAnalysis(null)
@@ -380,7 +380,7 @@ export function App(): ReactElement {
 
   async function loadBoundPlayer(gameId: string): Promise<void> {
     try {
-      const student = await window.katasensei.getStudentForGame(gameId)
+      const student = await window.gomentor.getStudentForGame(gameId)
       if (selectedGameIdRef.current === gameId) {
         setCurrentStudent(student)
       }
@@ -397,7 +397,7 @@ export function App(): ReactElement {
     graphRunId.current = runId
     setGraphBusy(true)
     setGraphProgress('启动快速胜率图')
-    const disposeProgress = window.katasensei.onAnalyzeGameQuickProgress((progress: AnalyzeGameQuickProgress) => {
+    const disposeProgress = window.gomentor.onAnalyzeGameQuickProgress((progress: AnalyzeGameQuickProgress) => {
       if (graphRunId.current !== runId || progress.runId !== runId || progress.gameId !== gameId) {
         return
       }
@@ -409,7 +409,7 @@ export function App(): ReactElement {
       }
     })
     try {
-      const quickEvaluations = await window.katasensei.analyzeGameQuick({
+      const quickEvaluations = await window.gomentor.analyzeGameQuick({
         gameId,
         maxVisits: 12,
         runId
@@ -446,7 +446,7 @@ export function App(): ReactElement {
     setBusy('import')
     setError('')
     try {
-      const { dashboard: next, imported } = await window.katasensei.importLibrary()
+      const { dashboard: next, imported } = await window.gomentor.importLibrary()
       setDashboard(next)
       if (imported[0]) {
         setSelectedId(imported[0].id)
@@ -465,7 +465,7 @@ export function App(): ReactElement {
     setBusy('fox')
     setError('')
     try {
-      const { dashboard: next, result, student } = await window.katasensei.syncFox({
+      const { dashboard: next, result, student } = await window.gomentor.syncFox({
         keyword: foxKeyword
       })
       setDashboard(next)
@@ -485,7 +485,7 @@ export function App(): ReactElement {
 
   async function openStudentBinding(game: LibraryGame): Promise<void> {
     try {
-      const suggestions = await window.katasensei.suggestStudentBindings({
+      const suggestions = await window.gomentor.suggestStudentBindings({
         blackName: game.black,
         whiteName: game.white,
         source: game.source,
@@ -502,7 +502,7 @@ export function App(): ReactElement {
       return
     }
     try {
-      const student = await window.katasensei.bindSgfGameToStudent({
+      const student = await window.gomentor.bindSgfGameToStudent({
         gameId: studentBinding.game.id,
         studentId: input.studentId,
         aliasFromPlayerName: input.aliasFromPlayerName
@@ -520,12 +520,12 @@ export function App(): ReactElement {
     }
     try {
       const student = input.foxNickname
-        ? await window.katasensei.bindFoxGamesToStudent({
+        ? await window.gomentor.bindFoxGamesToStudent({
             foxNickname: input.foxNickname,
             gameIds: [studentBinding.game.id],
             aliases: [input.displayName, input.aliasFromPlayerName ?? ''].filter(Boolean)
           })
-        : await window.katasensei.bindSgfGameToStudent({
+        : await window.gomentor.bindSgfGameToStudent({
             gameId: studentBinding.game.id,
             createDisplayName: input.displayName,
             aliasFromPlayerName: input.aliasFromPlayerName
@@ -542,7 +542,7 @@ export function App(): ReactElement {
     setError('')
     try {
       const formData = new FormData(form)
-      const next = await window.katasensei.updateSettings({
+      const next = await window.gomentor.updateSettings({
         katagoModelPreset: String(formData.get('katagoModelPreset') ?? dashboard.settings.katagoModelPreset) as KataGoModelPresetId,
         llmBaseUrl: String(formData.get('llmBaseUrl') ?? ''),
         llmApiKey: String(formData.get('llmApiKey') ?? ''),
@@ -568,7 +568,7 @@ export function App(): ReactElement {
     setLlmTestMessage('')
     try {
       const formData = new FormData(form)
-      const result = await window.katasensei.testLlmSettings({
+      const result = await window.gomentor.testLlmSettings({
         llmBaseUrl: String(formData.get('llmBaseUrl') ?? ''),
         llmApiKey: String(formData.get('llmApiKey') ?? ''),
         llmModel: String(formData.get('llmModel') ?? '')
@@ -586,13 +586,13 @@ export function App(): ReactElement {
     setKataGoBenchmarkMessage('正在调用 KataGo 官方 benchmark，通常需要几十秒。')
     setError('')
     try {
-      if (typeof window.katasensei.benchmarkKataGo !== 'function') {
+      if (typeof window.gomentor.benchmarkKataGo !== 'function') {
         throw new Error('测速服务尚未加载，请重启应用后再试。')
       }
-      const result = await window.katasensei.benchmarkKataGo()
+      const result = await window.gomentor.benchmarkKataGo()
       setKataGoBenchmark(result)
       setKataGoBenchmarkMessage(`已优化：推荐 ${result.recommendedThreads} 线程，${formatSearchSpeed(result.visitsPerSecond)}。`)
-      setDashboard(await window.katasensei.getDashboard())
+      setDashboard(await window.gomentor.getDashboard())
       void refreshKataGoAssets()
       if (selectedGame && record) {
         pauseLiveAnalysis('测速完成，准备使用新配置')
@@ -663,13 +663,13 @@ export function App(): ReactElement {
     assistantMessageId: string
   ): Promise<TeacherRunResult> {
     const runId = crypto.randomUUID()
-    const dispose = window.katasensei.onTeacherRunProgress((progress) => {
+    const dispose = window.gomentor.onTeacherRunProgress((progress) => {
       if (progress.runId === runId) {
         mergeTeacherProgress(assistantMessageId, progress)
       }
     })
     try {
-      const result = await window.katasensei.runTeacherTask({
+      const result = await window.gomentor.runTeacherTask({
         ...request,
         runId
       })
@@ -760,8 +760,8 @@ export function App(): ReactElement {
       round: 0
     })
 
-    if (typeof window.katasensei.analyzePositionStream === 'function') {
-      const disposeProgress = window.katasensei.onAnalyzePositionProgress((progress) => {
+    if (typeof window.gomentor.analyzePositionStream === 'function') {
+      const disposeProgress = window.gomentor.onAnalyzePositionProgress((progress) => {
         if (
           liveAnalysisRunId.current !== runId ||
           progress.runId !== runId ||
@@ -799,7 +799,7 @@ export function App(): ReactElement {
         })
       })
       try {
-        const finalAnalysis = await window.katasensei.analyzePositionStream({
+        const finalAnalysis = await window.gomentor.analyzePositionStream({
           gameId,
           moveNumber: targetMove,
           maxVisits: LIVE_ANALYSIS_TOTAL_VISIT_LIMIT,
@@ -850,7 +850,7 @@ export function App(): ReactElement {
         targetMoveNumber: targetMove
       }))
       try {
-        const nextAnalysis = await window.katasensei.analyzePosition({
+        const nextAnalysis = await window.gomentor.analyzePosition({
           gameId,
           moveNumber: targetMove,
           maxVisits
@@ -939,7 +939,7 @@ export function App(): ReactElement {
     appendMessage({ role: 'student', content: ask })
     const assistantMessageId = appendMessage({ role: 'teacher', content: '', status: 'running', toolLogs: [] })
     try {
-      const nextAnalysis = await window.katasensei.analyzePosition({
+      const nextAnalysis = await window.gomentor.analyzePosition({
         gameId: selectedGame.id,
         moveNumber: targetMove,
         maxVisits: 520
@@ -1049,7 +1049,7 @@ export function App(): ReactElement {
     try {
       const wantsCurrentMove = /当前手|这手|这一手|本手/.test(text)
       if (wantsCurrentMove && record && selectedGame) {
-        const nextAnalysis = await window.katasensei.analyzePosition({
+        const nextAnalysis = await window.gomentor.analyzePosition({
           gameId: selectedGame.id,
           moveNumber,
           maxVisits: 520
@@ -1118,7 +1118,7 @@ export function App(): ReactElement {
             {!libraryCollapsed ? (
               <div className="brand-mark">
                 <img src={logoUrl} alt="" aria-hidden="true" />
-                <strong>KataSensei</strong>
+                <strong>GoMentor</strong>
               </div>
             ) : null}
           </div>
@@ -1382,7 +1382,7 @@ function DesktopTitleBar({
       <div className="desktop-titlebar__brand">
         <img src={logoUrl} alt="" aria-hidden="true" />
         <div>
-          <strong>KataSensei</strong>
+          <strong>GoMentor</strong>
           <span>AI Go Workbench</span>
         </div>
       </div>
@@ -1471,7 +1471,7 @@ function CommandPalette({
     return null
   }
   return (
-    <div className="desktop-command-palette" role="dialog" aria-modal="true" aria-label="KataSensei command palette" onMouseDown={onClose}>
+    <div className="desktop-command-palette" role="dialog" aria-modal="true" aria-label="GoMentor command palette" onMouseDown={onClose}>
       <section className="desktop-command-palette__panel" onMouseDown={(event) => event.stopPropagation()}>
         <header>
           <span>Command Palette</span>
@@ -1529,7 +1529,7 @@ function DesktopPreferencesModal({
     return null
   }
   return (
-    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="KataSensei preferences" onMouseDown={onClose}>
+    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="GoMentor preferences" onMouseDown={onClose}>
       <section className="desktop-preferences__window" onMouseDown={(event) => event.stopPropagation()}>
         <header className="desktop-preferences__titlebar">
           <div>
@@ -1708,7 +1708,7 @@ function TeacherPanel({
       <header className="teacher-editor-head">
         <div className="teacher-editor-title">
           <span>Agent thread</span>
-          <strong>KataSensei</strong>
+          <strong>GoMentor</strong>
           <div className="teacher-editor-meta">
             <em>{modelName}</em>
             <em>{katagoLabel}</em>
@@ -1726,7 +1726,7 @@ function TeacherPanel({
           <article key={message.id} className={`message message--${message.role} agent-turn agent-turn--${message.role}`}>
             <div className="agent-turn__body">
               <header className="agent-turn__head">
-                <strong>{message.role === 'teacher' ? 'KataSensei' : 'User'}</strong>
+                <strong>{message.role === 'teacher' ? 'GoMentor' : 'User'}</strong>
                 <small>{message.status ?? (message.result ? 'completed' : message.role === 'teacher' ? 'assistant' : 'prompt')}</small>
               </header>
               <TeacherInlineResponse
@@ -1741,7 +1741,7 @@ function TeacherPanel({
           <div className="message message--teacher message--running agent-turn agent-turn--teacher agent-turn--running">
             <div className="agent-turn__body">
               <header className="agent-turn__head">
-                <strong>KataSensei</strong>
+                <strong>GoMentor</strong>
                 <small>running</small>
               </header>
               <div className="codex-working">
@@ -1840,10 +1840,10 @@ function SettingsDrawer({
   async function refreshReleaseReadiness(): Promise<void> {
     try {
       setReleaseReadinessError('')
-      if (!window.katasensei.getReleaseReadiness) {
+      if (!window.gomentor.getReleaseReadiness) {
         return
       }
-      setReleaseReadiness(await window.katasensei.getReleaseReadiness())
+      setReleaseReadiness(await window.gomentor.getReleaseReadiness())
     } catch (cause) {
       setReleaseReadinessError(`Beta 验收状态读取失败: ${String(cause)}`)
     }

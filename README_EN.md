@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="./assets/logo.png" alt="KataSensei logo" width="132" height="132" />
+  <img src="./assets/logo.png" alt="GoMentor logo" width="132" height="132" />
 </p>
 
-# KataSensei
+# GoMentor
 
 > An agentic Go teacher for desktop. KataGo judges the position, a multimodal LLM explains the lesson, and a long-term student profile keeps the coaching consistent.
 
-[![CI](https://github.com/wimi321/katasensei/actions/workflows/ci.yml/badge.svg)](https://github.com/wimi321/katasensei/actions/workflows/ci.yml)
-[![Release](https://github.com/wimi321/katasensei/actions/workflows/release.yml/badge.svg)](https://github.com/wimi321/katasensei/actions/workflows/release.yml)
+[![CI](https://github.com/wimi321/GoMentor/actions/workflows/ci.yml/badge.svg)](https://github.com/wimi321/GoMentor/actions/workflows/ci.yml)
+[![Release](https://github.com/wimi321/GoMentor/actions/workflows/release.yml/badge.svg)](https://github.com/wimi321/GoMentor/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-KataSensei is a local-first, cross-platform desktop workbench for Go students and teachers.
+GoMentor is a local-first, cross-platform desktop workbench for Go students and teachers.
 
 - Left rail: sync public Fox games, upload SGF, and browse the game library.
 - Center: KTrain/Lizzie-inspired board, player info, current move, candidate points, and full-game winrate graph.
@@ -20,7 +20,7 @@ The product goal is not "chat beside a board". The teacher is an agent: users ca
 
 ## Status
 
-KataSensei is an early public project. The core workbench, SGF parsing, Fox sync, KataGo analysis, quick winrate graph, teacher agent, multimodal LLM settings, local knowledge base, and student profile storage are implemented.
+GoMentor is an early public project. The core workbench, SGF parsing, Fox sync, KataGo analysis, quick winrate graph, teacher agent, multimodal LLM settings, local knowledge base, and student profile storage are implemented.
 
 Still in progress:
 
@@ -36,7 +36,7 @@ Still in progress:
 - **Multimodal current-move teaching**: sends board screenshot + KataGo facts + selected knowledge cards to an OpenAI-compatible multimodal model.
 - **Full-game and recent-game reviews**: extracts mistakes, updates student profile, and writes Markdown/JSON reports.
 - **Local knowledge base**: packaged Go concepts for stable teaching language.
-- **Local-first storage**: games, reports, settings, and student profiles live under `~/.katasensei`.
+- **Local-first storage**: games, reports, settings, and student profiles live under `~/.gomentor`.
 - **Cross-platform desktop**: Electron build targets macOS, Windows, and Linux.
 
 ## Architecture
@@ -100,7 +100,7 @@ GitHub release builds run on native macOS, Windows, and Linux runners when a `v*
 
 ## KataGo Runtime
 
-KataSensei first looks for a bundled runtime:
+GoMentor first looks for a bundled runtime:
 
 ```text
 data/katago/

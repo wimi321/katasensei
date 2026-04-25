@@ -1,4 +1,4 @@
-# KataSensei v0.2.0-beta.1 P0 Beta Release Checklist
+# GoMentor v0.2.0-beta.1 P0 Beta Release Checklist
 
 ## 1. 必备检查
 

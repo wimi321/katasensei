@@ -1,6 +1,6 @@
 # Windows Code Signing
 
-KataSensei public beta installers should be code signed before distribution. Unsigned Windows builds are internal beta artifacts only and may trigger SmartScreen warnings.
+GoMentor public beta installers should be code signed before distribution. Unsigned Windows builds are internal beta artifacts only and may trigger SmartScreen warnings.
 
 ## Option 1: EV/OV Certificate
 
@@ -26,8 +26,8 @@ pnpm dist:win
 
 P0 beta publishes Windows x64 only:
 
-- `KataSensei-0.2.0-beta.1-win-x64.exe`
-- optional portable: `KataSensei-0.2.0-beta.1-win-x64-portable.exe`
+- `GoMentor-0.2.0-beta.1-win-x64.exe`
+- optional portable: `GoMentor-0.2.0-beta.1-win-x64-portable.exe`
 
 Do not publish Windows ARM64 until `win32-arm64` KataGo assets and checks exist.
 
@@ -36,8 +36,8 @@ Do not publish Windows ARM64 until `win32-arm64` KataGo assets and checks exist.
 On Windows:
 
 ```powershell
-Get-AuthenticodeSignature .\release\0.2.0-beta.1\KataSensei-0.2.0-beta.1-win-x64.exe
-signtool verify /pa /v .\release\0.2.0-beta.1\KataSensei-0.2.0-beta.1-win-x64.exe
+Get-AuthenticodeSignature .\release\0.2.0-beta.1\GoMentor-0.2.0-beta.1-win-x64.exe
+signtool verify /pa /v .\release\0.2.0-beta.1\GoMentor-0.2.0-beta.1-win-x64.exe
 ```
 
 The installer should show a valid publisher. If it is unsigned, mark the build as internal beta only.

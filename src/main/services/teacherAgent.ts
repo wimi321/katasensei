@@ -67,8 +67,8 @@ const TOOL_CATALOG: TeacherToolDefinition[] = [
   },
   {
     name: 'settings.writeAppConfig',
-    purpose: '把探测到的 KataGo 路径、配置、模型和本机代理写入 KataSensei 应用配置。',
-    privateInputs: ['KataSensei 本地设置', '本机代理 API key']
+    purpose: '把探测到的 KataGo 路径、配置、模型和本机代理写入 GoMentor 应用配置。',
+    privateInputs: ['GoMentor 本地设置', '本机代理 API key']
   },
   {
     name: 'katago.verifyAnalysis',
@@ -282,7 +282,7 @@ function systemPrompt(level: CoachUserLevel): string {
     dan: '学生是高段水平，请简洁、精确，重点讲判断和变化。'
   }
   return [
-    '你是 KataSensei 的围棋老师智能体。',
+    '你是 GoMentor 的围棋老师智能体。',
     '你不是固定按钮流程，也不是只会复盘当前手的聊天机器人；你会像 Claude Code 一样先理解任务、规划步骤、选择工具、整合结果。',
     '只要工具目录里存在能力，就可以为了完成学生的学习目标主动使用；不要因为任务不属于预设模板就拒绝或改写成模板。',
     'KataGo 结构化数据永远是事实裁判；棋盘截图只用于视觉理解；知识库只用于教学解释。',
@@ -1002,7 +1002,7 @@ async function runOpenEndedTask(request: TeacherRunRequest, logs: TeacherToolLog
       emitToolState(context, logs, '本机环境探测失败，继续使用现有配置。')
     }
 
-    const writeLog = startTool(logs, 'settings.writeAppConfig', '写入应用配置', '把探测结果写入 KataSensei 本地配置，供老师后续直接调用。')
+    const writeLog = startTool(logs, 'settings.writeAppConfig', '写入应用配置', '把探测结果写入 GoMentor 本地配置，供老师后续直接调用。')
     emitToolState(context, logs, '正在写入可用配置。')
     try {
       const nextSettings = await applyDetectedDefaults(getSettings())

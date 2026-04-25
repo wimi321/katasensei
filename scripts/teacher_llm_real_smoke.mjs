@@ -29,7 +29,7 @@ function startElectron({ cdpPort }) {
     cwd: root,
     env: {
       ...process.env,
-      KATASENSEI_REMOTE_DEBUGGING_PORT: String(cdpPort),
+      GOMENTOR_REMOTE_DEBUGGING_PORT: String(cdpPort),
       ELECTRON_ENABLE_LOGGING: '1'
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -283,20 +283,20 @@ const smokeExpression = `
     return canvas.toDataURL('image/png');
   }
 
-  const dashboard = await window.katasensei.getDashboard();
+  const dashboard = await window.gomentor.getDashboard();
   if (!dashboard.systemProfile?.hasLlmApiKey) {
     throw new Error('No saved LLM API key. Configure settings before running real smoke.');
   }
   if (!dashboard.games?.length) {
     throw new Error('No public SGF games in the local library.');
   }
-  const probe = await window.katasensei.testLlmSettings({ llmBaseUrl: '', llmApiKey: '', llmModel: '' });
+  const probe = await window.gomentor.testLlmSettings({ llmBaseUrl: '', llmApiKey: '', llmModel: '' });
   const game = dashboard.games[0];
-  const record = await window.katasensei.getGameRecord(game.id);
+  const record = await window.gomentor.getGameRecord(game.id);
   const moveNumber = Math.min(80, Math.max(1, record.moves.length));
-  const analysis = await window.katasensei.analyzePosition({ gameId: game.id, moveNumber, maxVisits: 96 });
+  const analysis = await window.gomentor.analyzePosition({ gameId: game.id, moveNumber, maxVisits: 96 });
   const boardImageDataUrl = renderBoardImage(record, moveNumber, analysis);
-  const result = await window.katasensei.runTeacherTask({
+  const result = await window.gomentor.runTeacherTask({
     mode: 'current-move',
     prompt: '这是一盘公开棋谱。请调用真实多模态能力，结合棋盘截图、KataGo 数据和本地知识库，给出当前手的结构化中文讲解。',
     gameId: game.id,

@@ -110,7 +110,7 @@ test('TeacherRunCardPro renders structured product modules', () => {
   assert.match(app, /Agent thread/)
   assert.match(app, /搜索野狐棋谱/)
   const composer = read('src/renderer/src/features/teacher/TeacherComposerPro.tsx')
-  assert.match(composer, /Ask KataSensei/)
+  assert.match(composer, /Ask GoMentor/)
   assert.match(composer, /ks-composer-pro__actions/)
   assert.match(composer, /ks-composer-pro__chrome/)
   const agent = read('src/main/services/teacherAgent.ts')

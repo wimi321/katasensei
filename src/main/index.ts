@@ -35,7 +35,7 @@ type DesktopCommand =
   | 'toggle-library'
   | 'open-ui-gallery'
 
-const remoteDebuggingPort = process.env.KATASENSEI_REMOTE_DEBUGGING_PORT
+const remoteDebuggingPort = process.env.GOMENTOR_REMOTE_DEBUGGING_PORT
 if (remoteDebuggingPort && /^\d+$/.test(remoteDebuggingPort)) {
   app.commandLine.appendSwitch('remote-debugging-port', remoteDebuggingPort)
 }
@@ -49,7 +49,7 @@ function assertManagedPath(filePath: string): string {
   const target = resolve(filePath)
   const rel = relative(root, target)
   if (rel.startsWith('..') || isAbsolute(rel)) {
-    throw new Error('只能打开 KataSensei 管理目录中的文件')
+    throw new Error('只能打开 GoMentor 管理目录中的文件')
   }
   return target
 }
@@ -60,7 +60,7 @@ async function createWindow(): Promise<void> {
     height: 940,
     minWidth: 1180,
     minHeight: 760,
-    title: 'KataSensei',
+    title: 'GoMentor',
     icon: assetPath('icon.png'),
     backgroundColor: '#0f1115',
     ...(process.platform === 'darwin'
