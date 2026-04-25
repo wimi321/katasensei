@@ -680,7 +680,7 @@ label,
 
 .board-workspace {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 136px;
+  grid-template-rows: auto minmax(0, 1fr) 150px;
   min-width: 0;
   min-height: 0;
   background: var(--surface-0);
@@ -692,14 +692,14 @@ label,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.2;
 }
 
 .topbar {
-  min-height: 62px;
-  padding: 9px 16px;
-  flex-wrap: wrap;
+  min-height: 48px;
+  padding: 6px 14px;
+  flex-wrap: nowrap;
 }
 
 .topbar > div:first-child {
@@ -715,7 +715,7 @@ label,
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: 8px 18px 10px;
+  padding: 4px 18px 6px;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 8%, rgb(214 182 110 / 0.06), transparent 34%),
@@ -755,22 +755,22 @@ label,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  max-width: min(100%, 360px);
-  min-height: 30px;
-  padding: 0 10px;
+  max-width: min(100%, 430px);
+  min-height: 28px;
+  padding: 0 11px;
   overflow: hidden;
   border: 1px solid var(--line-soft);
   border-radius: 999px;
   background: rgb(15 18 21 / 0.76);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
   color: #a7afb7;
-  font-size: 12px;
+  font-size: 11.5px;
   white-space: nowrap;
 }
 
 .topbar-move-info strong {
   color: #efe8d8;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .topbar-move-info span,
@@ -930,14 +930,15 @@ label,
 .timeline-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  padding: 8px 14px 10px;
+  align-items: stretch;
+  padding: 7px 14px 8px;
   border-top: 1px solid var(--line-soft);
   background: linear-gradient(180deg, #12161b, #0f1317);
 }
 
 .timeline-panel .ks-timeline-v2 {
   width: 100%;
+  height: 100%;
 }
 
 .move-controls {

@@ -717,15 +717,6 @@ export function App(): ReactElement {
             </div>
             <div className="topbar-actions">
               {record ? <TopbarMoveInfo record={record} moveNumber={moveNumber} analysis={analysis} /> : null}
-              <button className="primary-button" onClick={() => void runCurrentMoveAnalysis()} disabled={!record || busy !== ''}>
-                {busy === 'teacher' ? '老师分析中' : '分析当前手'}
-              </button>
-              <button className="ghost-button" onClick={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')} disabled={!record || busy !== ''}>
-                分析整盘围棋
-              </button>
-              <button className="ghost-button" onClick={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')} disabled={dashboard.games.length === 0 || busy !== ''}>
-                分析近10局围棋
-              </button>
             </div>
           </header>
 
