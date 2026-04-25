@@ -74,9 +74,9 @@ function toTooltipMove(candidate: RenderCandidate): CandidateTooltipMove {
 function formatCandidateWinrate(candidate: RenderCandidate): string {
   const normalized = normalizeWinrate(valueOf(candidate.raw, 'winrate'))
   if (normalized === null) {
-    return candidate.winrateLabel?.replace('%', '') ?? '—'
+    return candidate.winrateLabel ?? '—'
   }
-  return (normalized * 100).toFixed(1)
+  return `${(normalized * 100).toFixed(1)}%`
 }
 
 function formatCandidateVisits(candidate: RenderCandidate): string {
@@ -118,27 +118,28 @@ function CandidateMark({
 }): ReactElement {
   const p = xy(candidate, boardSize)
   const className = `ks-candidate ks-candidate--${candidate.emphasis} ks-candidate--rank-${candidate.rank}`
+  const scale = candidate.emphasis === 'primary' ? 1.02 : candidate.emphasis === 'secondary' ? 0.96 : 0.9
   const winrate = formatCandidateWinrate(candidate)
   const visits = formatCandidateVisits(candidate)
   const score = formatCandidateScore(candidate)
   return (
     <g
       className={className}
-      transform={`translate(${p.x} ${p.y})`}
+      transform={`translate(${p.x} ${p.y}) scale(${scale})`}
       onPointerEnter={(event) => {
         const svg = event.currentTarget.ownerSVGElement
         onHover?.(candidate, svg ? tooltipPosition(p, svg) : { x: p.x, y: p.y })
       }}
       onPointerLeave={() => onHover?.(null)}
     >
-      <circle className="ks-candidate-soft-glow" r="27" />
-      <circle className="ks-candidate-ring" r="25.5" />
-      <circle className="ks-candidate-disc" r="23.5" />
-      <circle className="ks-candidate-rank-badge" cx="18" cy="-19" r="9.2" />
-      <text className="ks-candidate-rank" x="18" y="-19">{candidate.rank}</text>
-      <text className="ks-candidate-winrate" y="-8">{winrate}</text>
-      <text className="ks-candidate-visits" y="4.6">{visits}</text>
-      <text className="ks-candidate-score" y="16.2">{score}</text>
+      <circle className="ks-candidate-soft-glow" r="25" />
+      <circle className="ks-candidate-ring" r="23.6" />
+      <circle className="ks-candidate-disc" r="21.8" />
+      <circle className="ks-candidate-rank-badge" cx="16.2" cy="-17" r="8.1" />
+      <text className="ks-candidate-rank" x="16.2" y="-17">{candidate.rank}</text>
+      <text className="ks-candidate-winrate" y="-8.2">{winrate}</text>
+      <text className="ks-candidate-visits" y="3.6">{visits}</text>
+      <text className="ks-candidate-score" y="14.6">{score}</text>
     </g>
   )
 }

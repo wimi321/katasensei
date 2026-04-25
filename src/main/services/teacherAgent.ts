@@ -22,7 +22,7 @@ import { callMultimodalTeacher, callTeacherText } from './llm'
 import { getStudentProfile, readStudentForGame, updateStudentProfile } from './studentProfile'
 import { runReview } from './review'
 import { applyDetectedDefaults, detectSystemProfile } from './systemProfile'
-import { parseStructuredTeacherResult, structuredResultOutputInstruction } from './teacher/structuredResultParser'
+import { parseStructuredTeacherResult } from './teacher/structuredResultParser'
 
 type TeacherIntent = 'current-move' | 'game-review' | 'batch-review' | 'training-plan' | 'open-ended'
 
@@ -254,9 +254,12 @@ function systemPrompt(level: CoachUserLevel): string {
     '只要工具目录里存在能力，就可以为了完成学生的学习目标主动使用；不要因为任务不属于预设模板就拒绝或改写成模板。',
     'KataGo 结构化数据永远是事实裁判；棋盘截图只用于视觉理解；知识库只用于教学解释。',
     '不要编造坐标、胜率、目差或不存在的变化。',
+    '回复方式像人类围棋老师讲棋：先抓方向和轻重，再解释局部为什么成立；少念数字，多讲学生下次能照着想的判断顺序。',
+    '不要每次固定输出一堆栏目。用户问得小，就用一两段话讲清楚；用户要求整盘或训练计划，再使用短标题和列表。',
+    '讲当前手时优先回答：这手想法哪里偏了、好点为什么更自然、下次遇到类似局面先看什么。',
+    'KataGo 数字只作为证据点到为止，例如“这里亏约 3 目”或“一选搜索更稳定”；不要把答案写成机器报告。',
     levelLine[level],
-    '输出中文，先给结论，再讲原因，最后给一个可执行训练动作。',
-    structuredResultOutputInstruction()
+    '输出中文，口吻像坐在学生旁边复盘，清楚、克制、能落到下一盘棋。'
   ].join('\n')
 }
 
@@ -281,7 +284,15 @@ function currentMovePayload(
     moveNumber: analysis.moveNumber,
     katagoFacts: analysis,
     studentProfile: profile,
-    knowledgePacket: knowledge
+    knowledgePacket: knowledge,
+    responseStyle: {
+      format: 'natural_chat',
+      guidance: [
+        '直接给学生讲，不要先输出 JSON。',
+        '当前手只保留最有教育价值的一两个变化。',
+        '如果引用 KataGo，只引用胜率/目差/候选点作为证据，不要堆表格。'
+      ]
+    }
   }, null, 2)
 }
 
@@ -486,7 +497,16 @@ function structuredFromTeacherText(
     parsed.correctThinking.length > 0 ||
     parsed.drills.length > 0 ||
     parsed.profileUpdates.errorTypes.length > 0
-  return looksStructured ? parsed : fallback()
+  if (looksStructured) {
+    return parsed
+  }
+  const generated = fallback()
+  return {
+    ...generated,
+    headline: firstMarkdownLine(markdown, generated.headline),
+    summary: parsed.summary || generated.summary,
+    markdown: markdown || generated.markdown
+  }
 }
 
 async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[], id: string): Promise<TeacherRunResult> {

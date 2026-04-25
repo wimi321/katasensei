@@ -1,4 +1,4 @@
-import type { FormEvent, KeyboardEvent, PointerEvent, ReactElement } from 'react'
+import type { FormEvent, KeyboardEvent, PointerEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AnalyzeGameQuickProgress,
@@ -32,8 +32,6 @@ import { StudentBindingDialog } from './features/student/StudentBindingDialog'
 import { StudentRailCard } from './features/student/StudentRailCard'
 import { KataGoAssetsPanel } from './features/settings/KataGoAssetsPanel'
 import { TeacherComposerPro } from './features/teacher/TeacherComposerPro'
-import { TeacherRunCard } from './features/teacher/TeacherRunCard'
-import { TeacherRunCardPro } from './features/teacher/TeacherRunCardPro'
 import './features/diagnostics/diagnostics.css'
 import './features/student/student.css'
 import './features/teacher/teacher-run-card.css'
@@ -116,10 +114,11 @@ type DesktopCommand =
   | 'open-ui-gallery'
 
 const letters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'
-const LIVE_ANALYSIS_VISIT_STEPS = [180, 360, 720, 1200, 2000, 3200]
-const LIVE_ANALYSIS_TOTAL_VISIT_LIMIT = 3200
-const LIVE_ANALYSIS_BEST_VISIT_LIMIT = 1200
-const LIVE_ANALYSIS_TIME_LIMIT_MS = 90_000
+const LIVE_ANALYSIS_VISIT_STEPS = [24, 48, 80, 120, 180, 260, 380, 560, 820, 1200, 1800, 2600, 3800, 5200]
+const LIVE_ANALYSIS_TOTAL_VISIT_LIMIT = 5200
+const LIVE_ANALYSIS_BEST_VISIT_LIMIT = 1800
+const LIVE_ANALYSIS_TIME_LIMIT_MS = 150_000
+const LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS = 0.2
 
 function safePlayerName(name: string | undefined, fallback: string): string {
   const value = (name ?? '').trim()
@@ -144,11 +143,16 @@ function analysisHasCandidates(analysis: KataGoMoveAnalysis | undefined | null):
 }
 
 function candidateVisitsTotal(analysis: KataGoMoveAnalysis | null | undefined): number {
-  return analysis?.before.topMoves.reduce((total, candidate) => total + Math.max(0, Number(candidate.visits) || 0), 0) ?? 0
+  if (!analysis) {
+    return 0
+  }
+  const before = analysis.before.topMoves.reduce((total, candidate) => total + Math.max(0, Number(candidate.visits) || 0), 0)
+  const after = analysis.after.topMoves.reduce((total, candidate) => total + Math.max(0, Number(candidate.visits) || 0), 0)
+  return Math.max(before, after)
 }
 
 function candidateBestVisits(analysis: KataGoMoveAnalysis | null | undefined): number {
-  return Math.max(0, Number(analysis?.before.topMoves[0]?.visits) || 0)
+  return Math.max(0, Number(analysis?.after.topMoves[0]?.visits ?? analysis?.before.topMoves[0]?.visits) || 0)
 }
 
 function sleep(ms: number): Promise<void> {
@@ -256,7 +260,7 @@ export function App(): ReactElement {
     {
       id: 'hello',
       role: 'teacher',
-      content: '直接告诉我目标。我会读取棋局、调用 KataGo、检索知识卡，再把结论整理成可以继续追问的复盘线程。'
+      content: '你可以直接问：“这手为什么不好？”或者“这盘我最大的问题是什么？”我会先看棋盘和 KataGo 数据，再像复盘老师一样讲给人听。'
     }
   ])
 
@@ -641,6 +645,9 @@ export function App(): ReactElement {
     let lastSampleAt = performance.now()
     const cachedAnalysis = options.record ? null : (evaluations[targetMove] ?? analysis)
     let lastVisitSample = candidateVisitsTotal(cachedAnalysis)
+    let lastEffectiveVisitSample = lastVisitSample
+    const benchmarkSpeed = dashboard.settings.katagoBenchmarkVisitsPerSecond
+    let lastSpeedSample = benchmarkSpeed
     liveAnalysisRunId.current = runId
     setError('')
     setMoveNumber(targetMove)
@@ -650,10 +657,88 @@ export function App(): ReactElement {
       status: `精读第 ${targetMove} 手`,
       visits: lastVisitSample,
       bestVisits: candidateBestVisits(cachedAnalysis),
-      visitsPerSecond: 0,
+      visitsPerSecond: benchmarkSpeed,
       targetMoveNumber: targetMove,
       round: 0
     })
+
+    if (typeof window.katasensei.analyzePositionStream === 'function') {
+      const disposeProgress = window.katasensei.onAnalyzePositionProgress((progress) => {
+        if (
+          liveAnalysisRunId.current !== runId ||
+          progress.runId !== runId ||
+          progress.gameId !== gameId ||
+          progress.moveNumber !== targetMove ||
+          selectedGameIdRef.current !== gameId
+        ) {
+          return
+        }
+        const nextAnalysis = progress.analysis
+        const totalVisits = candidateVisitsTotal(nextAnalysis)
+        const bestVisits = candidateBestVisits(nextAnalysis)
+        const sampledAt = performance.now()
+        const sampleSeconds = Math.max(0.1, (sampledAt - lastSampleAt) / 1000)
+        const visitsDelta = Math.max(0, totalVisits - lastVisitSample)
+        const measuredSpeed = visitsDelta > 0 ? visitsDelta / sampleSeconds : lastSpeedSample
+        lastSpeedSample = measuredSpeed > 0 ? Math.max(lastSpeedSample, measuredSpeed) : lastSpeedSample
+        const visitsPerSecond = lastSpeedSample || measuredSpeed
+        lastVisitSample = Math.max(lastVisitSample, totalVisits)
+        lastSampleAt = sampledAt
+        rememberEvaluation(nextAnalysis)
+        if (moveNumberRef.current === targetMove) {
+          setAnalysis(nextAnalysis)
+        }
+        setLiveAnalysis({
+          running: !progress.isFinal,
+          status: progress.isFinal
+            ? `已完成 ${formatVisits(totalVisits)}`
+            : `实时搜索 ${formatVisits(totalVisits)} · 一选 ${formatVisits(bestVisits)}`,
+          visits: totalVisits,
+          bestVisits,
+          visitsPerSecond,
+          targetMoveNumber: targetMove,
+          round: 1
+        })
+      })
+      try {
+        const finalAnalysis = await window.katasensei.analyzePositionStream({
+          gameId,
+          moveNumber: targetMove,
+          maxVisits: LIVE_ANALYSIS_TOTAL_VISIT_LIMIT,
+          runId,
+          reportDuringSearchEvery: LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS
+        })
+        if (liveAnalysisRunId.current !== runId || selectedGameIdRef.current !== gameId) {
+          return
+        }
+        const totalVisits = candidateVisitsTotal(finalAnalysis)
+        const bestVisits = candidateBestVisits(finalAnalysis)
+        rememberEvaluation(finalAnalysis)
+        if (moveNumberRef.current === targetMove) {
+          setAnalysis(finalAnalysis)
+        }
+        setLiveAnalysis((current) => ({
+          ...current,
+          running: false,
+          status: `已完成 ${formatVisits(totalVisits)}`,
+          visits: totalVisits,
+          bestVisits,
+          targetMoveNumber: targetMove
+        }))
+      } catch (cause) {
+        if (liveAnalysisRunId.current === runId) {
+          setError(`KataGo 实时分析失败: ${String(cause)}`)
+          setLiveAnalysis((current) => ({
+            ...current,
+            running: false,
+            status: '实时分析失败'
+          }))
+        }
+      } finally {
+        disposeProgress()
+      }
+      return
+    }
 
     for (const [index, maxVisits] of LIVE_ANALYSIS_VISIT_STEPS.entries()) {
       if (liveAnalysisRunId.current !== runId) {
@@ -679,11 +764,13 @@ export function App(): ReactElement {
         const bestVisits = candidateBestVisits(nextAnalysis)
         const sampledAt = performance.now()
         const sampleSeconds = Math.max(0.1, (sampledAt - lastSampleAt) / 1000)
-        const visitsDelta = Math.max(0, totalVisits - lastVisitSample)
+        const effectiveVisits = Math.max(totalVisits, maxVisits)
+        const visitsDelta = Math.max(0, effectiveVisits - lastEffectiveVisitSample)
         const visitsPerSecond = visitsDelta > 0
           ? visitsDelta / sampleSeconds
-          : totalVisits / Math.max(0.1, (Date.now() - startedAt) / 1000)
+          : (benchmarkSpeed || totalVisits / Math.max(0.1, (Date.now() - startedAt) / 1000))
         lastVisitSample = totalVisits
+        lastEffectiveVisitSample = effectiveVisits
         lastSampleAt = sampledAt
         rememberEvaluation(nextAnalysis)
         if (moveNumberRef.current === targetMove) {
@@ -729,7 +816,7 @@ export function App(): ReactElement {
         }
         return
       }
-      await sleep(180)
+      await sleep(40)
     }
 
     if (liveAnalysisRunId.current === runId) {
@@ -1354,6 +1441,102 @@ function DesktopPreferencesModal({
   )
 }
 
+function teacherResultKeyMoves(result?: TeacherRunResult): Array<{ moveNumber: number; title: string; summary: string; severity: string }> {
+  const structured = result?.structuredResult ?? result?.structured
+  return (structured?.keyMistakes ?? []).flatMap((move, index) => {
+    if (typeof move.moveNumber !== 'number') {
+      return []
+    }
+    const title = `第 ${move.moveNumber} 手${move.played ? ` ${move.played}` : ''}`
+    const summary = move.explanation || move.evidence || '这手值得回到棋盘上单独看。'
+    return [{
+      moveNumber: move.moveNumber,
+      title: title || `关键手 ${index + 1}`,
+      summary,
+      severity: move.errorType || move.severity || '重点'
+    }]
+  }).slice(0, 4)
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>
+    }
+    return part
+  })
+}
+
+function ChatMarkdown({ text }: { text: string }): ReactElement {
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+  const nodes: ReactElement[] = []
+  let list: ReactElement[] = []
+  function flushList(): void {
+    if (list.length > 0) {
+      nodes.push(<ol key={`ol-${nodes.length}`}>{list}</ol>)
+      list = []
+    }
+  }
+  for (const line of lines) {
+    const numbered = line.match(/^(\d+)[.、]\s*(.+)$/)
+    if (numbered) {
+      list.push(<li key={`${nodes.length}-${list.length}`}>{renderInlineMarkdown(numbered[2])}</li>)
+      continue
+    }
+    flushList()
+    nodes.push(<p key={`p-${nodes.length}`}>{renderInlineMarkdown(line)}</p>)
+  }
+  flushList()
+  return <div className="chat-markdown">{nodes}</div>
+}
+
+function TeacherInlineResponse({
+  message,
+  onJumpToMove,
+  onAnalyzeMove
+}: {
+  message: ChatMessage
+  onJumpToMove: (moveNumber: number) => void
+  onAnalyzeMove: (moveNumber: number) => void
+}): ReactElement {
+  const keyMoves = teacherResultKeyMoves(message.result)
+  const toolLogs = message.result?.toolLogs ?? []
+  return (
+    <>
+      <div className={`message-copy ${message.role === 'teacher' ? 'message-copy--assistant' : 'message-copy--user'}`}>
+        {message.role === 'teacher' ? <ChatMarkdown text={message.content} /> : message.content}
+      </div>
+      {keyMoves.length > 0 ? (
+        <div className="codex-keymove-strip" aria-label="关键手跳转">
+          {keyMoves.map((move) => (
+            <button key={`${move.moveNumber}-${move.title}`} type="button" onClick={() => onJumpToMove(move.moveNumber)}>
+              <span>{move.title}</span>
+              <em>{move.severity}</em>
+              <small>{move.summary}</small>
+            </button>
+          ))}
+          <button type="button" className="codex-keymove-strip__analyze" onClick={() => onAnalyzeMove(keyMoves[0].moveNumber)}>
+            展开这一手
+          </button>
+        </div>
+      ) : null}
+      {toolLogs.length > 0 ? (
+        <details className="codex-tool-trace">
+          <summary>工具调用 · {toolLogs.length}</summary>
+          <div>
+            {toolLogs.map((log) => (
+              <p key={log.id} className={`codex-tool-trace__row codex-tool-trace__row--${log.status}`}>
+                <strong>{log.label || log.name}</strong>
+                <span>{log.detail || log.status}</span>
+              </p>
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </>
+  )
+}
+
 function TeacherPanel({
   messages,
   prompt,
@@ -1415,23 +1598,11 @@ function TeacherPanel({
                 <strong>{message.role === 'teacher' ? 'KataSensei' : 'User'}</strong>
                 <small>{message.result ? 'completed' : message.role === 'teacher' ? 'assistant' : 'prompt'}</small>
               </header>
-            {message.result ? (
-              (message.result.structuredResult ?? message.result.structured) ? (
-                <TeacherRunCardPro
-                  result={message.result}
-                  markdown={message.content}
-                  onJumpToMove={onJumpToMove}
-                  onAnalyzeMove={onAnalyzeMove}
-                />
-              ) : (
-                <>
-                  <TeacherRunCard result={null} toolLogs={message.result.toolLogs} onJumpToMove={onJumpToMove} />
-                  <div className="message-copy">{message.content}</div>
-                </>
-              )
-            ) : (
-              <div className="message-copy">{message.content}</div>
-            )}
+              <TeacherInlineResponse
+                message={message}
+                onJumpToMove={onJumpToMove}
+                onAnalyzeMove={onAnalyzeMove}
+              />
             </div>
           </article>
         ))}
@@ -1440,9 +1611,12 @@ function TeacherPanel({
             <div className="agent-turn__body">
               <header className="agent-turn__head">
                 <strong>KataSensei</strong>
-                <small>turn running · item stream</small>
+                <small>running</small>
               </header>
-              <TeacherRunCardPro running markdown="正在规划任务、调用工具和整理讲解..." />
+              <div className="codex-working">
+                <span />
+                <p>正在看棋盘、KataGo 候选点和你的问题，然后组织成一段能下次用上的讲解。</p>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1757,6 +1931,9 @@ function BoardContextBar({
   const status = isCurrentLiveTarget
     ? liveAnalysis.status
     : (analysis ? `已搜索 ${formatVisits(totalVisits)}` : '等待精读')
+  const speedLabel = isCurrentLiveTarget && liveAnalysis.visitsPerSecond > 0
+    ? formatSearchSpeed(liveAnalysis.visitsPerSecond)
+    : '—'
   return (
     <div className="board-contextbar">
       <div className="board-contextbar__identity">
@@ -1779,7 +1956,7 @@ function BoardContextBar({
         </div>
         <div className="board-contextbar__metric board-contextbar__metric--speed">
           <span>速度</span>
-          <strong>{liveAnalysis.running && isCurrentLiveTarget ? formatSearchSpeed(liveAnalysis.visitsPerSecond) : '0/s'}</strong>
+          <strong>{speedLabel}</strong>
         </div>
       </div>
       <div className="analysis-control-strip" aria-label="KataGo 持续分析控制">

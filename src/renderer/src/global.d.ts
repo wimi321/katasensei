@@ -3,6 +3,7 @@ import type {
   AnalyzeGameQuickRequest,
   AnalyzeGameQuickProgress,
   AnalyzePositionRequest,
+  AnalyzePositionProgress,
   DashboardData,
   FoxSyncResponse,
   FoxSyncRequest,
@@ -46,8 +47,10 @@ declare global {
       syncFox: (payload: FoxSyncRequest) => Promise<FoxSyncResponse>
       startReview: (payload: ReviewRequest) => Promise<ReviewResult>
       analyzePosition: (payload: AnalyzePositionRequest) => Promise<KataGoMoveAnalysis>
+      analyzePositionStream: (payload: AnalyzePositionRequest) => Promise<KataGoMoveAnalysis>
       analyzeGameQuick: (payload: AnalyzeGameQuickRequest) => Promise<KataGoMoveAnalysis[]>
       benchmarkKataGo: (payload?: KataGoBenchmarkRequest) => Promise<KataGoBenchmarkResult>
+      onAnalyzePositionProgress: (handler: (payload: AnalyzePositionProgress) => void) => () => void
       onAnalyzeGameQuickProgress: (handler: (payload: AnalyzeGameQuickProgress) => void) => () => void
       getDiagnostics: () => Promise<DiagnosticsReport>
       inspectKataGoAssets: () => Promise<KataGoAssetStatus>

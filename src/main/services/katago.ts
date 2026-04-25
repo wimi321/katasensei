@@ -8,6 +8,7 @@ import { resolveKataGoRuntime } from './katagoRuntime'
 interface KataGoResponse {
   id?: string
   error?: string
+  isDuringSearch?: boolean
   rootInfo?: {
     winrate?: number
     scoreLead?: number
@@ -29,6 +30,7 @@ interface AnalysisQuery {
   boardSize: number
   komi: number
   maxVisits: number
+  reportDuringSearchEvery?: number
 }
 
 interface QuickProgress {
@@ -156,8 +158,10 @@ async function queryKataGoBatch(
           const parsed = JSON.parse(line) as KataGoResponse
           const id = parsed.id ?? ''
           if (id) {
-            results.set(id, parsed)
             onResponse?.(parsed)
+          }
+          if (id && !parsed.isDuringSearch) {
+            results.set(id, parsed)
           }
         } catch (error) {
           settled = true
@@ -199,7 +203,7 @@ async function queryKataGoBatch(
     })
 
     for (const query of queries) {
-      child.stdin.write(`${JSON.stringify({
+      const payload: Record<string, unknown> = {
         id: query.id,
         moves: query.moves,
         initialStones: [],
@@ -208,7 +212,11 @@ async function queryKataGoBatch(
         boardXSize: query.boardSize,
         boardYSize: query.boardSize,
         maxVisits: query.maxVisits
-      })}\n`)
+      }
+      if (query.reportDuringSearchEvery !== undefined) {
+        payload.reportDuringSearchEvery = query.reportDuringSearchEvery
+      }
+      child.stdin.write(`${JSON.stringify(payload)}\n`)
     }
     child.stdin.end()
   })
@@ -244,21 +252,41 @@ export async function analyzePosition(
   const afterMoves = record.moves.slice(0, Math.max(0, moveNumber))
   const komi = normalizeKomi(record.komi)
 
-  const beforeResponse = await queryKataGo(
-    moveHistory(beforeMoves),
-    record.boardSize,
-    komi,
-    `${gameId}-before-${moveNumber}`,
-    maxVisits
-  )
-  const afterResponse = await queryKataGo(
-    moveHistory(afterMoves),
-    record.boardSize,
-    komi,
-    `${gameId}-after-${moveNumber}`,
-    Math.max(120, Math.floor(maxVisits * 0.6))
-  )
+  const afterVisits = Math.max(24, Math.floor(maxVisits * 0.55))
+  const beforeId = `${gameId}-before-${moveNumber}`
+  const afterId = `${gameId}-after-${moveNumber}`
+  const responses = await queryKataGoBatch([
+    {
+      id: beforeId,
+      moves: moveHistory(beforeMoves),
+      boardSize: record.boardSize,
+      komi,
+      maxVisits
+    },
+    {
+      id: afterId,
+      moves: moveHistory(afterMoves),
+      boardSize: record.boardSize,
+      komi,
+      maxVisits: afterVisits
+    }
+  ])
+  const beforeResponse = responses.get(beforeId)
+  const afterResponse = responses.get(afterId)
+  if (!beforeResponse || !afterResponse) {
+    throw new Error(`KataGo 没有返回完整局面分析: before=${Boolean(beforeResponse)} after=${Boolean(afterResponse)}`)
+  }
+  return buildMoveAnalysis(gameId, moveNumber, record.boardSize, currentMove, beforeResponse, afterResponse)
+}
 
+function buildMoveAnalysis(
+  gameId: string,
+  moveNumber: number,
+  boardSize: number,
+  currentMove: GameMove | undefined,
+  beforeResponse: KataGoResponse,
+  afterResponse: KataGoResponse
+): KataGoMoveAnalysis {
   const beforeRoot = root(beforeResponse)
   const afterRoot = root(afterResponse)
   const topMoves = candidates(beforeResponse)
@@ -269,7 +297,7 @@ export async function analyzePosition(
   return {
     gameId,
     moveNumber,
-    boardSize: record.boardSize,
+    boardSize,
     currentMove,
     before: {
       ...beforeRoot,
@@ -290,6 +318,68 @@ export async function analyzePosition(
       : undefined,
     judgement: judgement(winrateLoss, scoreLoss)
   }
+}
+
+export async function analyzePositionWithProgress(
+  gameId: string,
+  moveNumber: number,
+  maxVisits = 500,
+  onProgress?: (analysis: KataGoMoveAnalysis, isFinal: boolean) => void,
+  reportDuringSearchEvery = 0.2
+): Promise<KataGoMoveAnalysis> {
+  const game = findGame(gameId)
+  if (!game) {
+    throw new Error(`找不到棋谱: ${gameId}`)
+  }
+  const record = readGameRecord(game)
+  const currentMove = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
+  const beforeMoves = record.moves.slice(0, Math.max(0, moveNumber - 1))
+  const afterMoves = record.moves.slice(0, Math.max(0, moveNumber))
+  const komi = normalizeKomi(record.komi)
+  const afterVisits = Math.max(24, Math.floor(maxVisits * 0.55))
+  const beforeId = `${gameId}-before-${moveNumber}-stream`
+  const afterId = `${gameId}-after-${moveNumber}-stream`
+  let latestBefore: KataGoResponse | undefined
+  let latestAfter: KataGoResponse | undefined
+
+  const responses = await queryKataGoBatch([
+    {
+      id: beforeId,
+      moves: moveHistory(beforeMoves),
+      boardSize: record.boardSize,
+      komi,
+      maxVisits,
+      reportDuringSearchEvery
+    },
+    {
+      id: afterId,
+      moves: moveHistory(afterMoves),
+      boardSize: record.boardSize,
+      komi,
+      maxVisits: afterVisits,
+      reportDuringSearchEvery
+    }
+  ], (response) => {
+    if (response.id === beforeId) {
+      latestBefore = response
+    }
+    if (response.id === afterId) {
+      latestAfter = response
+    }
+    if (latestBefore?.rootInfo && latestAfter?.rootInfo) {
+      const partial = buildMoveAnalysis(gameId, moveNumber, record.boardSize, currentMove, latestBefore, latestAfter)
+      onProgress?.(partial, !latestBefore.isDuringSearch && !latestAfter.isDuringSearch)
+    }
+  })
+
+  const beforeResponse = responses.get(beforeId)
+  const afterResponse = responses.get(afterId)
+  if (!beforeResponse || !afterResponse) {
+    throw new Error(`KataGo 没有返回完整局面分析: before=${Boolean(beforeResponse)} after=${Boolean(afterResponse)}`)
+  }
+  const final = buildMoveAnalysis(gameId, moveNumber, record.boardSize, currentMove, beforeResponse, afterResponse)
+  onProgress?.(final, true)
+  return final
 }
 
 export async function analyzeGameQuick(

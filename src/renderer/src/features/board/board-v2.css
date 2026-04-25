@@ -136,6 +136,10 @@
   opacity: 0.8;
 }
 
+.ks-candidate {
+  transition: opacity 120ms ease;
+}
+
 .ks-candidate--rank-3 {
   --ks-candidate-fill: #d3c052;
 }
@@ -183,26 +187,26 @@
 
 .ks-candidate-rank {
   fill: #fffaf0;
-  font-size: 8.2px;
-  font-weight: 650;
+  font-size: 7.6px;
+  font-weight: 620;
 }
 
 .ks-candidate-winrate {
   fill: var(--ks-candidate-ink, #071314);
-  font-size: 10.8px;
-  font-weight: 680;
+  font-size: 8.8px;
+  font-weight: 620;
 }
 
 .ks-candidate-visits {
   fill: color-mix(in srgb, var(--ks-candidate-ink, #071314) 82%, transparent);
-  font-size: 7.5px;
-  font-weight: 620;
+  font-size: 7.1px;
+  font-weight: 540;
 }
 
 .ks-candidate-score {
   fill: #b83328;
-  font-size: 7.4px;
-  font-weight: 680;
+  font-size: 7.2px;
+  font-weight: 560;
 }
 
 .ks-keymove circle {

@@ -326,6 +326,16 @@ export interface AnalyzePositionRequest {
   gameId: string
   moveNumber: number
   maxVisits?: number
+  runId?: string
+  reportDuringSearchEvery?: number
+}
+
+export interface AnalyzePositionProgress {
+  runId?: string
+  gameId: string
+  moveNumber: number
+  analysis: KataGoMoveAnalysis
+  isFinal: boolean
 }
 
 export interface AnalyzeGameQuickRequest {
