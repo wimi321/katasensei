@@ -23,6 +23,7 @@ test('Sprint 3 UI files are present after overlay is applied', () => {
 test('GoBoardV2 keeps candidate, last move, and key move layers', () => {
   const text = readFileSync(join(root, 'src/renderer/src/features/board/GoBoardV2.tsx'), 'utf8')
   assert.match(text, /ks-candidates-layer/)
+  assert.match(text, /ks-played-move-layer/)
   assert.match(text, /ks-last-move/)
   assert.match(text, /ks-keymoves-layer/)
 })

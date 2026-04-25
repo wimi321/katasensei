@@ -292,6 +292,9 @@ function buildMoveAnalysis(
   const topMoves = candidates(beforeResponse)
   const afterTopMoves = candidates(afterResponse)
   const best = topMoves[0]
+  const playedCandidate = currentMove
+    ? topMoves.find((candidate) => candidate.move.toUpperCase() === currentMove.gtp.toUpperCase())
+    : undefined
   const { winrateLoss, scoreLoss } = playedLoss(currentMove, best, afterRoot)
 
   return {
@@ -312,6 +315,8 @@ function buildMoveAnalysis(
           move: currentMove.gtp,
           winrate: afterRoot.winrate,
           scoreLead: afterRoot.scoreLead,
+          visits: playedCandidate?.visits,
+          rank: playedCandidate ? topMoves.indexOf(playedCandidate) + 1 : undefined,
           winrateLoss,
           scoreLoss
         }

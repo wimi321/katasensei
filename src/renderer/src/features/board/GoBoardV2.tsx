@@ -5,10 +5,12 @@ import {
   getBoardSize,
   normalizeWinrate,
   renderCandidates,
+  renderPlayedMove,
   renderStones,
   type BoardPoint,
   type RenderCandidate,
-  type RenderKeyMove
+  type RenderKeyMove,
+  type RenderPlayedMove
 } from './boardGeometry'
 import { CandidateTooltip, type CandidateTooltipMove, type CandidateTooltipPosition } from './CandidateTooltip'
 import './board-v2.css'
@@ -93,6 +95,23 @@ function formatCandidateVisits(candidate: RenderCandidate): string {
   return String(Math.round(visits))
 }
 
+function formatVisitsLabel(value: string | undefined): string {
+  if (!value) {
+    return '—'
+  }
+  const visits = Number(value)
+  if (!Number.isFinite(visits)) {
+    return value
+  }
+  if (visits >= 10000) {
+    return `${(visits / 10000).toFixed(visits >= 100000 ? 0 : 1)}w`
+  }
+  if (visits >= 1000) {
+    return `${(visits / 1000).toFixed(visits >= 10000 ? 0 : 1)}k`
+  }
+  return String(Math.round(visits))
+}
+
 function formatCandidateScore(candidate: RenderCandidate): string {
   return candidate.scoreLabel ?? '0.0'
 }
@@ -154,11 +173,31 @@ function KeyMoveMark({ mark, boardSize }: { mark: RenderKeyMove; boardSize: numb
   )
 }
 
+function PlayedMoveMark({ played, boardSize }: { played: RenderPlayedMove; boardSize: number }): ReactElement {
+  const p = xy(played, boardSize)
+  const rankLabel = played.rank ? `${played.rank}选` : '实战'
+  const loss = Math.max(0, played.scoreLoss ?? 0)
+  const severity = loss >= 4 ? 'mistake' : loss >= 1.2 ? 'inaccuracy' : 'ok'
+  return (
+    <g className={`ks-played-move ks-played-move--${played.color} ks-played-move--${severity}`} transform={`translate(${p.x} ${p.y})`}>
+      <rect className="ks-played-move-frame" x="-28" y="-28" width="56" height="56" rx="9" />
+      <rect className="ks-played-move-panel" x="-21.5" y="-19.5" width="43" height="39" rx="8" />
+      <rect className="ks-played-move-label-bg" x="-27" y="-32.5" width="30" height="13.5" rx="6.75" />
+      <text className="ks-played-move-label" x="-12" y="-25.6">实战</text>
+      <text className="ks-played-move-rank" x="13.5" y="-25.6">{rankLabel}</text>
+      <text className="ks-played-move-winrate" y="-7.5">{played.winrateLabel ?? '—'}</text>
+      <text className="ks-played-move-visits" y="4.3">{formatVisitsLabel(played.visitsLabel)}</text>
+      <text className="ks-played-move-score" y="15.8">{played.scoreLabel ?? '0.0'}</text>
+    </g>
+  )
+}
+
 export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], compact = false, onPointClick, onCandidateHover }: GoBoardV2Props): ReactElement {
   const [hoveredCandidate, setHoveredCandidate] = useState<HoveredCandidate>(null)
   const boardSize = getBoardSize(record)
   const stones = useMemo(() => renderStones(record, moveNumber), [record, moveNumber])
   const candidates = useMemo(() => renderCandidates(analysis, boardSize), [analysis, boardSize])
+  const playedMove = useMemo(() => renderPlayedMove(analysis, boardSize), [analysis, boardSize])
   const lastStone = stones[stones.length - 1]
   const letters = coordinateLetters(boardSize)
   const lines = Array.from({ length: boardSize }, (_, index) => index)
@@ -294,6 +333,12 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
             <CandidateMark key={`${candidate.rank}-${candidate.label}`} candidate={candidate} boardSize={boardSize} onHover={handleCandidateHover} />
           ))}
         </g>
+
+        {playedMove ? (
+          <g className="ks-played-move-layer">
+            <PlayedMoveMark played={playedMove} boardSize={boardSize} />
+          </g>
+        ) : null}
       </svg>
 
       <CandidateTooltip

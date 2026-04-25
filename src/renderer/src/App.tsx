@@ -152,7 +152,7 @@ function candidateVisitsTotal(analysis: KataGoMoveAnalysis | null | undefined): 
 }
 
 function candidateBestVisits(analysis: KataGoMoveAnalysis | null | undefined): number {
-  return Math.max(0, Number(analysis?.after.topMoves[0]?.visits ?? analysis?.before.topMoves[0]?.visits) || 0)
+  return Math.max(0, Number(analysis?.before.topMoves[0]?.visits ?? analysis?.after.topMoves[0]?.visits) || 0)
 }
 
 function sleep(ms: number): Promise<void> {

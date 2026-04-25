@@ -240,6 +240,91 @@
   stroke: var(--ks-gold, #d8b567);
 }
 
+.ks-played-move {
+  pointer-events: none;
+}
+
+.ks-played-move-frame {
+  fill: rgba(255, 249, 232, 0.1);
+  stroke: rgba(13, 15, 16, 0.92);
+  stroke-width: 4.4;
+  paint-order: stroke;
+  filter: drop-shadow(0 4px 8px rgba(26, 18, 8, 0.28));
+}
+
+.ks-played-move--W .ks-played-move-frame {
+  stroke: rgba(17, 19, 20, 0.96);
+}
+
+.ks-played-move--B .ks-played-move-frame {
+  stroke: rgba(244, 238, 222, 0.96);
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.42));
+}
+
+.ks-played-move-panel {
+  fill: rgba(16, 18, 18, 0.78);
+  stroke: rgba(255, 248, 226, 0.76);
+  stroke-width: 0.9;
+}
+
+.ks-played-move--ok .ks-played-move-panel {
+  fill: rgba(21, 50, 44, 0.78);
+}
+
+.ks-played-move--inaccuracy .ks-played-move-panel {
+  fill: rgba(75, 54, 22, 0.8);
+}
+
+.ks-played-move--mistake .ks-played-move-panel {
+  fill: rgba(79, 36, 30, 0.82);
+}
+
+.ks-played-move-label-bg {
+  fill: rgba(13, 15, 16, 0.94);
+  stroke: rgba(255, 248, 226, 0.82);
+  stroke-width: 0.85;
+}
+
+.ks-played-move text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  letter-spacing: 0;
+}
+
+.ks-played-move-label {
+  fill: #fff7df;
+  font-size: 7.3px;
+  font-weight: 760;
+}
+
+.ks-played-move-rank {
+  fill: rgba(35, 25, 11, 0.86);
+  font-size: 7px;
+  font-weight: 780;
+  paint-order: stroke;
+  stroke: rgba(255, 248, 226, 0.9);
+  stroke-width: 2px;
+}
+
+.ks-played-move-winrate {
+  fill: #fff9e8;
+  font-size: 8.7px;
+  font-weight: 660;
+}
+
+.ks-played-move-visits {
+  fill: rgba(255, 249, 232, 0.82);
+  font-size: 7.1px;
+  font-weight: 560;
+}
+
+.ks-played-move-score {
+  fill: #ffd575;
+  font-size: 7.2px;
+  font-weight: 620;
+}
+
 .ks-board-tooltip {
   position: absolute;
   right: 16px;

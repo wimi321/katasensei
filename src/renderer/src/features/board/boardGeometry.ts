@@ -22,6 +22,19 @@ export interface RenderCandidate extends BoardPoint {
   raw?: unknown
 }
 
+export interface RenderPlayedMove extends BoardPoint {
+  label: string
+  move: string
+  color: StoneColor
+  winrateLabel?: string
+  scoreLabel?: string
+  visitsLabel?: string
+  rank?: number
+  winrateLoss?: number
+  scoreLoss?: number
+  raw?: unknown
+}
+
 export interface RenderKeyMove extends BoardPoint {
   moveNumber: number
   severity: 'blunder' | 'mistake' | 'inaccuracy' | 'turning-point'
@@ -164,10 +177,10 @@ export function renderCandidates(analysis: KataGoMoveAnalysis | null | undefined
     return []
   }
   const topMoves =
-    Array.isArray(valueOf(valueOf(analysis, 'after'), 'topMoves'))
-      ? valueOf(valueOf(analysis, 'after'), 'topMoves') as unknown[]
-      : Array.isArray(valueOf(valueOf(analysis, 'before'), 'topMoves'))
-        ? valueOf(valueOf(analysis, 'before'), 'topMoves') as unknown[]
+    Array.isArray(valueOf(valueOf(analysis, 'before'), 'topMoves'))
+      ? valueOf(valueOf(analysis, 'before'), 'topMoves') as unknown[]
+      : Array.isArray(valueOf(valueOf(analysis, 'after'), 'topMoves'))
+        ? valueOf(valueOf(analysis, 'after'), 'topMoves') as unknown[]
         : []
 
   return topMoves.slice(0, 6).flatMap((candidate, index) => {
@@ -188,6 +201,38 @@ export function renderCandidates(analysis: KataGoMoveAnalysis | null | undefined
       raw: candidate
     } satisfies RenderCandidate]
   })
+}
+
+export function renderPlayedMove(analysis: KataGoMoveAnalysis | null | undefined, boardSize = 19): RenderPlayedMove | null {
+  if (!analysis?.currentMove || !analysis.playedMove) {
+    return null
+  }
+  const point = moveToPoint(analysis.currentMove, boardSize) ?? parseBoardPoint(analysis.playedMove.move, boardSize)
+  if (!point) {
+    return null
+  }
+  const beforeMoves = Array.isArray(valueOf(valueOf(analysis, 'before'), 'topMoves'))
+    ? valueOf(valueOf(analysis, 'before'), 'topMoves') as unknown[]
+    : []
+  const playedMove = String(valueOf(analysis.playedMove, 'move') ?? analysis.currentMove.gtp ?? '').toUpperCase()
+  const candidateIndex = beforeMoves.findIndex((candidate) => String(valueOf(candidate, 'move') ?? '').toUpperCase() === playedMove)
+  const matchedCandidate = candidateIndex >= 0 ? beforeMoves[candidateIndex] : null
+  const visits = valueOf(analysis.playedMove, 'visits') ?? getCandidateVisits(matchedCandidate)
+  return {
+    ...point,
+    label: boardPointLabel(point, boardSize),
+    move: playedMove || boardPointLabel(point, boardSize),
+    color: moveToColor(analysis.currentMove),
+    winrateLabel: formatWinrate(valueOf(analysis.playedMove, 'winrate')),
+    scoreLabel: formatScore(valueOf(analysis.playedMove, 'scoreLead')),
+    visitsLabel: typeof visits === 'number' && visits > 0 ? `${Math.round(visits)}` : undefined,
+    rank: typeof valueOf(analysis.playedMove, 'rank') === 'number'
+      ? valueOf(analysis.playedMove, 'rank') as number
+      : candidateIndex >= 0 ? candidateIndex + 1 : undefined,
+    winrateLoss: valueOf(analysis.playedMove, 'winrateLoss') as number | undefined,
+    scoreLoss: valueOf(analysis.playedMove, 'scoreLoss') as number | undefined,
+    raw: analysis.playedMove
+  }
 }
 
 export function classifyMoveLoss(loss: unknown): RenderKeyMove['severity'] {

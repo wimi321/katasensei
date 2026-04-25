@@ -25,6 +25,11 @@ test('GoBoardV2 renders polished stone and candidate layers', () => {
   assert.match(board, /ks-candidate-winrate/)
   assert.match(board, /ks-candidate-visits/)
   assert.match(board, /ks-candidate-score/)
+  assert.match(board, /PlayedMoveMark/)
+  assert.match(board, /ks-played-move-layer/)
+  const geometry = read('src/renderer/src/features/board/boardGeometry.ts')
+  assert.match(geometry, /renderPlayedMove/)
+  assert.match(geometry, /valueOf\(valueOf\(analysis, 'before'\), 'topMoves'\)/)
 })
 
 test('WinrateTimelineV2 exposes hover tooltip and score line rendering', () => {
