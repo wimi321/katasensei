@@ -298,6 +298,12 @@ textarea {
   height: 42px;
   border-radius: 11px;
   background: rgb(6 9 13 / 0.78);
+  color: #f7f0e5;
+  border-color: rgb(255 250 240 / 0.12);
+}
+
+.desktop-command-palette__panel input::placeholder {
+  color: rgb(247 240 229 / 0.48);
 }
 
 .desktop-command-palette__list {
@@ -317,7 +323,7 @@ textarea {
   border: 1px solid transparent;
   border-radius: 11px;
   background: rgb(255 255 255 / 0.028);
-  color: var(--ks-text-main);
+  color: #f7f0e5;
   text-align: left;
 }
 
@@ -334,15 +340,19 @@ textarea {
   white-space: nowrap;
 }
 
+.desktop-command-palette__list strong {
+  color: #f8f1e4;
+}
+
 .desktop-command-palette__list small {
-  color: var(--ks-text-muted);
+  color: rgb(225 216 199 / 0.72);
   font-size: 12px;
 }
 
 .desktop-command-palette__list em {
   grid-row: 1 / 3;
   grid-column: 2;
-  color: var(--ks-text-faint);
+  color: rgb(226 202 145 / 0.86);
   font-style: normal;
   font-size: 11px;
   font-weight: 850;

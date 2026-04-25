@@ -78,6 +78,29 @@ function shouldRetryBudgetAfterEmpty(json: ChatResponse, budget: number): boolea
   return used !== null && used >= Math.floor(budget * 0.9)
 }
 
+function shouldRetryFinalTextAfterEmpty(json: ChatResponse): boolean {
+  const reason = finishReason(json).toLowerCase()
+  if (reason === 'content_filter' || hasToolCall(json)) {
+    return false
+  }
+  const used = completionTokenCount(json.usage)
+  return used !== null && used > 0
+}
+
+function messagesWithFinalTextReminder(messages: ChatMessage[]): ChatMessage[] {
+  return [
+    ...messages,
+    {
+      role: 'user',
+      content: [
+        '上一次请求没有返回可展示给学生的最终文本。',
+        '请直接输出最终中文讲解，不要只返回 reasoning、tool_calls、空 content 或调试信息。',
+        '如果需要结构化结果，请仍然按系统要求输出完整结果。'
+      ].join('\n')
+    }
+  ]
+}
+
 function emptyResponseError(json: ChatResponse, model: string): Error {
   const choice = json.choices?.[0]
   const diagnostics = [
@@ -97,11 +120,16 @@ function emptyResponseError(json: ChatResponse, model: string): Error {
   return new Error(`LLM 没有返回文本内容（model=${model}，${diagnostics.join('，')}）。如果 finish_reason 是 length，说明输出预算被推理过程耗尽。`)
 }
 
-export async function postOpenAICompatibleChat(
+type ChatAttemptResult =
+  | { kind: 'text'; text: string }
+  | { kind: 'empty'; json: ChatResponse }
+  | { kind: 'error'; error: Error }
+
+async function attemptOpenAICompatibleChat(
   settings: ProviderSettings,
   messages: ChatMessage[],
   maxTokens = 4096
-): Promise<string> {
+): Promise<ChatAttemptResult> {
   let lastError = ''
   let lastEmptyResponse: ChatResponse | null = null
   const budgets = Array.from(new Set([maxTokens, Math.min(Math.max(maxTokens * 2, maxTokens + 1024), 8192)]))
@@ -120,12 +148,12 @@ export async function postOpenAICompatibleChat(
           lastError = `${response.status} ${text.slice(0, 240)}`
           continue
         }
-        throw new Error(`LLM 请求失败: ${response.status} ${text.slice(0, 240)}`)
+        return { kind: 'error', error: new Error(`LLM 请求失败: ${response.status} ${text.slice(0, 240)}`) }
       }
       const json = (await response.json()) as ChatResponse
       const text = extractText(json)
       if (text) {
-        return text
+        return { kind: 'text', text }
       }
       lastEmptyResponse = json
       lastError = `empty response: finish_reason=${finishReason(json)} ${formatUsage(json.usage)}`
@@ -135,13 +163,40 @@ export async function postOpenAICompatibleChat(
       if (budget < budgets[budgets.length - 1] && shouldRetryBudgetAfterEmpty(json, budget)) {
         break
       }
-      throw emptyResponseError(json, settings.llmModel)
+      return { kind: 'empty', json }
     }
   }
   if (lastEmptyResponse) {
-    throw emptyResponseError(lastEmptyResponse, settings.llmModel)
+    return { kind: 'empty', json: lastEmptyResponse }
   }
-  throw new Error(`LLM 没有返回文本内容。${lastError}`)
+  return { kind: 'error', error: new Error(`LLM 没有返回文本内容。${lastError}`) }
+}
+
+export async function postOpenAICompatibleChat(
+  settings: ProviderSettings,
+  messages: ChatMessage[],
+  maxTokens = 4096
+): Promise<string> {
+  const firstAttempt = await attemptOpenAICompatibleChat(settings, messages, maxTokens)
+  if (firstAttempt.kind === 'text') {
+    return firstAttempt.text
+  }
+  if (firstAttempt.kind === 'error') {
+    throw firstAttempt.error
+  }
+
+  if (shouldRetryFinalTextAfterEmpty(firstAttempt.json)) {
+    const finalTextAttempt = await attemptOpenAICompatibleChat(settings, messagesWithFinalTextReminder(messages), maxTokens)
+    if (finalTextAttempt.kind === 'text') {
+      return finalTextAttempt.text
+    }
+    if (finalTextAttempt.kind === 'error') {
+      throw finalTextAttempt.error
+    }
+    throw emptyResponseError(finalTextAttempt.json, settings.llmModel)
+  }
+
+  throw emptyResponseError(firstAttempt.json, settings.llmModel)
 }
 
 export async function probeOpenAICompatibleProvider(settings: ProviderSettings): Promise<ProviderProbeResult> {

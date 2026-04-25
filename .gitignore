@@ -9,6 +9,7 @@ __pycache__
 *.pyc
 coverage
 release-evidence
+.playwright-cli
 
 *.tsbuildinfo
 

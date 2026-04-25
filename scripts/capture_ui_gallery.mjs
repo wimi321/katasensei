@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 const url = process.env.KATASENSEI_UI_GALLERY_URL ?? 'http://localhost:5173/#/ui-gallery'
 const outDir = resolve(process.env.KATASENSEI_UI_GALLERY_OUT ?? 'release-evidence/ui-gallery')
@@ -9,12 +10,38 @@ async function loadPlaywright() {
   try {
     return await import('playwright')
   } catch {
-    throw new Error('Playwright is not installed in this environment. Run pnpm dev, then install/use Playwright locally or capture this route manually: ' + url)
+    return null
   }
 }
 
+async function captureWithCliFallback() {
+  await mkdir(outDir, { recursive: true })
+  const overviewPath = join(outDir, 'ui-gallery-overview.png')
+  const result = spawnSync('npx', [
+    '--yes',
+    'playwright',
+    'screenshot',
+    '--viewport-size=1440,1100',
+    '--full-page',
+    '--wait-for-selector=.ui-gallery',
+    url,
+    overviewPath
+  ], {
+    stdio: 'inherit'
+  })
+  if (result.status !== 0) {
+    throw new Error('Playwright package is not installed and npx playwright screenshot failed. Run pnpm dev, then capture this route manually: ' + url)
+  }
+  console.log(`Captured UI Gallery overview in ${overviewPath}`)
+}
+
 async function capture() {
-  const { chromium } = await loadPlaywright()
+  const playwright = await loadPlaywright()
+  if (!playwright) {
+    await captureWithCliFallback()
+    return
+  }
+  const { chromium } = playwright
   await mkdir(outDir, { recursive: true })
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 })

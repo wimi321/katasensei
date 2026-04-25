@@ -68,6 +68,8 @@ test('Desktop app shell exposes native menu commands and workbench chrome', () =
   assert.match(styles, /desktop-shell/)
   assert.match(styles, /desktop-command-palette/)
   assert.match(styles, /desktop-statusbar/)
+  assert.match(styles, /desktop-command-palette__list strong[^}]+#f8f1e4/s)
+  assert.match(styles, /desktop-command-palette__panel input::placeholder/)
 })
 
 test('StudentRailCard stays compact and visual QA capture exists', () => {
