@@ -23,8 +23,8 @@ interface GoBoardV2Props {
   onCandidateHover?: (candidate: RenderCandidate | null) => void
 }
 
-const VIEWBOX = 920
-const EDGE = 54
+const VIEWBOX = 960
+const EDGE = 76
 const INNER = VIEWBOX - EDGE * 2
 const STAR_CONFIG: Record<number, number[]> = {
   19: [3, 9, 15],
@@ -227,10 +227,10 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
           </pattern>
         </defs>
 
-        <rect className="ks-board-drop" x="20" y="20" width="880" height="880" rx="30" filter="url(#ks-board-shadow)" />
-        <rect className="ks-board-bevel" x="25" y="25" width="870" height="870" rx="28" />
-        <rect className="ks-board-surface-v2" x="34" y="34" width="852" height="852" rx="20" />
-        <rect x="34" y="34" width="852" height="852" rx="20" fill="url(#ks-board-grain)" opacity="0.68" />
+        <rect className="ks-board-drop" x="18" y="18" width="924" height="924" rx="32" filter="url(#ks-board-shadow)" />
+        <rect className="ks-board-bevel" x="24" y="24" width="912" height="912" rx="30" />
+        <rect className="ks-board-surface-v2" x="36" y="36" width="888" height="888" rx="22" />
+        <rect x="36" y="36" width="888" height="888" rx="22" fill="url(#ks-board-grain)" opacity="0.68" />
 
         <g className="ks-grid-lines">
           {lines.map((index) => {
@@ -260,10 +260,10 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
             const left = xy({ x: 0, y: index }, boardSize)
             return (
               <g key={letter}>
-                <text x={top.x} y="31">{letter}</text>
-                <text x={top.x} y="898">{letter}</text>
-                <text x="30" y={left.y + 5}>{boardSize - index}</text>
-                <text x="895" y={left.y + 5}>{boardSize - index}</text>
+                <text x={top.x} y="52">{letter}</text>
+                <text x={top.x} y="908">{letter}</text>
+                <text x="52" y={left.y}>{boardSize - index}</text>
+                <text x="908" y={left.y}>{boardSize - index}</text>
               </g>
             )
           })}

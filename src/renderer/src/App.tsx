@@ -716,6 +716,7 @@ export function App(): ReactElement {
               <StatusPills items={statusItems} />
             </div>
             <div className="topbar-actions">
+              {record ? <TopbarMoveInfo record={record} moveNumber={moveNumber} analysis={analysis} /> : null}
               <button className="primary-button" onClick={() => void runCurrentMoveAnalysis()} disabled={!record || busy !== ''}>
                 {busy === 'teacher' ? '老师分析中' : '分析当前手'}
               </button>
@@ -731,7 +732,6 @@ export function App(): ReactElement {
           <section className="board-stage">
             {record ? (
               <div className="board-table board-table--v2">
-                <BoardMatchBar record={record} moveNumber={moveNumber} analysis={analysis} />
                 {record.boardSize >= 2 ? (
                   <GoBoardV2 record={record} moveNumber={moveNumber} analysis={analysis} keyMoves={currentBoardKeyMoveMarks} />
                 ) : (
@@ -1438,31 +1438,17 @@ function MoveControls({ record, moveNumber, onMove }: { record: GameRecord | nul
   )
 }
 
-function BoardMatchBar({ record, moveNumber, analysis }: { record: GameRecord; moveNumber: number; analysis: KataGoMoveAnalysis | null }): ReactElement {
-  const black = safePlayerName(record.game.black, '黑方')
-  const white = safePlayerName(record.game.white, '白方')
+function TopbarMoveInfo({ record, moveNumber, analysis }: { record: GameRecord; moveNumber: number; analysis: KataGoMoveAnalysis | null }): ReactElement {
   const current = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
   const scoreLead = analysis?.after.scoreLead
   const bestCandidate = boardCandidateMoves(analysis)[0]
   const nextColor = sideToPlay(record, moveNumber) === 'B' ? '黑' : '白'
   return (
-    <div className="board-matchbar">
-      <div className="player-chip player-chip--black">
-        <span className="player-stone" aria-hidden="true" />
-        <small>黑棋</small>
-        <strong>{black}</strong>
-      </div>
-      <div className="match-state">
-        <strong>{moveNumber}</strong>
-        <span>/ {record.moves.length}</span>
-        <span>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</span>
-        <small>{bestCandidate ? `${nextColor}先 · 1选 ${formatCandidate(bestCandidate)}` : formatScoreLead(scoreLead)}</small>
-      </div>
-      <div className="player-chip player-chip--white">
-        <span className="player-stone" aria-hidden="true" />
-        <small>白棋</small>
-        <strong>{white}</strong>
-      </div>
+    <div className="topbar-move-info" aria-label="当前局面">
+      <strong>{moveNumber}</strong>
+      <span>/ {record.moves.length}</span>
+      <span>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</span>
+      <em>{bestCandidate ? `${nextColor}先 · 1选 ${formatCandidate(bestCandidate)}` : formatScoreLead(scoreLead)}</em>
     </div>
   )
 }
