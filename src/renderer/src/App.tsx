@@ -830,12 +830,7 @@ export function App(): ReactElement {
   return (
     <DiagnosticsGate>
       <div className="desktop-shell">
-        <DesktopTitleBar
-          selectedGame={selectedGame}
-          statusItems={statusItems}
-          busy={busy}
-          onCommand={runDesktopCommand}
-        />
+        <DesktopTitleBar statusItems={statusItems} busy={busy} onCommand={runDesktopCommand} />
         <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
         <aside className="library-rail">
           <div className="rail-head">
@@ -865,10 +860,25 @@ export function App(): ReactElement {
 
         <main className="board-workspace">
           <header className="topbar">
-            <div>
-              <h1>{selectedGame ? gameDisplayName(selectedGame) : '未选择棋谱'}</h1>
-              <StatusPills items={statusItems} />
-            </div>
+            {record ? (
+              <BoardContextBar
+                title={selectedGame ? gameDisplayName(selectedGame) : '未选择棋谱'}
+                record={record}
+                moveNumber={moveNumber}
+                analysis={(analysis?.moveNumber === moveNumber ? analysis : evaluations[moveNumber]) ?? null}
+                liveAnalysis={liveAnalysis}
+                disabled={busy !== ''}
+                onStart={() => void startLiveAnalysis()}
+                onPause={() => pauseLiveAnalysis()}
+              />
+            ) : (
+              <div className="board-contextbar board-contextbar--empty">
+                <div className="board-contextbar__identity">
+                  <h1>未选择棋谱</h1>
+                  <span>导入 SGF 或搜索野狐棋谱</span>
+                </div>
+              </div>
+            )}
           </header>
 
           <section className="board-stage">
@@ -894,17 +904,6 @@ export function App(): ReactElement {
                 loading={graphBusy}
                 loadingLabel={graphProgress}
                 onMove={jumpToMove}
-                summary={
-                  <TimelineAnalysisHeader
-                    record={record}
-                    moveNumber={moveNumber}
-                    analysis={(analysis?.moveNumber === moveNumber ? analysis : evaluations[moveNumber]) ?? null}
-                    liveAnalysis={liveAnalysis}
-                    disabled={busy !== ''}
-                    onStart={() => void startLiveAnalysis()}
-                    onPause={() => pauseLiveAnalysis()}
-                  />
-                }
               />
             ) : (
               <EvaluationGraph
@@ -940,12 +939,8 @@ export function App(): ReactElement {
         </aside>
       </div>
         <DesktopStatusBar
-          selectedGame={selectedGame}
-          record={record}
-          moveNumber={moveNumber}
           graphBusy={graphBusy}
           graphProgress={graphProgress}
-          liveAnalysis={liveAnalysis}
           katagoReady={katagoAssets?.ready || dashboard.systemProfile.katagoReady}
           llmReady={dashboard.systemProfile.hasLlmApiKey}
           busy={busy}
@@ -1088,12 +1083,10 @@ function StatusPills({ items }: { items: StatusPill[] }): ReactElement {
 }
 
 function DesktopTitleBar({
-  selectedGame,
   statusItems,
   busy,
   onCommand
 }: {
-  selectedGame?: LibraryGame
   statusItems: StatusPill[]
   busy: string
   onCommand: (command: DesktopCommand) => void
@@ -1104,7 +1097,7 @@ function DesktopTitleBar({
         <img src={logoUrl} alt="" aria-hidden="true" />
         <div>
           <strong>KataSensei</strong>
-          <span>{selectedGame ? gameDisplayName(selectedGame) : 'Desktop Workbench'}</span>
+          <span>AI Go Workbench</span>
         </div>
       </div>
       <div className="desktop-titlebar__center">
@@ -1121,32 +1114,21 @@ function DesktopTitleBar({
 }
 
 function DesktopStatusBar({
-  selectedGame,
-  record,
-  moveNumber,
   graphBusy,
   graphProgress,
-  liveAnalysis,
   katagoReady,
   llmReady,
   busy
 }: {
-  selectedGame?: LibraryGame
-  record: GameRecord | null
-  moveNumber: number
   graphBusy: boolean
   graphProgress: string
-  liveAnalysis: LiveAnalysisState
   katagoReady: boolean
   llmReady: boolean
   busy: string
 }): ReactElement {
   return (
     <footer className="desktop-statusbar">
-      <span>{selectedGame ? gameDisplayName(selectedGame) : 'No game selected'}</span>
-      <span>{record ? `Move ${moveNumber}/${record.moves.length}` : 'Import SGF to start'}</span>
       <span>{graphBusy ? `Winrate ${graphProgress || 'analyzing'}` : 'Winrate ready'}</span>
-      <span>{liveAnalysis.running ? `Live ${liveAnalysis.status}` : `Live ${formatVisits(liveAnalysis.visits)} visits`}</span>
       <span data-ready={katagoReady}>KataGo</span>
       <span data-ready={llmReady}>Vision LLM</span>
       <em>{busy ? `Task: ${busy}` : 'Ready'}</em>
@@ -1595,26 +1577,8 @@ function MoveControls({ record, moveNumber, onMove }: { record: GameRecord | nul
   )
 }
 
-function TimelineMoveInfo({ record, moveNumber, analysis }: { record: GameRecord; moveNumber: number; analysis: KataGoMoveAnalysis | null }): ReactElement {
-  const black = safePlayerName(record.game.black, '黑方')
-  const white = safePlayerName(record.game.white, '白方')
-  const current = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
-  const scoreLead = analysis?.after.scoreLead
-  const winrate = analysis?.after.winrate
-  return (
-    <div className="timeline-move-info" aria-label="当前局面">
-      <span>黑 {black}</span>
-      <span>vs</span>
-      <span>白 {white}</span>
-      <strong>{moveNumber}/{record.moves.length}</strong>
-      <span>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</span>
-      <em>{typeof winrate === 'number' ? `黑胜率 ${winrate.toFixed(1)}%` : '胜率待分析'}</em>
-      <em>{formatScoreLead(scoreLead)}</em>
-    </div>
-  )
-}
-
-function TimelineAnalysisHeader({
+function BoardContextBar({
+  title,
   record,
   moveNumber,
   analysis,
@@ -1623,6 +1587,7 @@ function TimelineAnalysisHeader({
   onStart,
   onPause
 }: {
+  title: string
   record: GameRecord
   moveNumber: number
   analysis: KataGoMoveAnalysis | null
@@ -1631,6 +1596,9 @@ function TimelineAnalysisHeader({
   onStart: () => void
   onPause: () => void
 }): ReactElement {
+  const current = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
+  const scoreLead = analysis?.after.scoreLead
+  const winrate = analysis?.after.winrate
   const isCurrentLiveTarget = liveAnalysis.targetMoveNumber === moveNumber
   const totalVisits = isCurrentLiveTarget ? liveAnalysis.visits : candidateVisitsTotal(analysis)
   const bestVisits = isCurrentLiveTarget ? liveAnalysis.bestVisits : candidateBestVisits(analysis)
@@ -1638,13 +1606,27 @@ function TimelineAnalysisHeader({
     ? liveAnalysis.status
     : (analysis ? `已搜索 ${formatVisits(totalVisits)}` : '等待精读')
   return (
-    <div className="timeline-analysis-header">
-      <TimelineMoveInfo record={record} moveNumber={moveNumber} analysis={analysis} />
-      <div className="analysis-control-strip" aria-label="KataGo 持续分析控制">
-        <div className="analysis-control-strip__stats">
-          <span>{status}</span>
-          <em>总 {formatVisits(totalVisits)} · 一选 {formatVisits(bestVisits)}</em>
+    <div className="board-contextbar">
+      <div className="board-contextbar__identity">
+        <h1>{title}</h1>
+        <span>{moveNumber}/{record.moves.length}</span>
+        <em>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</em>
+      </div>
+      <div className="board-contextbar__metrics" aria-label="当前局面数据">
+        <div className="board-contextbar__metric">
+          <span>黑胜率</span>
+          <strong>{typeof winrate === 'number' ? `${winrate.toFixed(1)}%` : '待分析'}</strong>
         </div>
+        <div className="board-contextbar__metric">
+          <span>目差</span>
+          <strong>{formatScoreLead(scoreLead)}</strong>
+        </div>
+        <div className="board-contextbar__metric board-contextbar__metric--search">
+          <span>{status}</span>
+          <strong>总 {formatVisits(totalVisits)} · 一选 {formatVisits(bestVisits)}</strong>
+        </div>
+      </div>
+      <div className="analysis-control-strip" aria-label="KataGo 持续分析控制">
         <button
           type="button"
           className={`analysis-toggle-button ${liveAnalysis.running ? 'is-running' : ''}`}

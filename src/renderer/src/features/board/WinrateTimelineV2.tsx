@@ -154,7 +154,7 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
       <div className="ks-timeline-head">
         <div className="ks-timeline-title">
           <span>胜率走势</span>
-          <small>{loading ? (loadingLabel || '分析中') : `胜率 / 目差 · ${points.length}/${totalMoves || 0} 局面`}</small>
+          <small>{loading ? (loadingLabel || '分析中') : '胜率 / 目差曲线'}</small>
         </div>
         {summary ? <div className="ks-timeline-summary">{summary}</div> : null}
       </div>
