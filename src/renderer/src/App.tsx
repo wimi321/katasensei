@@ -2030,9 +2030,25 @@ function SettingsDrawer({
 }): ReactElement {
   const [releaseReadiness, setReleaseReadiness] = useState<ReleaseReadinessResult | null>(null)
   const [releaseReadinessError, setReleaseReadinessError] = useState('')
+  const [refreshedLlmModels, setRefreshedLlmModels] = useState<string[]>([])
+  const [llmModelsRefreshing, setLlmModelsRefreshing] = useState(false)
+  const [llmModelRefreshMessage, setLlmModelRefreshMessage] = useState('')
+  const [selectedLlmModel, setSelectedLlmModel] = useState(dashboard.settings.llmModel)
   const modelPresets = dashboard.systemProfile.katagoModelPresets
   const [selectedPresetId, setSelectedPresetId] = useState<KataGoModelPresetId>(dashboard.settings.katagoModelPreset)
   const selectedPreset = modelPresets.find((preset) => preset.id === selectedPresetId) ?? modelPresets[0]
+  const llmModelOptions = Array.from(new Set([
+    selectedLlmModel,
+    dashboard.settings.llmModel,
+    ...dashboard.systemProfile.proxyModels,
+    ...refreshedLlmModels,
+    'gpt-5.5',
+    'gpt-5.4-mini',
+    'gpt-5-codex-mini',
+    'gpt-5',
+    'gpt-4.1',
+    'claude-3-5-sonnet-latest'
+  ].map((model) => model.trim()).filter(Boolean)))
   const groupedModelPresets = useMemo(() => {
     const groups = new Map<string, typeof modelPresets>()
     for (const preset of modelPresets) {
@@ -2101,6 +2117,32 @@ function SettingsDrawer({
     }
   }
 
+  async function refreshLlmModels(form: HTMLFormElement | null): Promise<void> {
+    setLlmModelsRefreshing(true)
+    setLlmModelRefreshMessage('')
+    try {
+      const formData = new FormData(form ?? undefined)
+      const result = await window.gomentor.listLlmModels({
+        llmBaseUrl: String(formData.get('llmBaseUrl') ?? dashboard.settings.llmBaseUrl),
+        llmApiKey: String(formData.get('llmApiKey') ?? '')
+      })
+      if (result.ok) {
+        setRefreshedLlmModels(result.models)
+        if (
+          result.models.includes('gpt-5.5') &&
+          (!selectedLlmModel || selectedLlmModel === 'gpt-5-mini' || selectedLlmModel === 'gpt-5.4' || !result.models.includes(selectedLlmModel))
+        ) {
+          setSelectedLlmModel('gpt-5.5')
+        }
+      }
+      setLlmModelRefreshMessage(result.message)
+    } catch (cause) {
+      setLlmModelRefreshMessage(`模型刷新失败: ${String(cause)}`)
+    } finally {
+      setLlmModelsRefreshing(false)
+    }
+  }
+
   useEffect(() => {
     void refreshReleaseReadiness()
   }, [])
@@ -2108,6 +2150,10 @@ function SettingsDrawer({
   useEffect(() => {
     setSelectedPresetId(dashboard.settings.katagoModelPreset)
   }, [dashboard.settings.katagoModelPreset])
+
+  useEffect(() => {
+    setSelectedLlmModel(dashboard.settings.llmModel)
+  }, [dashboard.settings.llmModel])
 
   return (
     <form
@@ -2176,17 +2222,31 @@ function SettingsDrawer({
       </label>
       <label>
         多模态模型
-        {dashboard.systemProfile.proxyModels.length > 0 ? (
-          <select name="llmModel" defaultValue={dashboard.settings.llmModel}>
-            {dashboard.systemProfile.proxyModels.map((model) => (
+        <div className="llm-model-picker">
+          <select
+            className="llm-model-select"
+            name="llmModel"
+            value={selectedLlmModel}
+            onChange={(event) => setSelectedLlmModel(event.target.value)}
+            aria-label="选择多模态模型"
+          >
+            {llmModelOptions.map((model) => (
               <option key={model} value={model}>
                 {model}
               </option>
             ))}
           </select>
-        ) : (
-          <input name="llmModel" defaultValue={dashboard.settings.llmModel} />
-        )}
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={(event) => void refreshLlmModels(event.currentTarget.form)}
+            disabled={busy !== '' || llmModelsRefreshing}
+          >
+            {llmModelsRefreshing ? '刷新中' : '刷新模型'}
+          </button>
+        </div>
+        <small>从代理返回的模型中选择；如果没有看到新模型，请先刷新模型。</small>
+        {llmModelRefreshMessage ? <small>{llmModelRefreshMessage}</small> : null}
       </label>
       <div className="settings-actions">
         <button className="ghost-button" type="button" onClick={(event) => onTest(event.currentTarget.form!)} disabled={busy !== ''}>

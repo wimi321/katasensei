@@ -472,6 +472,17 @@ export interface LlmSettingsTestResult {
   message: string
 }
 
+export interface LlmModelsListRequest {
+  llmBaseUrl: string
+  llmApiKey: string
+}
+
+export interface LlmModelsListResult {
+  ok: boolean
+  models: string[]
+  message: string
+}
+
 export interface DashboardData {
   settings: AppSettings
   games: LibraryGame[]

@@ -121,6 +121,8 @@ export async function applyDetectedDefaults(settings: AppSettings): Promise<AppS
   const hydratedKatago = hydrateKataGoSettings(settings)
   const detected = await detectSystemProfile(hydratedKatago)
   const preferredModel =
+    detected.proxyModels.find((model) => model === 'gpt-5.5') ||
+    detected.proxyModels.find((model) => model === 'gpt-5.4-mini') ||
     detected.proxyModels.find((model) => model === 'gpt-5-codex-mini') ||
     detected.proxyModels.find((model) => model === 'gpt-5') ||
     detected.proxyModels[0] ||

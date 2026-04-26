@@ -17,11 +17,25 @@ function endpoint(settings: ProviderSettings): string {
   return `${settings.llmBaseUrl.replace(/\/$/, '')}/chat/completions`
 }
 
+function modelsEndpoint(settings: Pick<ProviderSettings, 'llmBaseUrl'>): string {
+  return `${settings.llmBaseUrl.replace(/\/$/, '')}/models`
+}
+
 function headers(settings: ProviderSettings): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${settings.llmApiKey}`
   }
+}
+
+function modelHeaders(settings: Pick<ProviderSettings, 'llmApiKey'>): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json'
+  }
+  if (settings.llmApiKey.trim()) {
+    headers.Authorization = `Bearer ${settings.llmApiKey}`
+  }
+  return headers
 }
 
 function isReasoningModel(model: string): boolean {
@@ -380,6 +394,34 @@ export async function probeOpenAICompatibleProvider(settings: ProviderSettings):
       technicalDetail: String(error)
     }
   }
+}
+
+export async function listOpenAICompatibleModels(settings: Pick<ProviderSettings, 'llmBaseUrl' | 'llmApiKey'>): Promise<string[]> {
+  if (!settings.llmBaseUrl.trim()) {
+    throw new Error('请先填写 LLM Base URL。')
+  }
+  const response = await fetch(modelsEndpoint(settings), {
+    method: 'GET',
+    headers: modelHeaders(settings),
+    signal: AbortSignal.timeout(20_000)
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(`模型列表刷新失败: ${response.status} ${text.slice(0, 220)}`)
+  }
+  const json = (await response.json()) as {
+    data?: Array<{ id?: unknown; name?: unknown }>
+    models?: unknown
+  }
+  const rawModels = Array.isArray(json.data)
+    ? json.data.map((model) => model.id ?? model.name)
+    : Array.isArray(json.models)
+      ? json.models
+      : []
+  const models = rawModels
+    .filter((model): model is string => typeof model === 'string' && model.trim().length > 0)
+    .map((model) => model.trim())
+  return Array.from(new Set(models)).sort((left, right) => left.localeCompare(right, 'en'))
 }
 
 export async function chatOpenAICompatible(input: ChatInput): Promise<ChatResult> {

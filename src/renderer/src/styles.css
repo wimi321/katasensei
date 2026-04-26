@@ -2405,6 +2405,22 @@ label,
   gap: 8px;
 }
 
+.llm-model-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.llm-model-picker .ghost-button,
+.llm-model-select {
+  min-height: 32px;
+}
+
+.llm-model-picker .ghost-button {
+  white-space: nowrap;
+}
+
 label {
   display: flex;
   flex-direction: column;

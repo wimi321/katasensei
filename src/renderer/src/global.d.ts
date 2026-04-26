@@ -15,6 +15,8 @@ import type {
   KataGoBenchmarkRequest,
   KataGoBenchmarkResult,
   LibraryImportResult,
+  LlmModelsListRequest,
+  LlmModelsListResult,
   LlmSettingsTestRequest,
   LlmSettingsTestResult,
   KataGoMoveAnalysis,
@@ -73,6 +75,7 @@ declare global {
       runTeacherTask: (payload: TeacherRunRequest) => Promise<TeacherRunResult>
       onTeacherRunProgress: (handler: (payload: TeacherRunProgress) => void) => () => void
       testLlmSettings: (payload: LlmSettingsTestRequest) => Promise<LlmSettingsTestResult>
+      listLlmModels: (payload: LlmModelsListRequest) => Promise<LlmModelsListResult>
       getReleaseReadiness: () => Promise<ReleaseReadinessResult>
       openPath: (filePath: string) => Promise<void>
       onDesktopCommand?: (handler: (command: DesktopCommand) => void) => () => void

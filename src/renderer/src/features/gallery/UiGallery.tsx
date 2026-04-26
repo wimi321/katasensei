@@ -101,7 +101,7 @@ export function UiGallery(): ReactElement {
                 <span>GoMentor AI Editor</span>
                 <strong>对话式围棋分析线程</strong>
                 <div className="teacher-editor-meta">
-                  <em>gpt-5.4</em>
+                  <em>gpt-5.5</em>
                   <em>KataGo ready</em>
                   <em>Vision LLM ready</em>
                 </div>
@@ -228,7 +228,7 @@ export function UiGallery(): ReactElement {
           </div>
           <RuntimeSettingsPanel
             baseUrl="http://127.0.0.1:8317/v1"
-            model="gpt-5.4"
+            model="gpt-5.5"
             hasApiKey
             busy={false}
             testMessage="图片输入测试通过，老师可以接收棋盘截图。"

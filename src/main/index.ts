@@ -1,13 +1,13 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent, type MenuItemConstructorOptions } from 'electron'
 import { isAbsolute, relative, resolve, join } from 'node:path'
 import { appHome, findGame, getGames, getSettings, hasLlmApiKey, replaceSettings, setSettings, upsertGames } from './lib/store'
-import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, KataGoAssetInstallRequest, KataGoBenchmarkRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
+import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, KataGoAssetInstallRequest, KataGoBenchmarkRequest, LlmModelsListRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
 import { importSgfFile, readGameRecord } from './services/sgf'
 import { ensureFoxGameDownloaded, syncFoxGames } from './services/fox'
 import { runReview } from './services/review'
 import { applyDetectedDefaults, detectSystemProfile } from './services/systemProfile'
 import { runTeacherTask } from './services/teacherAgent'
-import { testLlmSettings } from './services/llm'
+import { listLlmModels, testLlmSettings } from './services/llm'
 import { analyzeGameQuick, analyzePosition, analyzePositionWithProgress } from './services/katago'
 import { benchmarkKataGo } from './services/katagoBenchmark'
 import { collectDiagnostics } from './services/diagnostics'
@@ -310,6 +310,7 @@ app.whenReady().then(() => {
     })
   )
   ipcMain.handle('llm:test', async (_event, payload: LlmSettingsTestRequest) => testLlmSettings(payload))
+  ipcMain.handle('llm:list-models', async (_event, payload: LlmModelsListRequest) => listLlmModels(payload))
   ipcMain.handle('release:readiness', async () => inspectReleaseReadiness())
   ipcMain.handle('path:open', async (_event, filePath: string) => shell.showItemInFolder(assertManagedPath(filePath)))
 

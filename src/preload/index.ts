@@ -16,6 +16,8 @@ import type {
   KataGoBenchmarkRequest,
   KataGoBenchmarkResult,
   LibraryImportResult,
+  LlmModelsListRequest,
+  LlmModelsListResult,
   LlmSettingsTestRequest,
   LlmSettingsTestResult,
   KataGoMoveAnalysis,
@@ -88,6 +90,7 @@ const api = {
     return () => ipcRenderer.removeListener('teacher:run-progress', listener)
   },
   testLlmSettings: (payload: LlmSettingsTestRequest): Promise<LlmSettingsTestResult> => ipcRenderer.invoke('llm:test', payload),
+  listLlmModels: (payload: LlmModelsListRequest): Promise<LlmModelsListResult> => ipcRenderer.invoke('llm:list-models', payload),
   getReleaseReadiness: (): Promise<ReleaseReadinessResult> => ipcRenderer.invoke('release:readiness'),
   openPath: (filePath: string): Promise<void> => ipcRenderer.invoke('path:open', filePath),
   onDesktopCommand: (handler: (command: DesktopCommand) => void): (() => void) => {

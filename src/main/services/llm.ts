@@ -1,6 +1,6 @@
-import type { AppSettings, LlmSettingsTestRequest, LlmSettingsTestResult } from '@main/lib/types'
+import type { AppSettings, LlmModelsListRequest, LlmModelsListResult, LlmSettingsTestRequest, LlmSettingsTestResult } from '@main/lib/types'
 import { getSettings } from '@main/lib/store'
-import { postOpenAICompatibleChat, probeOpenAICompatibleProvider, streamOpenAICompatibleChat } from './llm/openaiCompatibleProvider'
+import { listOpenAICompatibleModels, postOpenAICompatibleChat, probeOpenAICompatibleProvider, streamOpenAICompatibleChat } from './llm/openaiCompatibleProvider'
 import type { ChatMessage, ProviderSettings } from './llm/provider'
 
 type LlmDeltaHandler = (delta: string) => void
@@ -75,5 +75,27 @@ export async function testLlmSettings(payload: LlmSettingsTestRequest): Promise<
   return {
     ok: result.ok,
     message: result.technicalDetail ? `${result.message} ${result.technicalDetail}` : result.message
+  }
+}
+
+export async function listLlmModels(payload: LlmModelsListRequest): Promise<LlmModelsListResult> {
+  const saved = getSettings()
+  const settings = {
+    llmBaseUrl: payload.llmBaseUrl.trim() || saved.llmBaseUrl,
+    llmApiKey: payload.llmApiKey.trim() || saved.llmApiKey
+  }
+  try {
+    const models = await listOpenAICompatibleModels(settings)
+    return {
+      ok: true,
+      models,
+      message: models.length ? `已刷新 ${models.length} 个模型。` : '代理可访问，但没有返回模型列表。'
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      models: [],
+      message: String(error)
+    }
   }
 }
