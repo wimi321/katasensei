@@ -1197,16 +1197,16 @@ export function App(): ReactElement {
         <DesktopTitleBar statusItems={statusItems} busy={busy} onCommand={runDesktopCommand} />
         <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
         <aside className="library-rail">
-          <div className="rail-head">
-            <button className="icon-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏">
-              {libraryCollapsed ? '>' : '<'}
-            </button>
+          <div className={`rail-head library-rail-head ${libraryCollapsed ? 'is-collapsed' : ''}`}>
             {!libraryCollapsed ? (
-              <div className="brand-mark">
-                <img src={logoUrl} alt="" aria-hidden="true" />
-                <strong>GoMentor</strong>
+              <div className="library-rail-heading">
+                <strong>棋谱库</strong>
+                <span>Fox & SGF</span>
               </div>
             ) : null}
+            <button className="icon-button library-collapse-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏" aria-label="切换棋谱栏">
+              {libraryCollapsed ? '›' : '‹'}
+            </button>
           </div>
           {!libraryCollapsed ? (
             <LibraryPanel
@@ -1217,6 +1217,7 @@ export function App(): ReactElement {
               currentStudent={currentStudent}
               onSelect={setSelectedId}
               onSync={() => void syncFox()}
+              onImport={() => void importSgf()}
               onFoxKeyword={setFoxKeyword}
               onChangePlayerBinding={() => selectedGame && void openStudentBinding(selectedGame)}
             />
@@ -1355,6 +1356,7 @@ function LibraryPanel({
   currentStudent,
   onSelect,
   onSync,
+  onImport,
   onFoxKeyword,
   onChangePlayerBinding
 }: {
@@ -1365,6 +1367,7 @@ function LibraryPanel({
   currentStudent: StudentProfile | null
   onSelect: (id: string) => void
   onSync: () => void
+  onImport: () => void
   onFoxKeyword: (value: string) => void
   onChangePlayerBinding: () => void
 }): ReactElement {
@@ -1410,6 +1413,9 @@ function LibraryPanel({
           {busy === 'fox' ? '搜索中' : '搜索野狐棋谱'}
         </button>
       </form>
+      <button className="ghost-button library-import-button" type="button" onClick={onImport} disabled={busy !== ''}>
+        导入 SGF 文件
+      </button>
       <StudentRailCard
         displayName={currentStudent?.displayName}
         primaryFoxNickname={currentStudent?.primaryFoxNickname}
@@ -1489,7 +1495,6 @@ function DesktopTitleBar({
       </div>
       <div className="desktop-titlebar__actions">
         <button type="button" onClick={() => onCommand('open-command-palette')}>Command</button>
-        <button type="button" onClick={() => onCommand('import-sgf')}>Import SGF</button>
         <button type="button" onClick={() => onCommand('open-settings')}>Preferences</button>
         <span>{busy ? 'Working' : 'Idle'}</span>
       </div>

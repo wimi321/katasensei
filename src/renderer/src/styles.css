@@ -429,6 +429,49 @@ textarea {
   font-size: 15px;
 }
 
+.library-rail-head {
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 10px 10px 10px 12px;
+}
+
+.library-rail-head.is-collapsed {
+  justify-content: center;
+  padding: 10px 6px;
+}
+
+.library-rail-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.library-rail-heading strong {
+  color: var(--text-main);
+  letter-spacing: 0;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.library-rail-heading span {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+.library-collapse-button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 9px;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .brand-mark {
   display: flex;
   align-items: center;
@@ -598,6 +641,13 @@ label,
 
 .fox-sync-form button {
   flex: 0 0 auto;
+}
+
+.library-import-button {
+  width: 100%;
+  min-height: 30px;
+  border-style: dashed;
+  font-size: 12px;
 }
 
 .library-list-head,
@@ -2121,6 +2171,10 @@ label small {
   width: 100%;
   min-height: 30px;
   font-size: 12px;
+}
+
+.library-import-button {
+  background: rgb(255 252 245 / 0.66);
 }
 
 .empty-list {
