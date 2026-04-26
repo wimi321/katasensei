@@ -160,6 +160,30 @@ export interface KataGoBenchmarkResult {
   updatedAt: string
 }
 
+export interface KataGoAssetInstallRequest {
+  presetId?: KataGoModelPresetId
+}
+
+export type KataGoAssetInstallStage = 'discovering' | 'downloading-model' | 'copying-binary' | 'writing-manifest' | 'done' | 'error'
+
+export interface KataGoAssetInstallProgress {
+  stage: KataGoAssetInstallStage
+  message: string
+  receivedBytes?: number
+  totalBytes?: number
+  percent?: number
+}
+
+export interface KataGoAssetInstallResult {
+  ok: boolean
+  presetId: KataGoModelPresetId
+  modelPath: string
+  binaryPath: string
+  downloadedModel: boolean
+  copiedBinary: boolean
+  detail: string
+}
+
 export type ReleaseReadinessStatus = 'pass' | 'warn' | 'fail' | 'unknown'
 
 export interface ReleaseReadinessItem {

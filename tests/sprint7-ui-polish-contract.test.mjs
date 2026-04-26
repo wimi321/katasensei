@@ -35,6 +35,7 @@ test('GoBoardV2 renders polished stone and candidate layers', () => {
   assert.match(board, /handleBoardPointerMove/)
   assert.match(board, /hitRadius/)
   assert.match(board, /onMouseMove=\{handleBoardPointerMove\}/)
+  assert.doesNotMatch(board, /<CandidateTooltip/)
   assert.match(boardCss, /\.ks-played-move--W \.ks-played-move-frame\s*\{[^}]*255,\s*250,\s*235/s)
   assert.match(boardCss, /\.ks-played-move--B \.ks-played-move-frame\s*\{[^}]*12,\s*13,\s*13/s)
   assert.match(boardCss, /calc\(100vh - 212px\)/)

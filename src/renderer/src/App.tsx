@@ -6,6 +6,7 @@ import type {
   GameMove,
   GameRecord,
   KataGoCandidate,
+  KataGoAssetInstallProgress,
   KataGoAssetStatus,
   KataGoBenchmarkResult,
   KataGoMoveAnalysis,
@@ -259,6 +260,8 @@ export function App(): ReactElement {
   const [llmTestMessage, setLlmTestMessage] = useState('')
   const [katagoBenchmark, setKataGoBenchmark] = useState<KataGoBenchmarkResult | null>(null)
   const [katagoBenchmarkMessage, setKataGoBenchmarkMessage] = useState('')
+  const [katagoInstallMessage, setKataGoInstallMessage] = useState('')
+  const [katagoInstallProgress, setKataGoInstallProgress] = useState<KataGoAssetInstallProgress | null>(null)
   const [currentStudent, setCurrentStudent] = useState<StudentProfile | null>(null)
   const [studentBinding, setStudentBinding] = useState<StudentBindingState | null>(null)
   const [katagoAssets, setKatagoAssets] = useState<KataGoAssetStatus | null>(null)
@@ -273,6 +276,13 @@ export function App(): ReactElement {
   useEffect(() => {
     void refresh()
     void refreshKataGoAssets()
+  }, [])
+
+  useEffect(() => {
+    return window.gomentor.onKataGoAssetInstallProgress((progress) => {
+      setKataGoInstallProgress(progress)
+      setKataGoInstallMessage(progress.message)
+    })
   }, [])
 
   const selectedGame = useMemo(
@@ -609,6 +619,35 @@ export function App(): ReactElement {
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause)
       setKataGoBenchmarkMessage(`KataGo 测速失败：${message}`)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function installOfficialKataGoModel(presetId: KataGoModelPresetId): Promise<void> {
+    setBusy('katago-install')
+    setError('')
+    setKataGoInstallProgress({ stage: 'discovering', message: '正在准备 KataGo 官方权重安装。' })
+    setKataGoInstallMessage('正在准备 KataGo 官方权重安装。')
+    try {
+      const result = await window.gomentor.installKataGoOfficialModel({ presetId })
+      setKataGoInstallMessage(result.detail)
+      const next = await window.gomentor.updateSettings({ katagoModelPreset: presetId })
+      setDashboard(next)
+      await refreshKataGoAssets()
+      if (selectedGame && record) {
+        pauseLiveAnalysis('KataGo 权重已更新，准备重新分析')
+        setAnalysis(null)
+        setEvaluations({})
+        void warmupEvaluationGraph(selectedGame.id, moveNumber)
+        if (!userPausedLiveAnalysisRef.current) {
+          void startLiveAnalysis()
+        }
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      setKataGoInstallMessage(`KataGo 官方权重安装失败：${message}`)
+      setKataGoInstallProgress({ stage: 'error', message })
     } finally {
       setBusy('')
     }
@@ -1328,10 +1367,13 @@ export function App(): ReactElement {
           llmTestMessage={llmTestMessage}
           katagoBenchmark={katagoBenchmark}
           katagoBenchmarkMessage={katagoBenchmarkMessage}
+          katagoInstallMessage={katagoInstallMessage}
+          katagoInstallProgress={katagoInstallProgress}
           onClose={() => setSettingsOpen(false)}
           onSave={(form) => void saveSettings(form)}
           onTest={(form) => void testLlmSettings(form)}
           onBenchmark={() => void runKataGoBenchmark()}
+          onInstallOfficialModel={(presetId) => void installOfficialKataGoModel(presetId)}
           onRefreshKataGoAssets={() => void refreshKataGoAssets()}
         />
       </div>
@@ -1607,10 +1649,13 @@ function DesktopPreferencesModal({
   llmTestMessage,
   katagoBenchmark,
   katagoBenchmarkMessage,
+  katagoInstallMessage,
+  katagoInstallProgress,
   onClose,
   onSave,
   onTest,
   onBenchmark,
+  onInstallOfficialModel,
   onRefreshKataGoAssets
 }: {
   open: boolean
@@ -1620,10 +1665,13 @@ function DesktopPreferencesModal({
   llmTestMessage: string
   katagoBenchmark: KataGoBenchmarkResult | null
   katagoBenchmarkMessage: string
+  katagoInstallMessage: string
+  katagoInstallProgress: KataGoAssetInstallProgress | null
   onClose: () => void
   onSave: (form: HTMLFormElement) => void
   onTest: (form: HTMLFormElement) => void
   onBenchmark: () => void
+  onInstallOfficialModel: (presetId: KataGoModelPresetId) => void
   onRefreshKataGoAssets: () => void
 }): ReactElement | null {
   if (!open) {
@@ -1646,9 +1694,12 @@ function DesktopPreferencesModal({
           llmTestMessage={llmTestMessage}
           katagoBenchmark={katagoBenchmark}
           katagoBenchmarkMessage={katagoBenchmarkMessage}
+          katagoInstallMessage={katagoInstallMessage}
+          katagoInstallProgress={katagoInstallProgress}
           onSave={onSave}
           onTest={onTest}
           onBenchmark={onBenchmark}
+          onInstallOfficialModel={onInstallOfficialModel}
           onRefreshKataGoAssets={onRefreshKataGoAssets}
         />
       </section>
@@ -1878,9 +1929,12 @@ function SettingsDrawer({
   llmTestMessage,
   katagoBenchmark,
   katagoBenchmarkMessage,
+  katagoInstallMessage,
+  katagoInstallProgress,
   onSave,
   onTest,
   onBenchmark,
+  onInstallOfficialModel,
   onRefreshKataGoAssets
 }: {
   dashboard: DashboardData
@@ -1889,15 +1943,19 @@ function SettingsDrawer({
   llmTestMessage: string
   katagoBenchmark: KataGoBenchmarkResult | null
   katagoBenchmarkMessage: string
+  katagoInstallMessage: string
+  katagoInstallProgress: KataGoAssetInstallProgress | null
   onSave: (form: HTMLFormElement) => void
   onTest: (form: HTMLFormElement) => void
   onBenchmark: () => void
+  onInstallOfficialModel: (presetId: KataGoModelPresetId) => void
   onRefreshKataGoAssets: () => void
 }): ReactElement {
   const [releaseReadiness, setReleaseReadiness] = useState<ReleaseReadinessResult | null>(null)
   const [releaseReadinessError, setReleaseReadinessError] = useState('')
   const modelPresets = dashboard.systemProfile.katagoModelPresets
-  const selectedPreset = modelPresets.find((preset) => preset.id === dashboard.settings.katagoModelPreset) ?? modelPresets[0]
+  const [selectedPresetId, setSelectedPresetId] = useState<KataGoModelPresetId>(dashboard.settings.katagoModelPreset)
+  const selectedPreset = modelPresets.find((preset) => preset.id === selectedPresetId) ?? modelPresets[0]
   const betaItems = useMemo<BetaAcceptanceItem[]>(() => {
     if (releaseReadiness) {
       return releaseReadiness.items.map((item) => ({
@@ -1951,6 +2009,10 @@ function SettingsDrawer({
     void refreshReleaseReadiness()
   }, [])
 
+  useEffect(() => {
+    setSelectedPresetId(dashboard.settings.katagoModelPreset)
+  }, [dashboard.settings.katagoModelPreset])
+
   return (
     <form
       key={`${dashboard.settings.katagoModelPreset}|${dashboard.settings.llmBaseUrl}|${dashboard.settings.llmModel}`}
@@ -1962,7 +2024,11 @@ function SettingsDrawer({
     >
       <label>
         KataGo 权重
-        <select name="katagoModelPreset" defaultValue={dashboard.settings.katagoModelPreset}>
+        <select
+          name="katagoModelPreset"
+          value={selectedPresetId}
+          onChange={(event) => setSelectedPresetId(event.target.value as KataGoModelPresetId)}
+        >
           {modelPresets.map((preset) => (
             <option key={preset.id} value={preset.id}>
               {preset.label} · {preset.badge}
@@ -1972,7 +2038,15 @@ function SettingsDrawer({
         {selectedPreset ? <small>{selectedPreset.description}</small> : null}
         <small>{dashboard.systemProfile.katagoStatus}</small>
       </label>
-      <KataGoAssetsPanel status={katagoAssets} onRefresh={onRefreshKataGoAssets} />
+      <KataGoAssetsPanel
+        status={katagoAssets}
+        selectedPreset={selectedPreset}
+        busy={busy === 'katago-install'}
+        installProgress={katagoInstallProgress}
+        installMessage={katagoInstallMessage}
+        onInstall={() => onInstallOfficialModel(selectedPreset?.id ?? dashboard.settings.katagoModelPreset)}
+        onRefresh={onRefreshKataGoAssets}
+      />
       <KataGoBenchmarkPanel
         settings={dashboard.settings}
         result={katagoBenchmark}

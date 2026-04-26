@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent, type MenuItemConstructorOptions } from 'electron'
 import { isAbsolute, relative, resolve, join } from 'node:path'
 import { appHome, findGame, getGames, getSettings, hasLlmApiKey, replaceSettings, setSettings, upsertGames } from './lib/store'
-import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, KataGoBenchmarkRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
+import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, KataGoAssetInstallRequest, KataGoBenchmarkRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
 import { importSgfFile, readGameRecord } from './services/sgf'
 import { ensureFoxGameDownloaded, syncFoxGames } from './services/fox'
 import { runReview } from './services/review'
@@ -12,7 +12,7 @@ import { analyzeGameQuick, analyzePosition, analyzePositionWithProgress } from '
 import { benchmarkKataGo } from './services/katagoBenchmark'
 import { collectDiagnostics } from './services/diagnostics'
 import { searchKnowledgeCards } from './services/knowledge/searchLocal'
-import { inspectKataGoAssets } from './services/katago/katagoAssets'
+import { inspectKataGoAssets, installOfficialKataGoModel } from './services/katago/katagoAssets'
 import { bindFoxGamesToStudent, bindSgfGameToStudent, suggestStudentBindings } from './services/library/studentBinding'
 import { inspectReleaseReadiness } from './services/release/readiness'
 import {
@@ -252,6 +252,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle('diagnostics:get', async () => collectDiagnostics())
   ipcMain.handle('katago-assets:inspect', async () => inspectKataGoAssets())
+  ipcMain.handle('katago-assets:install-official-model', async (event, payload: KataGoAssetInstallRequest | undefined) =>
+    installOfficialKataGoModel(payload ?? {}, (progress) => {
+      safeSendToRenderer(event, 'katago-assets:install-progress', progress)
+    })
+  )
   ipcMain.handle('student:list', async () => listStudents())
   ipcMain.handle('student:suggest-bindings', async (_event, payload) => suggestStudentBindings(payload))
   ipcMain.handle('student:bind-sgf-game', async (_event, payload) => bindSgfGameToStudent(payload))

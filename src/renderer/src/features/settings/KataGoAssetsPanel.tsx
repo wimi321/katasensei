@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { KataGoAssetInstallProgress, KataGoModelPreset } from '@main/lib/types'
 
 export interface KataGoAssetStatusView {
   platformKey: string
@@ -13,11 +14,47 @@ export interface KataGoAssetStatusView {
   detail: string
 }
 
-export function KataGoAssetsPanel({ status, onRefresh }: { status?: KataGoAssetStatusView | null; onRefresh?: () => void }): ReactElement {
+function formatBytes(value: number | undefined): string {
+  if (!value || !Number.isFinite(value)) {
+    return ''
+  }
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`
+  }
+  if (value >= 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(1)} MB`
+  }
+  return `${Math.round(value / 1024)} KB`
+}
+
+export function KataGoAssetsPanel({
+  status,
+  selectedPreset,
+  busy = false,
+  installProgress,
+  installMessage,
+  onInstall,
+  onRefresh
+}: {
+  status?: KataGoAssetStatusView | null
+  selectedPreset?: KataGoModelPreset
+  busy?: boolean
+  installProgress?: KataGoAssetInstallProgress | null
+  installMessage?: string
+  onInstall?: () => void
+  onRefresh?: () => void
+}): ReactElement {
+  const percent = installProgress?.percent
+  const bytesLabel = installProgress?.receivedBytes
+    ? `${formatBytes(installProgress.receivedBytes)}${installProgress.totalBytes ? ` / ${formatBytes(installProgress.totalBytes)}` : ''}`
+    : ''
   return (
-    <section className="runtime-card">
+    <section className="runtime-card katago-assets-card">
       <header>
-        <strong>KataGo 内置资源</strong>
+        <div>
+          <strong>KataGo 官方资源</strong>
+          <p>{selectedPreset ? `${selectedPreset.label} · ${selectedPreset.badge}` : '选择官方推荐权重后可一键安装。'}</p>
+        </div>
         <span className={status?.ready ? 'runtime-pill runtime-pill--ready' : 'runtime-pill runtime-pill--warn'}>{status?.ready ? 'Ready' : 'Missing'}</span>
       </header>
       {status ? (
@@ -29,7 +66,25 @@ export function KataGoAssetsPanel({ status, onRefresh }: { status?: KataGoAssetS
           <p>{status.detail}</p>
         </div>
       ) : <p>尚未读取资源状态。</p>}
-      <button className="ghost-button" onClick={onRefresh}>重新检查</button>
+      {installProgress ? (
+        <div className="katago-install-progress" aria-live="polite">
+          <div>
+            <span>{installProgress.message}</span>
+            {typeof percent === 'number' ? <strong>{percent.toFixed(percent % 1 === 0 ? 0 : 1)}%</strong> : null}
+          </div>
+          <div className="katago-install-progress__bar">
+            <span style={{ width: `${Math.max(4, percent ?? 8)}%` }} />
+          </div>
+          {bytesLabel ? <small>{bytesLabel}</small> : null}
+        </div>
+      ) : null}
+      {installMessage && !installProgress ? <p className="test-message">{installMessage}</p> : null}
+      <div className="katago-assets-card__actions">
+        <button className="primary-button" type="button" onClick={onInstall} disabled={!onInstall || busy}>
+          {busy ? '安装中' : '一键安装官方权重'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onRefresh}>重新检查</button>
+      </div>
     </section>
   )
 }

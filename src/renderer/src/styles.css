@@ -2075,6 +2075,68 @@ label,
   min-height: 30px;
 }
 
+.katago-assets-card header > div {
+  min-width: 0;
+}
+
+.katago-assets-card header p {
+  margin-top: 3px;
+}
+
+.katago-assets-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.katago-assets-card__actions .primary-button,
+.katago-assets-card__actions .ghost-button {
+  min-height: 30px;
+}
+
+.katago-install-progress {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent-gold) 44%, var(--line-soft));
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgb(214 182 110 / 0.14), rgb(255 255 255 / 0.035));
+}
+
+.katago-install-progress div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.katago-install-progress div:first-child strong {
+  color: var(--accent-gold-strong);
+}
+
+.katago-install-progress__bar {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.18);
+}
+
+.katago-install-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-green));
+  transition: width 180ms ease;
+}
+
+.katago-install-progress small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .benchmark-results {
   display: flex;
   flex-wrap: wrap;

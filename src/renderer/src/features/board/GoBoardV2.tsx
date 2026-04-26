@@ -15,7 +15,7 @@ import {
   type RenderPlayedMove,
   type RenderVariationMove
 } from './boardGeometry'
-import { CandidateTooltip, type CandidateTooltipMove, type CandidateTooltipPosition } from './CandidateTooltip'
+import type { CandidateTooltipMove, CandidateTooltipPosition } from './CandidateTooltip'
 import './board-v2.css'
 
 interface GoBoardV2Props {
@@ -436,11 +436,6 @@ export function GoBoardV2({ record, moveNumber, analysis = null, keyMoves = [], 
           </g>
         ) : null}
       </svg>
-
-      <CandidateTooltip
-        candidate={activeCandidate?.candidate ?? null}
-        position={activeCandidate?.position ?? null}
-      />
     </div>
   )
 }

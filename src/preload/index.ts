@@ -9,6 +9,9 @@ import type {
   FoxSyncResponse,
   FoxSyncRequest,
   GameRecord,
+  KataGoAssetInstallProgress,
+  KataGoAssetInstallRequest,
+  KataGoAssetInstallResult,
   KataGoAssetStatus,
   KataGoBenchmarkRequest,
   KataGoBenchmarkResult,
@@ -62,6 +65,12 @@ const api = {
   },
   getDiagnostics: (): Promise<DiagnosticsReport> => ipcRenderer.invoke('diagnostics:get'),
   inspectKataGoAssets: (): Promise<KataGoAssetStatus> => ipcRenderer.invoke('katago-assets:inspect'),
+  installKataGoOfficialModel: (payload: KataGoAssetInstallRequest): Promise<KataGoAssetInstallResult> => ipcRenderer.invoke('katago-assets:install-official-model', payload),
+  onKataGoAssetInstallProgress: (handler: (payload: KataGoAssetInstallProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: KataGoAssetInstallProgress): void => handler(payload)
+    ipcRenderer.on('katago-assets:install-progress', listener)
+    return () => ipcRenderer.removeListener('katago-assets:install-progress', listener)
+  },
   listStudentProfiles: (): Promise<StudentProfile[]> => ipcRenderer.invoke('student:list'),
   suggestStudentBindings: (payload: { blackName?: string; whiteName?: string; source?: string; foxNickname?: string }): Promise<StudentBindingSuggestion[]> => ipcRenderer.invoke('student:suggest-bindings', payload),
   bindSgfGameToStudent: (payload: { gameId: string; studentId?: string; createDisplayName?: string; aliasFromPlayerName?: string }): Promise<StudentProfile | null> => ipcRenderer.invoke('student:bind-sgf-game', payload),

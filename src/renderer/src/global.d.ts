@@ -8,6 +8,9 @@ import type {
   FoxSyncResponse,
   FoxSyncRequest,
   GameRecord,
+  KataGoAssetInstallProgress,
+  KataGoAssetInstallRequest,
+  KataGoAssetInstallResult,
   KataGoAssetStatus,
   KataGoBenchmarkRequest,
   KataGoBenchmarkResult,
@@ -55,6 +58,8 @@ declare global {
       onAnalyzeGameQuickProgress: (handler: (payload: AnalyzeGameQuickProgress) => void) => () => void
       getDiagnostics: () => Promise<DiagnosticsReport>
       inspectKataGoAssets: () => Promise<KataGoAssetStatus>
+      installKataGoOfficialModel: (payload: KataGoAssetInstallRequest) => Promise<KataGoAssetInstallResult>
+      onKataGoAssetInstallProgress: (handler: (payload: KataGoAssetInstallProgress) => void) => () => void
       listStudentProfiles: () => Promise<StudentProfile[]>
       suggestStudentBindings: (payload: { blackName?: string; whiteName?: string; source?: string; foxNickname?: string }) => Promise<StudentBindingSuggestion[]>
       bindSgfGameToStudent: (payload: { gameId: string; studentId?: string; createDisplayName?: string; aliasFromPlayerName?: string }) => Promise<StudentProfile | null>
