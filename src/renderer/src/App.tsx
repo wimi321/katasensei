@@ -257,6 +257,7 @@ export function App(): ReactElement {
   const [katagoAssets, setKatagoAssets] = useState<KataGoAssetStatus | null>(null)
   const graphRunId = useRef('')
   const liveAnalysisRunId = useRef('')
+  const autoAnalysisRequestId = useRef('')
   const userPausedLiveAnalysisRef = useRef(false)
   const moveNumberRef = useRef(moveNumber)
   const selectedGameIdRef = useRef('')
@@ -356,23 +357,13 @@ export function App(): ReactElement {
   async function loadRecord(gameId: string): Promise<void> {
     try {
       const next = await window.gomentor.getGameRecord(gameId)
+      userPausedLiveAnalysisRef.current = false
       setRecord(next)
       setMoveNumber(next.moves.length)
       setAnalysis(null)
       setEvaluations({})
       void warmupEvaluationGraph(gameId, next.moves.length)
-      if (!userPausedLiveAnalysisRef.current) {
-        window.setTimeout(() => {
-          if (selectedGameIdRef.current === gameId && !userPausedLiveAnalysisRef.current) {
-            void startLiveAnalysis({
-              gameId,
-              record: next,
-              moveNumber: next.moves.length,
-              manual: false
-            })
-          }
-        }, 120)
-      }
+      queueAutoLiveAnalysis(gameId, next, next.moves.length, 120)
     } catch (cause) {
       setError(String(cause))
     }
@@ -702,18 +693,46 @@ export function App(): ReactElement {
     }))
   }
 
-  function jumpToMove(next: number): void {
-    if (liveAnalysis.running) {
-      pauseLiveAnalysis('切换手数，已暂停精读')
+  function queueAutoLiveAnalysis(gameId: string, targetRecord: GameRecord, targetMove: number, delay = 80): void {
+    if (userPausedLiveAnalysisRef.current) {
+      return
     }
-    setMoveNumber(next)
-    setAnalysis(evaluations[next] ?? null)
+    const requestId = crypto.randomUUID()
+    autoAnalysisRequestId.current = requestId
+    window.setTimeout(() => {
+      if (
+        autoAnalysisRequestId.current !== requestId ||
+        selectedGameIdRef.current !== gameId ||
+        userPausedLiveAnalysisRef.current
+      ) {
+        return
+      }
+      void startLiveAnalysis({
+        gameId,
+        record: targetRecord,
+        moveNumber: targetMove,
+        manual: false
+      })
+    }, delay)
+  }
+
+  function jumpToMove(next: number): void {
+    const targetMove = record ? Math.max(0, Math.min(record.moves.length, Math.round(next))) : next
+    if (liveAnalysis.running) {
+      pauseLiveAnalysis('切换手数，准备继续分析')
+    }
+    setMoveNumber(targetMove)
+    setAnalysis(evaluations[targetMove] ?? null)
+    if (record && selectedGame && !userPausedLiveAnalysisRef.current) {
+      queueAutoLiveAnalysis(selectedGame.id, record, targetMove)
+    }
   }
 
   function pauseLiveAnalysis(message = '已暂停精读', manual = false): void {
     if (manual) {
       userPausedLiveAnalysisRef.current = true
     }
+    autoAnalysisRequestId.current = crypto.randomUUID()
     liveAnalysisRunId.current = crypto.randomUUID()
     setLiveAnalysis((current) => ({
       ...current,
