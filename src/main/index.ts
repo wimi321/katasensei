@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent, type MenuItemConstructorOptions } from 'electron'
 import { isAbsolute, relative, resolve, join } from 'node:path'
 import { appHome, findGame, getGames, getSettings, hasLlmApiKey, replaceSettings, setSettings, upsertGames } from './lib/store'
 import type { AnalyzeGameQuickRequest, AnalyzePositionRequest, AppSettings, DashboardData, FoxSyncRequest, KataGoBenchmarkRequest, LlmSettingsTestRequest, ReviewRequest, TeacherRunRequest } from './lib/types'
@@ -54,6 +54,21 @@ function assertManagedPath(filePath: string): string {
   return target
 }
 
+function safeSendToRenderer(event: IpcMainInvokeEvent, channel: string, payload: unknown): boolean {
+  if (event.sender.isDestroyed()) {
+    return false
+  }
+  try {
+    event.sender.send(channel, payload)
+    return true
+  } catch (error) {
+    if (!String(error).includes('Object has been destroyed')) {
+      console.warn(`Failed to send renderer event "${channel}"`, error)
+    }
+    return false
+  }
+}
+
 async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: 1460,
@@ -90,7 +105,10 @@ async function createWindow(): Promise<void> {
 }
 
 function sendDesktopCommand(command: DesktopCommand): void {
-  mainWindow?.webContents.send('desktop:command', command)
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {
+    return
+  }
+  mainWindow.webContents.send('desktop:command', command)
 }
 
 function buildApplicationMenu(): void {
@@ -253,7 +271,7 @@ app.whenReady().then(() => {
       payload.moveNumber,
       payload.maxVisits ?? 500,
       (analysis, isFinal) => {
-        event.sender.send('katago:analyze-position-progress', {
+        safeSendToRenderer(event, 'katago:analyze-position-progress', {
           runId: payload.runId,
           gameId: payload.gameId,
           moveNumber: payload.moveNumber,
@@ -266,7 +284,7 @@ app.whenReady().then(() => {
   )
   ipcMain.handle('katago:analyze-game-quick', async (event, payload: AnalyzeGameQuickRequest) =>
     analyzeGameQuick(payload.gameId, payload.maxVisits ?? 12, (progress) => {
-      event.sender.send('katago:analyze-game-quick-progress', {
+      safeSendToRenderer(event, 'katago:analyze-game-quick-progress', {
         ...progress,
         runId: payload.runId,
         gameId: payload.gameId
@@ -276,7 +294,7 @@ app.whenReady().then(() => {
   ipcMain.handle('katago:benchmark', async (_event, payload: KataGoBenchmarkRequest | undefined) => benchmarkKataGo(payload ?? {}))
   ipcMain.handle('teacher:run', async (event, payload: TeacherRunRequest) =>
     runTeacherTask(payload, (progress) => {
-      event.sender.send('teacher:run-progress', progress)
+      safeSendToRenderer(event, 'teacher:run-progress', progress)
     })
   )
   ipcMain.handle('llm:test', async (_event, payload: LlmSettingsTestRequest) => testLlmSettings(payload))

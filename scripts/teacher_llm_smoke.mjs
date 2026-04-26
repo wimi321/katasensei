@@ -273,6 +273,18 @@ async function main() {
           markdown: result.markdown,
           structured: result.structuredResult || result.structured,
           knowledgeCount: result.knowledge?.length || 0,
+          knowledgeMatchCount: result.knowledgeMatches?.length || 0,
+          recommendedProblemCount: result.recommendedProblems?.length || 0,
+          knowledgeMatches: (result.knowledgeMatches ?? []).slice(0, 3).map((match) => ({
+            title: match.title,
+            matchType: match.matchType,
+            confidence: match.confidence
+          })),
+          recommendedProblems: (result.recommendedProblems ?? []).slice(0, 3).map((problem) => ({
+            title: problem.title,
+            problemType: problem.problemType,
+            difficulty: problem.difficulty
+          })),
           toolLogs: result.toolLogs.map((log) => ({ name: log.name, status: log.status, detail: log.detail })),
           reportPath: result.reportPath || ''
         };
@@ -285,6 +297,8 @@ async function main() {
     assert.ok(result.candidateCount > 0, 'KataGo should return candidate moves')
     assert.ok(result.bestMove, 'KataGo should return a best move')
     assert.ok(result.knowledgeCount >= 2, 'Teacher runtime should retrieve local knowledge cards')
+    assert.ok(result.knowledgeMatchCount >= 1, 'Teacher runtime should return structured knowledge matches')
+    assert.ok(result.recommendedProblemCount >= 1, 'Teacher runtime should return recommended training problems')
     assert.ok(result.markdown.includes('本手要先抢全局最大点') || result.markdown.includes('KataGo'), 'Teacher markdown should be visible')
     for (const tool of ['board.captureTeachingImage', 'katago.analyzePosition', 'knowledge.searchLocal', 'llm.multimodalTeacher', 'studentProfile.write']) {
       assert.equal(result.toolLogs.find((log) => log.name === tool)?.status, 'done', `${tool} should finish`)
@@ -303,6 +317,9 @@ async function main() {
     const teacherPayload = (teacherRequest.messages ?? []).map(textFromMessage).join('\n')
     assert.match(teacherPayload, /katagoFacts/)
     assert.match(teacherPayload, /knowledgePacket/)
+    assert.match(teacherPayload, /knowledgeMatches/)
+    assert.match(teacherPayload, /recommendedProblems/)
+    assert.match(teacherPayload, /partial 匹配只能说/)
     assert.match(teacherPayload, /studentProfile/)
 
     console.log('Teacher LLM smoke passed')
@@ -312,6 +329,10 @@ async function main() {
       bestMove: result.bestMove,
       candidateCount: result.candidateCount,
       knowledgeCount: result.knowledgeCount,
+      knowledgeMatchCount: result.knowledgeMatchCount,
+      recommendedProblemCount: result.recommendedProblemCount,
+      knowledgeMatches: result.knowledgeMatches,
+      recommendedProblems: result.recommendedProblems,
       toolLogs: result.toolLogs
     }, null, 2))
   } finally {

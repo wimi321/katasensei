@@ -321,6 +321,18 @@ const smokeExpression = `
     llmStatus: llmLog?.status ?? 'missing',
     llmDetail: llmLog?.detail ?? '',
     knowledgeCount: result.knowledge?.length ?? 0,
+    knowledgeMatchCount: result.knowledgeMatches?.length ?? 0,
+    recommendedProblemCount: result.recommendedProblems?.length ?? 0,
+    knowledgeMatches: (result.knowledgeMatches ?? []).slice(0, 3).map((match) => ({
+      title: match.title,
+      matchType: match.matchType,
+      confidence: match.confidence
+    })),
+    recommendedProblems: (result.recommendedProblems ?? []).slice(0, 3).map((problem) => ({
+      title: problem.title,
+      problemType: problem.problemType,
+      difficulty: problem.difficulty
+    })),
     reportPath: result.reportPath ?? '',
     headline: result.structuredResult?.headline ?? result.structured?.headline ?? '',
     markdownPreview: String(result.markdown ?? '').slice(0, 220),
@@ -349,6 +361,8 @@ async function main() {
     assert.ok(result.markdownPreview && !result.markdownPreview.includes('多模态 LLM 暂时不可用'), 'LLM should return usable teacher content')
     assert.ok(result.candidateCount > 0, 'KataGo should return candidate moves')
     assert.ok(result.knowledgeCount >= 2, 'Teacher runtime should retrieve local knowledge cards')
+    assert.ok(result.knowledgeMatchCount >= 1, 'Teacher runtime should return structured knowledge matches')
+    assert.ok(result.recommendedProblemCount >= 1, 'Teacher runtime should return recommended training problems')
     assert.ok(result.reportPath, 'Teacher runtime should persist a report')
     assert.ok(result.imageBytesApprox > 50_000, 'Teacher request should include a real board image, not a placeholder')
 
@@ -367,6 +381,10 @@ async function main() {
       probeOk: result.probeOk,
       probeMessage: result.probeOk ? 'OK' : result.probeMessage,
       knowledgeCount: result.knowledgeCount,
+      knowledgeMatchCount: result.knowledgeMatchCount,
+      recommendedProblemCount: result.recommendedProblemCount,
+      knowledgeMatches: result.knowledgeMatches,
+      recommendedProblems: result.recommendedProblems,
       headline: result.headline,
       markdownPreview: result.markdownPreview,
       toolLogs: result.toolLogs
