@@ -157,6 +157,10 @@ test('TeacherRunCardPro prioritizes raw assistant output with optional evidence 
   assert.match(provider, /streamOpenAICompatibleChat/)
   assert.match(provider, /onDelta/)
   assert.doesNotMatch(agent, /请优先输出 JSON/)
+  assert.doesNotMatch(agent, /讲当前手时优先回答/)
+  assert.doesNotMatch(agent, /这手想法哪里偏/)
+  assert.doesNotMatch(agent, /KataGo 数字只作为证据/)
+  assert.doesNotMatch(agent, /不要把答案写成机器报告/)
 })
 
 test('Desktop app shell exposes native menu commands and workbench chrome', () => {
