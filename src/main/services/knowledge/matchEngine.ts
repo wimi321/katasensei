@@ -56,6 +56,9 @@ interface QueryFeatures {
   phase: PatternPhase
   region: TrainingRegion
   tokens: Set<string>
+  explicitTokens: Set<string>
+  intentTypes: Set<KnowledgeMatchType>
+  explicitIntentTypes: Set<KnowledgeMatchType>
   moveFeatures: Set<string>
   candidateFeatures: Set<string>
   pvFeatures: Set<string>
@@ -65,6 +68,108 @@ interface QueryFeatures {
 type ProblemEntry = LifeDeathProblem | TesujiProblem
 
 const TOKEN_SPLIT = /[，。！？、；：,.!?;:()\[\]【】\s/_-]+/
+const CONFIDENCE_RANK: Record<KnowledgeMatchConfidence, number> = {
+  exact: 4,
+  strong: 3,
+  partial: 2,
+  weak: 1
+}
+
+const INTENT_KEYWORDS: Record<Exclude<KnowledgeMatchType, 'shape' | 'concept'>, string[]> = {
+  joseki: [
+    '定式',
+    'joseki',
+    '星位',
+    '小目',
+    '点三三',
+    '三三',
+    '挂角',
+    '守角',
+    '夹攻',
+    '低挂',
+    '高挂',
+    '大雪崩',
+    '雪崩',
+    '大斜',
+    '太斜',
+    '双飞燕',
+    '妖刀',
+    '托退',
+    '中国流',
+    '三连星',
+    '小林流',
+    '布局',
+    '开局'
+  ],
+  life_death: [
+    '死活',
+    '做活',
+    '杀棋',
+    '活棋',
+    '真眼',
+    '假眼',
+    '眼形',
+    '急所',
+    '对杀',
+    '劫活',
+    '双活',
+    '曲四',
+    '刀把五',
+    '梅花六',
+    '葡萄六',
+    '板六',
+    '金鸡独立',
+    '直三',
+    '弯三',
+    '中手',
+    '破眼',
+    '扑入'
+  ],
+  tesuji: [
+    '手筋',
+    '倒扑',
+    '吃回',
+    '接不归',
+    '老鼠偷油',
+    '征子',
+    '枷',
+    '滚打包收',
+    '挖',
+    '扭十字',
+    '断',
+    '窥',
+    '扳头',
+    '双打',
+    '弃子',
+    '扑'
+  ]
+}
+
+const BROAD_TRAINING_TAGS = new Set([
+  '角部',
+  '边上',
+  '中腹',
+  '中心',
+  '定式',
+  '布局',
+  '方向',
+  '大场',
+  '变化',
+  '价值判断',
+  '局部轻重',
+  '先手价值',
+  '实地',
+  '外势',
+  '问题手',
+  '急所',
+  '死活',
+  '手筋',
+  '形',
+  '形状',
+  '先手',
+  '后手',
+  'ai定式'
+])
 
 function phaseFromMove(moveNumber: number, totalMoves: number): PatternPhase {
   const ratio = totalMoves > 0 ? moveNumber / totalMoves : 0
@@ -172,17 +277,18 @@ function detectRegion(query: KnowledgeMatchQuery): TrainingRegion {
 }
 
 function buildFeatures(query: KnowledgeMatchQuery): QueryFeatures {
+  const explicitTokens = new Set(normalizeTokens([query.text]))
+  const tokens = new Set(normalizeTokens([
+    query.text,
+    query.judgement,
+    ...(query.contextTags ?? [])
+  ]))
   const moveFeatures = new Set([
     ...addFeaturesFromMoves(query.recentMoves.slice(-10), query.boardSize),
     ...addFeaturesFromGtp(query.playedMove ? [query.playedMove] : [], query.boardSize)
   ])
   const candidateFeatures = addFeaturesFromGtp(query.candidateMoves, query.boardSize)
   const pvFeatures = addFeaturesFromGtp(query.principalVariation, query.boardSize)
-  const tokens = new Set(normalizeTokens([
-    query.text,
-    query.judgement,
-    ...(query.contextTags ?? [])
-  ]))
   const allPoints = new Set([
     query.playedMove,
     ...(query.candidateMoves ?? []),
@@ -196,6 +302,9 @@ function buildFeatures(query: KnowledgeMatchQuery): QueryFeatures {
     phase: phaseFromMove(query.moveNumber, query.totalMoves),
     region: detectRegion(query),
     tokens,
+    explicitTokens,
+    intentTypes: detectIntentTypes(tokens),
+    explicitIntentTypes: detectIntentTypes(explicitTokens),
     moveFeatures,
     candidateFeatures,
     pvFeatures,
@@ -207,12 +316,33 @@ function addOverlapScore(values: string[], tokens: Set<string>, weight: number, 
   let score = 0
   for (const value of values) {
     const normalized = value.toLowerCase()
-    if (tokens.has(normalized) || [...tokens].some((token) => normalized.includes(token) || token.includes(normalized))) {
+    if (tokenSetHas(tokens, normalized)) {
       score += weight
       reasons.push(`${prefix}:${value}`)
     }
   }
   return score
+}
+
+function tokenSetHas(tokens: Set<string>, value: string): boolean {
+  const normalized = value.toLowerCase()
+  return tokens.has(normalized) || [...tokens].some((token) => normalized.includes(token) || token.includes(normalized))
+}
+
+function hasSpecificTextHit(values: string[], tokens: Set<string>): boolean {
+  return values
+    .filter((value) => !BROAD_TRAINING_TAGS.has(value.toLowerCase()))
+    .some((value) => tokenSetHas(tokens, value))
+}
+
+function detectIntentTypes(tokens: Set<string>): Set<KnowledgeMatchType> {
+  const intentTypes = new Set<KnowledgeMatchType>()
+  for (const [type, keywords] of Object.entries(INTENT_KEYWORDS) as Array<[Exclude<KnowledgeMatchType, 'shape' | 'concept'>, string[]]>) {
+    if (keywords.some((keyword) => tokenSetHas(tokens, keyword))) {
+      intentTypes.add(type)
+    }
+  }
+  return intentTypes
 }
 
 function featureOverlap(values: string[], features: Set<string>, weight: number, reasons: string[], prefix: string): number {
@@ -247,6 +377,16 @@ function confidence(score: number, exactish = false): KnowledgeMatchConfidence {
   return 'weak'
 }
 
+function capConfidence(value: KnowledgeMatchConfidence, max: KnowledgeMatchConfidence): KnowledgeMatchConfidence {
+  return CONFIDENCE_RANK[value] > CONFIDENCE_RANK[max] ? max : value
+}
+
+function sortMatchScore(match: KnowledgeMatch): number {
+  const intentBonus = match.reason.some((reason) => reason.startsWith('explicit-intent:')) ? 8 : 0
+  const exactEvidenceBonus = match.reason.some((reason) => reason.startsWith('answer-overlap') || reason.startsWith('sequence-overlap')) ? 4 : 0
+  return CONFIDENCE_RANK[match.confidence] * 1000 + match.score + intentBonus + exactEvidenceBonus
+}
+
 function applicabilityFor(confidenceValue: KnowledgeMatchConfidence, type: KnowledgeMatchType): string {
   if (confidenceValue === 'exact') return '本局局部手顺、候选点和区域都高度一致，可以作为同型讲解。'
   if (confidenceValue === 'strong') return '本局棋形和 KataGo 候选点相近，可以作为强相关型讲解，但仍要看全局厚薄。'
@@ -276,7 +416,10 @@ function relatedProblemsForTags(
   tags: string[],
   limit = 3
 ): RecommendedProblem[] {
-  const tokenSet = new Set(tags.map((tag) => tag.toLowerCase()))
+  const tokenSet = new Set(tags.map((tag) => tag.toLowerCase()).filter((tag) => !BROAD_TRAINING_TAGS.has(tag)))
+  if (tokenSet.size === 0) {
+    return []
+  }
   const candidates: Array<{ problem: ProblemEntry; type: RecommendedProblem['problemType']; score: number }> = [
     ...library.lifeDeathProblems.map((problem) => ({ problem, type: 'life_death' as const, score: addOverlapScore(problem.tags, tokenSet, 2, [], 'tag') })),
     ...library.tesujiProblems.map((problem) => ({ problem, type: 'tesuji' as const, score: addOverlapScore(problem.tags, tokenSet, 2, [], 'tag') }))
@@ -291,6 +434,8 @@ function relatedProblemsForTags(
 function josekiMatch(line: JosekiLine, query: KnowledgeMatchQuery, features: QueryFeatures, library: KnowledgeTrainingLibrary): KnowledgeMatch | null {
   let score = 0
   const reasons: string[] = []
+  const explicitJosekiIntent = features.explicitIntentTypes.has('joseki')
+  const explicitTacticalIntent = features.explicitIntentTypes.has('life_death') || features.explicitIntentTypes.has('tesuji')
   if (line.levels.includes(query.studentLevel ?? query.userLevel)) {
     score += 2
     reasons.push(`level:${query.studentLevel ?? query.userLevel}`)
@@ -303,10 +448,17 @@ function josekiMatch(line: JosekiLine, query: KnowledgeMatchQuery, features: Que
     score += 5
     reasons.push('region:corner')
   }
+  if (explicitJosekiIntent) {
+    score += 10
+    reasons.push('explicit-intent:joseki')
+  } else if (features.intentTypes.has('joseki')) {
+    score += 3
+    reasons.push('context-intent:joseki')
+  }
   score += addOverlapScore([...line.tags, line.title, line.family], features.tokens, 4, reasons, 'text')
   score += featureOverlap(line.normalizedFeatures, new Set([...features.moveFeatures, ...features.candidateFeatures, ...features.pvFeatures]), 4, reasons, 'shape')
   const overlap = sequenceOverlap(line.relativeSequence, features.allPoints, reasons)
-  score += overlap * 5
+  score += overlap * (features.phase === 'opening' || explicitJosekiIntent ? 5 : 2)
   if ((query.candidateMoves ?? []).includes(line.relativeSequence[1])) {
     score += 5
     reasons.push('katago-candidate-prefix')
@@ -315,8 +467,16 @@ function josekiMatch(line: JosekiLine, query: KnowledgeMatchQuery, features: Que
     score += 2
     reasons.push('opening-timing')
   }
+  if (features.phase !== 'opening' && !explicitJosekiIntent) {
+    score -= explicitTacticalIntent ? 22 : 10
+    reasons.push(explicitTacticalIntent ? 'penalty:tactical-query' : 'penalty:non-opening-joseki-context')
+  }
   if (score < 8) return null
-  const confidenceValue = confidence(score, overlap >= 3)
+  const exactish = overlap >= 3 && (features.phase === 'opening' || explicitJosekiIntent) && !explicitTacticalIntent
+  const rawConfidence = confidence(score, exactish)
+  const confidenceValue = features.phase !== 'opening' && !explicitJosekiIntent
+    ? capConfidence(rawConfidence, 'partial')
+    : rawConfidence
   return {
     id: line.id,
     matchType: 'joseki',
@@ -336,7 +496,7 @@ function josekiMatch(line: JosekiLine, query: KnowledgeMatchQuery, features: Que
       boundary: applicabilityFor(confidenceValue, 'joseki'),
       sourceKind: line.sourceKind
     },
-    relatedProblems: relatedProblemsForTags(library, [...line.tags, ...line.trainingFocus], 3)
+    relatedProblems: relatedProblemsForTags(library, line.tags, 3)
   }
 }
 
@@ -348,6 +508,9 @@ function problemMatch(
 ): KnowledgeMatch | null {
   let score = 0
   const reasons: string[] = []
+  const explicitTypeIntent = features.explicitIntentTypes.has(type)
+  const contextualTypeIntent = features.intentTypes.has(type)
+  const explicitJosekiOnly = features.explicitIntentTypes.has('joseki') && !features.explicitIntentTypes.has('life_death') && !features.explicitIntentTypes.has('tesuji')
   if (problem.region === features.region) {
     score += 5
     reasons.push(`region:${problem.region}`)
@@ -356,10 +519,40 @@ function problemMatch(
     score += type === 'life_death' ? 4 : 3
     reasons.push('katago-loss')
   }
-  score += addOverlapScore([...problem.tags, problem.title, problem.objective], features.tokens, 4, reasons, 'text')
+  if (explicitTypeIntent) {
+    score += 12
+    reasons.push(`explicit-intent:${type}`)
+  } else if (contextualTypeIntent) {
+    score += 5
+    reasons.push(`context-intent:${type}`)
+  }
+  if (explicitJosekiOnly) {
+    score -= 8
+    reasons.push('penalty:joseki-query')
+  }
+  const textValues = [...problem.tags, problem.title, problem.objective]
+  const specificTextHit = hasSpecificTextHit(textValues, features.explicitTokens)
+  if (specificTextHit) {
+    score += 6
+    reasons.push(`specific-text:${type}`)
+  }
+  score += addOverlapScore(textValues, features.tokens, 4, reasons, 'text')
   score += featureOverlap(problem.tags, new Set([...features.moveFeatures, ...features.candidateFeatures, ...features.pvFeatures]), 3, reasons, 'shape')
   const answerOverlap = sequenceOverlap(problem.correctMoves.map((move) => move.move), features.allPoints, reasons)
-  score += answerOverlap * 7
+  score += answerOverlap * 12
+  const answerPoints = new Set(problem.correctMoves.map((move) => move.move))
+  if (query.playedMove && answerPoints.has(query.playedMove)) {
+    score += 5
+    reasons.push('answer-played')
+  }
+  if ((query.candidateMoves ?? []).some((move) => answerPoints.has(move))) {
+    score += 7
+    reasons.push('answer-candidate')
+  }
+  if ((query.principalVariation ?? []).some((move) => answerPoints.has(move))) {
+    score += 5
+    reasons.push('answer-pv')
+  }
   if (type === 'life_death' && features.moveFeatures.has('eye-shape')) {
     score += 5
     reasons.push('eye-shape')
@@ -369,7 +562,8 @@ function problemMatch(
     reasons.push('local-tesuji-relation')
   }
   if (score < 8) return null
-  const confidenceValue = confidence(score, answerOverlap >= 1 && score >= 24)
+  const exactish = answerOverlap >= 1 && specificTextHit && (explicitTypeIntent || score >= 24)
+  const confidenceValue = confidence(score, exactish)
   const lifeTeaching = type === 'life_death' ? (problem as LifeDeathProblem).teaching : undefined
   const tesujiTeaching = type === 'tesuji' ? (problem as TesujiProblem).teaching : undefined
   return {
@@ -456,7 +650,7 @@ export function searchKnowledgeMatchEngine(dataRoot: string, query: KnowledgeMat
   }
 
   return matches
-    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+    .sort((a, b) => sortMatchScore(b) - sortMatchScore(a) || b.score - a.score || a.title.localeCompare(b.title))
     .slice(0, query.maxResults ?? 8)
 }
 
@@ -464,7 +658,7 @@ export function recommendedProblemsFromMatches(matches: KnowledgeMatch[], limit 
   const seen = new Set<string>()
   const problems: RecommendedProblem[] = []
   for (const match of matches) {
-    if (match.confidence === 'weak') {
+    if (match.confidence === 'weak' || match.matchType === 'joseki') {
       continue
     }
     for (const problem of match.relatedProblems) {

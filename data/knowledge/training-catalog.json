@@ -3810,6 +3810,260 @@
         "挂角",
         "布局"
       ]
+    },
+    {
+      "id": "joseki_komoku_avalanche_simplified",
+      "title": "小目大雪崩：现代简化避战",
+      "family": "komoku_avalanche",
+      "phase": [
+        "opening",
+        "middlegame"
+      ],
+      "levels": [
+        "intermediate",
+        "advanced",
+        "dan"
+      ],
+      "sourceKind": "common-pattern",
+      "relativeSequence": [
+        "Q4",
+        "R6",
+        "Q6",
+        "P6",
+        "R5"
+      ],
+      "normalizedFeatures": [
+        "corner",
+        "3-4",
+        "小目",
+        "大雪崩",
+        "夹攻",
+        "定式"
+      ],
+      "branches": [
+        {
+          "name": "简化避战",
+          "sequence": "Q4 - R6 - Q6 - P6 - R5",
+          "whenToChoose": "局部变化很复杂、全局没有必要硬拼读秒战时，优先选择能明确安定和转身的分支。",
+          "warning": "只因为听过大雪崩就硬进复杂变化，容易把全局主动权交出去。"
+        }
+      ],
+      "decisionRules": [
+        "先判断角部双方外援，再决定进入复杂战斗还是简化收束。",
+        "如果外侧没有配合，大雪崩分支应以稳定安定和先手价值为先。",
+        "KataGo 若明显偏向脱先或简化，不要机械追求传统大变化。"
+      ],
+      "commonMistakes": [
+        "把大雪崩当成必须背到底的手顺。",
+        "忽略外侧厚薄，只在局部争一两目。"
+      ],
+      "katagoEraJudgement": "AI 时代更重视全局配合；大雪崩可作为读力训练，但实战要看外援、厚薄和先手价值。",
+      "trainingFocus": [
+        "复杂定式取舍",
+        "外援判断",
+        "简化能力"
+      ],
+      "patternCardIds": [
+        "joseki_34_high_approach_one_space_low_pincer",
+        "joseki_34_low_approach_attach_extend"
+      ],
+      "tags": [
+        "小目",
+        "大雪崩",
+        "雪崩",
+        "夹攻",
+        "定式"
+      ]
+    },
+    {
+      "id": "joseki_komoku_taisha_simplified",
+      "title": "小目大斜：方向优先分支",
+      "family": "komoku_taisha",
+      "phase": [
+        "opening",
+        "middlegame"
+      ],
+      "levels": [
+        "advanced",
+        "dan"
+      ],
+      "sourceKind": "common-pattern",
+      "relativeSequence": [
+        "Q4",
+        "R6",
+        "Q6",
+        "R10",
+        "P5"
+      ],
+      "normalizedFeatures": [
+        "corner",
+        "3-4",
+        "小目",
+        "大斜",
+        "太斜",
+        "定式"
+      ],
+      "branches": [
+        {
+          "name": "方向优先",
+          "sequence": "Q4 - R6 - Q6 - R10 - P5",
+          "whenToChoose": "角部接触战会牵动右边或上边方向，且己方能获得明确外势目标时。",
+          "warning": "大斜不是局部名气越大越好，方向不对会变成帮对方整形。"
+        }
+      ],
+      "decisionRules": [
+        "先问外势要面向哪一边，再读局部接触次序。",
+        "对方外援强时，优先考虑简化和脱先价值。",
+        "KataGo 候选点若不在大斜主线，要先相信全局方向。"
+      ],
+      "commonMistakes": [
+        "背复杂手顺却不判断厚势方向。",
+        "在己方外侧薄弱时主动引爆战斗。"
+      ],
+      "katagoEraJudgement": "大斜在现代实战中更像方向判断题；AI 候选点会根据全局厚薄大幅改变。",
+      "trainingFocus": [
+        "方向判断",
+        "接触战次序",
+        "厚薄判断"
+      ],
+      "patternCardIds": [
+        "joseki_34_high_approach_one_space_low_pincer",
+        "joseki_34_low_approach_attach_extend"
+      ],
+      "tags": [
+        "小目",
+        "大斜",
+        "太斜",
+        "方向",
+        "定式"
+      ]
+    },
+    {
+      "id": "joseki_star_double_approach_choice",
+      "title": "星位双飞燕：两翼选择",
+      "family": "star_double_approach",
+      "phase": [
+        "opening",
+        "middlegame"
+      ],
+      "levels": [
+        "intermediate",
+        "advanced",
+        "dan"
+      ],
+      "sourceKind": "common-pattern",
+      "relativeSequence": [
+        "Q16",
+        "R14",
+        "P17",
+        "O16",
+        "Q14"
+      ],
+      "normalizedFeatures": [
+        "corner",
+        "4-4",
+        "星位",
+        "双飞燕",
+        "挂角",
+        "定式"
+      ],
+      "branches": [
+        {
+          "name": "两翼取舍",
+          "sequence": "Q16 - R14 - P17 - O16 - Q14",
+          "whenToChoose": "双方在星位两侧同时施压，需要先分清哪一翼更急、哪一边更有发展。",
+          "warning": "平均应对两边常常两边都不满意。"
+        }
+      ],
+      "decisionRules": [
+        "双飞燕先看哪一边关系到全局大模样或弱棋。",
+        "局部不是要全部吃住，而是选择一边安定、一边留味。",
+        "KataGo 若给出肩冲或脱先，要检查是不是全局价值大于角部应对。"
+      ],
+      "commonMistakes": [
+        "两边都想照顾，结果被对方轻灵处理。",
+        "把星位双飞燕当成固定夹击题，忽略外侧配合。"
+      ],
+      "katagoEraJudgement": "AI 更强调轻重和全局速度；双飞燕局部要服务于下一处大场或攻击目标。",
+      "trainingFocus": [
+        "轻重判断",
+        "两翼选择",
+        "攻击方向"
+      ],
+      "patternCardIds": [
+        "joseki_star_low_approach_one_space_pincer",
+        "joseki_star_approach_tenuki"
+      ],
+      "tags": [
+        "星位",
+        "双飞燕",
+        "挂角",
+        "轻重",
+        "定式"
+      ]
+    },
+    {
+      "id": "joseki_komoku_magic_sword_avoidance",
+      "title": "小目妖刀：避战与反击",
+      "family": "komoku_magic_sword",
+      "phase": [
+        "opening",
+        "middlegame"
+      ],
+      "levels": [
+        "advanced",
+        "dan"
+      ],
+      "sourceKind": "common-pattern",
+      "relativeSequence": [
+        "Q4",
+        "O3",
+        "R6",
+        "Q6",
+        "P4"
+      ],
+      "normalizedFeatures": [
+        "corner",
+        "3-4",
+        "小目",
+        "妖刀",
+        "接触战",
+        "定式"
+      ],
+      "branches": [
+        {
+          "name": "避战与反击",
+          "sequence": "Q4 - O3 - R6 - Q6 - P4",
+          "whenToChoose": "对方用强硬接触手制造混战，而己方外侧有支援或能简明处理时。",
+          "warning": "妖刀变化诱人，但读不清时应优先选择简明安定。"
+        }
+      ],
+      "decisionRules": [
+        "先判断是否必须战斗，再决定进入妖刀主线还是简化。",
+        "己方外侧薄弱时，不要主动给对方制造追击目标。",
+        "若 KataGo 候选点偏向稳健补强，说明本局复杂变化未必便宜。"
+      ],
+      "commonMistakes": [
+        "为了下出名定式而忽略自身弱棋。",
+        "只读局部吃子，没有看到全局被攻。"
+      ],
+      "katagoEraJudgement": "妖刀在现代讲解中更适合作为读力和风险管理案例；实战以局面适配为先。",
+      "trainingFocus": [
+        "风险管理",
+        "弱棋处理",
+        "复杂战斗取舍"
+      ],
+      "patternCardIds": [
+        "joseki_34_high_approach_one_space_low_pincer",
+        "joseki_34_low_approach_attach_extend"
+      ],
+      "tags": [
+        "小目",
+        "妖刀",
+        "复杂定式",
+        "接触战",
+        "定式"
+      ]
     }
   ],
   "lifeDeathProblems": [
@@ -11972,6 +12226,266 @@
         "做眼",
         "眼形"
       ]
+    },
+    {
+      "id": "life_death_plum_six_vital_point",
+      "title": "梅花六：中手急所",
+      "difficulty": "standard",
+      "region": "corner",
+      "toPlay": "B",
+      "objective": "识别梅花六的眼形中心并判断杀活",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "C2"
+        },
+        {
+          "color": "W",
+          "point": "B2"
+        },
+        {
+          "color": "B",
+          "point": "C3"
+        },
+        {
+          "color": "W",
+          "point": "D2"
+        },
+        {
+          "color": "B",
+          "point": "D3"
+        },
+        {
+          "color": "W",
+          "point": "B3"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "C2",
+          "explanation": "先点眼形中心，让对方两只眼不能同时成立。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "E2",
+          "why": "从外面收气太慢，会让对方先补成真眼。"
+        }
+      ],
+      "teaching": {
+        "recognition": "梅花六的关键不是外形有六个点，而是中间一点能否让两眼分裂。",
+        "firstFeeling": "第一感先找中心急所，再读对方最大做眼点。",
+        "explanation": "先点眼形中心，让对方两只眼不能同时成立。",
+        "memoryCue": "梅花六先问中点，别先从外面收气。",
+        "failureExplanation": "从外面收气太慢，会让对方先补成真眼。"
+      },
+      "patternCardIds": [
+        "life_death_true_eye_false_eye",
+        "life_death_rectangular_six_alive",
+        "life_death_bulky_five_vital_point"
+      ],
+      "tags": [
+        "梅花六",
+        "眼形",
+        "中手",
+        "急所"
+      ]
+    },
+    {
+      "id": "life_death_grape_six_vital_point",
+      "title": "葡萄六：真假眼位",
+      "difficulty": "standard",
+      "region": "side",
+      "toPlay": "W",
+      "objective": "判断葡萄六是否能形成两个真眼",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "D2"
+        },
+        {
+          "color": "W",
+          "point": "E2"
+        },
+        {
+          "color": "B",
+          "point": "C3"
+        },
+        {
+          "color": "W",
+          "point": "D3"
+        },
+        {
+          "color": "B",
+          "point": "E4"
+        },
+        {
+          "color": "W",
+          "point": "F3"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "E3",
+          "explanation": "占住眼形腰点，迫使对方眼位互相干扰。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "C2",
+          "why": "只破一只眼不够，对方可以转身做出第二眼。"
+        }
+      ],
+      "teaching": {
+        "recognition": "葡萄六常有看似两眼的外形，实战要找两只眼之间的共享点。",
+        "firstFeeling": "先找能同时影响两只眼的腰点。",
+        "explanation": "占住眼形腰点，迫使对方眼位互相干扰。",
+        "memoryCue": "葡萄六看连接处，不只看外面像不像眼。",
+        "failureExplanation": "只破一只眼不够，对方可以转身做出第二眼。"
+      },
+      "patternCardIds": [
+        "life_death_true_eye_false_eye",
+        "life_death_rectangular_six_alive",
+        "life_death_bulky_five_vital_point"
+      ],
+      "tags": [
+        "葡萄六",
+        "眼形",
+        "真假眼",
+        "做活"
+      ]
+    },
+    {
+      "id": "life_death_board_six_alive_shape",
+      "title": "板六：真假活形",
+      "difficulty": "basic",
+      "region": "side",
+      "toPlay": "B",
+      "objective": "区分边上板六的真活和薄味",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "C2"
+        },
+        {
+          "color": "W",
+          "point": "D2"
+        },
+        {
+          "color": "B",
+          "point": "E2"
+        },
+        {
+          "color": "W",
+          "point": "C3"
+        },
+        {
+          "color": "B",
+          "point": "D3"
+        },
+        {
+          "color": "W",
+          "point": "E3"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "D1",
+          "explanation": "占边上要点，确认两眼或迫使对方不能同时破两处。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "F2",
+          "why": "从外侧补棋不能解决边上一线的眼位问题。"
+        }
+      ],
+      "teaching": {
+        "recognition": "板六要结合边线判断，不能只按中腹六目形粗略断活。",
+        "firstFeeling": "先看一线和二线的眼位是否互相独立。",
+        "explanation": "占边上要点，确认两眼或迫使对方不能同时破两处。",
+        "memoryCue": "板六看边线，边上多一口气也可能改变结论。",
+        "failureExplanation": "从外侧补棋不能解决边上一线的眼位问题。"
+      },
+      "patternCardIds": [
+        "life_death_rectangular_six_alive",
+        "life_death_side_second_line_hane",
+        "life_death_true_eye_false_eye"
+      ],
+      "tags": [
+        "板六",
+        "边上",
+        "眼形",
+        "做活"
+      ]
+    },
+    {
+      "id": "life_death_golden_chicken_corner_vital",
+      "title": "金鸡独立：角部急所",
+      "difficulty": "advanced",
+      "region": "corner",
+      "toPlay": "W",
+      "objective": "用角部一点破坏对方眼形和气数",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "R2"
+        },
+        {
+          "color": "W",
+          "point": "Q2"
+        },
+        {
+          "color": "B",
+          "point": "R3"
+        },
+        {
+          "color": "W",
+          "point": "Q3"
+        },
+        {
+          "color": "B",
+          "point": "S4"
+        },
+        {
+          "color": "W",
+          "point": "R4"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "S2",
+          "explanation": "站住角上一点，让对方眼位和气数不能兼顾。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "Q1",
+          "why": "只破眼不紧气，对方可能借角部反先做活。"
+        }
+      ],
+      "teaching": {
+        "recognition": "金鸡独立常出现在角部一二线交界，关键是同一手兼顾破眼和紧气。",
+        "firstFeeling": "第一感找能站住、又让对方不能连回的角上一点。",
+        "explanation": "站住角上一点，让对方眼位和气数不能兼顾。",
+        "memoryCue": "金鸡独立不是形状好看，是一手同时破眼又紧气。",
+        "failureExplanation": "只破眼不紧气，对方可能借角部反先做活。"
+      },
+      "patternCardIds": [
+        "life_death_corner_throw_in_1_2_point",
+        "life_death_true_eye_false_eye",
+        "semeai_one_eye_beats_no_eye"
+      ],
+      "tags": [
+        "金鸡独立",
+        "角部",
+        "急所",
+        "紧气"
+      ]
     }
   ],
   "tesujiProblems": [
@@ -16293,6 +16807,201 @@
         "弃子",
         "断",
         "转换"
+      ]
+    },
+    {
+      "id": "tesuji_connect_and_die_basic",
+      "title": "接不归：基础型",
+      "difficulty": "standard",
+      "region": "side",
+      "toPlay": "B",
+      "objective": "利用断点和气紧，让对方看似能接却接不回",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "C3"
+        },
+        {
+          "color": "W",
+          "point": "D3"
+        },
+        {
+          "color": "B",
+          "point": "E3"
+        },
+        {
+          "color": "W",
+          "point": "D4"
+        },
+        {
+          "color": "B",
+          "point": "E4"
+        },
+        {
+          "color": "W",
+          "point": "C4"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "D2",
+          "explanation": "先压住连接点，让对方接上也会被气紧吃掉。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "F3",
+          "why": "直接追吃给了对方连接和长气的机会。"
+        }
+      ],
+      "teaching": {
+        "recognition": "接不归要找对方最想连接的一点，再数接上后的气数。",
+        "tesujiIdea": "先压住连接点，让对方接上也会被气紧吃掉。",
+        "firstHint": "别急着打吃，先问对方接上以后有没有气。",
+        "memoryCue": "接不归的重点是接上也死，不是表面断开。",
+        "failureExplanation": "直接追吃给了对方连接和长气的机会。"
+      },
+      "patternCardIds": [
+        "tesuji_shortage_of_liberties",
+        "tesuji_wedge_split_connection",
+        "tesuji_crosscut_reading_order"
+      ],
+      "tags": [
+        "接不归",
+        "断点",
+        "气紧",
+        "手筋"
+      ]
+    },
+    {
+      "id": "tesuji_probe_before_sacrifice_basic",
+      "title": "先试应手再弃子：探路型",
+      "difficulty": "standard",
+      "region": "center",
+      "toPlay": "B",
+      "objective": "先利用试应手确认对方应法，再决定弃子转换",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "J10"
+        },
+        {
+          "color": "W",
+          "point": "K10"
+        },
+        {
+          "color": "B",
+          "point": "L10"
+        },
+        {
+          "color": "W",
+          "point": "K11"
+        },
+        {
+          "color": "B",
+          "point": "J11"
+        },
+        {
+          "color": "W",
+          "point": "L11"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "K9",
+          "explanation": "先试对方应法，确认断点和气数后再弃子转换。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "M10",
+          "why": "直接弃子没有先手交换，容易被对方简明吃住。"
+        }
+      ],
+      "teaching": {
+        "recognition": "有些弃子不是第一手就扔，而是先用试应手确认对方形状。",
+        "tesujiIdea": "先试对方应法，确认断点和气数后再弃子转换。",
+        "firstHint": "先找对方必须回应的一手，再看弃子是否成立。",
+        "memoryCue": "先问一声，再决定弃不弃。",
+        "failureExplanation": "直接弃子没有先手交换，容易被对方简明吃住。"
+      },
+      "patternCardIds": [
+        "shape_probe_then_tenuki_aji",
+        "tesuji_squeeze_shape_profit",
+        "tesuji_wedge_split_connection"
+      ],
+      "tags": [
+        "试应手",
+        "弃子",
+        "转换",
+        "手筋"
+      ]
+    },
+    {
+      "id": "tesuji_oil_rat_endgame",
+      "title": "老鼠偷油：边线官子",
+      "difficulty": "advanced",
+      "region": "side",
+      "toPlay": "W",
+      "objective": "在边线上利用连续先手侵入偷取实地",
+      "sourceKind": "common-pattern",
+      "initialStones": [
+        {
+          "color": "B",
+          "point": "C2"
+        },
+        {
+          "color": "W",
+          "point": "D2"
+        },
+        {
+          "color": "B",
+          "point": "E2"
+        },
+        {
+          "color": "W",
+          "point": "F2"
+        },
+        {
+          "color": "B",
+          "point": "D3"
+        },
+        {
+          "color": "W",
+          "point": "E3"
+        }
+      ],
+      "correctMoves": [
+        {
+          "move": "B2",
+          "explanation": "从边线最深处试探，利用连续先手把对方实地掏薄。"
+        }
+      ],
+      "failureMoves": [
+        {
+          "move": "G2",
+          "why": "从外面收官太慢，失去边线上连续先手的价值。"
+        }
+      ],
+      "teaching": {
+        "recognition": "老鼠偷油常在边线二路出现，重点是连续先手和对方眼位薄味。",
+        "tesujiIdea": "从边线最深处试探，利用连续先手把对方实地掏薄。",
+        "firstHint": "先找最里面的先手点，再判断对方能不能强硬反击。",
+        "memoryCue": "边上官子先看里面有没有连续先手。",
+        "failureExplanation": "从外面收官太慢，失去边线上连续先手的价值。"
+      },
+      "patternCardIds": [
+        "tesuji_monkey_jump_endgame",
+        "life_death_side_second_line_hane",
+        "tesuji_clamp_under_connection"
+      ],
+      "tags": [
+        "老鼠偷油",
+        "官子",
+        "边上",
+        "手筋"
       ]
     }
   ]

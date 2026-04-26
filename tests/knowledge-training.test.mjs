@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 
 const catalog = JSON.parse(await readFile(new URL('../data/knowledge/training-catalog.json', import.meta.url), 'utf8'))
@@ -7,6 +10,7 @@ const patterns = JSON.parse(await readFile(new URL('../data/knowledge/pattern-ca
 const patternIds = new Set(patterns.map((card) => card.id))
 const allowedSourceKinds = new Set(['original', 'common-pattern', 'licensed-source'])
 const pointPattern = /^[A-HJ-T](?:[1-9]|1[0-9])$/
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 function assertPoint(point, label) {
   assert.match(point, pointPattern, label)
@@ -78,4 +82,45 @@ test('matching engine and teacher runtime expose knowledge matches and training 
   assert.doesNotMatch(teacher, /partial 匹配只能说/)
   assert.match(card, /知识匹配/)
   assert.match(card, /关联训练题/)
+})
+
+test('matching engine ranks exact joseki, life-death, and tesuji matches ahead of broad patterns', () => {
+  const jiti = join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'jiti.CMD' : 'jiti')
+  const fixture = join(repoRoot, 'tests', 'fixtures', 'knowledge-match-engine-smoke.ts')
+  const output = execFileSync(jiti, [fixture], {
+    cwd: repoRoot,
+    encoding: 'utf8'
+  })
+  const result = JSON.parse(output)
+
+  assert.equal(result.star33.matches[0].matchType, 'joseki')
+  assert.equal(result.star33.matches[0].confidence, 'exact')
+  assert.match(result.star33.matches[0].title, /星位点三三/)
+  assert.deepEqual(result.star33.recommendedProblems, [])
+
+  assert.equal(result.trueFalseEye.matches[0].matchType, 'life_death')
+  assert.equal(result.trueFalseEye.matches[0].confidence, 'exact')
+  assert.match(result.trueFalseEye.matches[0].title, /真眼假眼/)
+  assert.equal(result.trueFalseEye.recommendedProblems[0].problemType, 'life_death')
+  assert.match(result.trueFalseEye.recommendedProblems[0].title, /真眼假眼/)
+
+  const firstTesujiIndex = result.snapback.matches.findIndex((match) => match.matchType === 'tesuji')
+  const firstJosekiIndex = result.snapback.matches.findIndex((match) => match.matchType === 'joseki')
+  assert.equal(firstTesujiIndex, 0)
+  assert.equal(result.snapback.matches[0].confidence, 'exact')
+  assert.match(result.snapback.matches[0].title, /倒扑/)
+  assert.ok(firstJosekiIndex === -1 || firstJosekiIndex > firstTesujiIndex)
+  assert.equal(result.snapback.recommendedProblems[0].problemType, 'tesuji')
+  assert.match(result.snapback.recommendedProblems[0].title, /倒扑/)
+
+  assert.equal(result.avalanche.matches[0].matchType, 'joseki')
+  assert.match(result.avalanche.matches[0].title, /大雪崩/)
+
+  assert.equal(result.plumSix.matches[0].matchType, 'life_death')
+  assert.match(result.plumSix.matches[0].title, /梅花六/)
+  assert.equal(result.plumSix.recommendedProblems[0].problemType, 'life_death')
+
+  assert.equal(result.connectAndDie.matches[0].matchType, 'tesuji')
+  assert.match(result.connectAndDie.matches[0].title, /接不归/)
+  assert.equal(result.connectAndDie.recommendedProblems[0].problemType, 'tesuji')
 })
