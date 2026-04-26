@@ -4,6 +4,7 @@ import { test } from 'node:test'
 
 const cards = JSON.parse(await readFile(new URL('../data/knowledge/p0-cards.json', import.meta.url), 'utf8'))
 const patterns = JSON.parse(await readFile(new URL('../data/knowledge/pattern-cards.json', import.meta.url), 'utf8'))
+const sourceRegistry = JSON.parse(await readFile(new URL('../data/knowledge/source-registry.json', import.meta.url), 'utf8'))
 
 test('P0 knowledge cards are non-empty and stable', () => {
   assert.ok(cards.length >= 48)
@@ -23,12 +24,26 @@ test('every knowledge card has teaching fields', () => {
 })
 
 test('pattern knowledge cards cover joseki, life-death, tesuji, and shape matching', () => {
-  assert.ok(patterns.length >= 10)
+  assert.ok(patterns.length >= 28)
   const ids = new Set(patterns.map((card) => card.id))
   assert.equal(ids.size, patterns.length)
   for (const category of ['joseki', 'life_death', 'tesuji', 'shape']) {
     assert.ok(patterns.some((card) => card.category === category), category)
   }
+})
+
+test('knowledge source registry records licensing decisions', () => {
+  assert.ok(sourceRegistry.length >= 5)
+  for (const source of sourceRegistry) {
+    assert.ok(source.id)
+    assert.ok(source.url)
+    assert.ok(source.license)
+    assert.ok(source.status)
+    assert.ok(source.why)
+    assert.ok(Array.isArray(source.usedFor))
+  }
+  assert.ok(sourceRegistry.some((source) => source.status === 'do-not-import'))
+  assert.ok(sourceRegistry.some((source) => source.status === 'safe-for-structural-reference'))
 })
 
 test('every pattern card has matching triggers and teacher guidance', () => {

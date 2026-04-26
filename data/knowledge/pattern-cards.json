@@ -543,5 +543,729 @@
       "commonMistake": "为了安全过度补棋，把轻棋补成重棋。",
       "drill": "复盘时圈出所有空三角，标注它是必要补棋还是低效。"
     }
+  },
+  {
+    "id": "joseki_star_low_approach_one_space_pincer",
+    "title": "星位小飞挂：一间夹攻",
+    "category": "joseki",
+    "patternType": "corner_joseki",
+    "phase": ["opening"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner"],
+    "tags": ["星位", "小飞挂", "一间夹", "夹攻", "定式", "战斗"],
+    "aliases": ["one-space pincer", "hoshi pincer", "星位夹攻"],
+    "boardSignals": ["corner", "4-4", "approach", "pincer", "third-line"],
+    "triggers": {
+      "moveFeatures": ["approach", "corner"],
+      "candidateFeatures": ["third-line", "corner"],
+      "pvFeatures": ["corner", "running"],
+      "contextTags": ["星位", "夹攻", "挂角", "定式"],
+      "minMoveNumber": 1,
+      "maxMoveNumber": 70
+    },
+    "shape": {
+      "anchor": "nearest-corner",
+      "canonicalMoves": ["4-4", "low-approach", "one-space-pincer"],
+      "gtpExamples": ["Q16 R14 P14", "D16 C14 E14"],
+      "symmetry": "corner"
+    },
+    "variations": [
+      {
+        "name": "夹攻压迫",
+        "mainLine": "守角方不简单守角，而是夹住挂角一子，逼对方选择跳出、三三或靠压。",
+        "whenToChoose": "外侧有己方配合，或者对方挂角一子较孤立。",
+        "warning": "夹攻会主动制造战斗，自己周围薄时不要硬夹。"
+      },
+      {
+        "name": "三三反击",
+        "mainLine": "被夹方常可点三三取角，把外势留给夹攻方。",
+        "whenToChoose": "夹攻方外面强，自己不想在外侧被追。"
+      }
+    ],
+    "teaching": {
+      "recognition": "星位被小飞挂后，靠近挂角子的第三线夹击点就是夹攻方向。",
+      "correctIdea": "夹攻不是为了马上吃子，而是让对方在低位取角和外面逃跑之间二选一。",
+      "memoryCue": "有配合才夹，没配合先稳。",
+      "commonMistake": "只因为想攻击就夹，结果自己的夹攻子反而变弱。",
+      "drill": "复盘每个夹攻前，先标出己方外侧有没有援军。"
+    }
+  },
+  {
+    "id": "joseki_star_approach_tenuki",
+    "title": "星位被挂角：AI 脱先抢大场",
+    "category": "joseki",
+    "patternType": "opening_choice",
+    "phase": ["opening"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["星位", "挂角", "脱先", "大场", "AI定式", "先手"],
+    "aliases": ["tenuki after approach", "AI tenuki", "被挂角脱先"],
+    "boardSignals": ["corner", "4-4", "approach", "global-direction"],
+    "triggers": {
+      "moveFeatures": ["approach", "corner"],
+      "candidateFeatures": ["center", "side", "corner"],
+      "pvFeatures": ["global"],
+      "contextTags": ["脱先", "大场", "先手", "方向"],
+      "minMoveNumber": 1,
+      "maxMoveNumber": 60
+    },
+    "shape": {
+      "anchor": "whole-board",
+      "canonicalMoves": ["4-4", "approach", "tenuki"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "脱先抢大场",
+        "mainLine": "暂时不应挂角，先抢全局价值更大的点。",
+        "whenToChoose": "角部暂时不会崩，另一边有急所、大场或攻击机会。",
+        "warning": "脱先后要知道对方继续压迫角部时自己能承受什么。"
+      },
+      {
+        "name": "稳健小飞应",
+        "mainLine": "如果全局没有更大处，小飞应仍是最稳定的选择。",
+        "whenToChoose": "学生阶段不确定方向时，稳健应一手通常更容易掌控。"
+      }
+    ],
+    "teaching": {
+      "recognition": "被挂角并不等于必须应，AI 常把这个局部当作可暂缓问题。",
+      "correctIdea": "脱先是否成立，要比较角部后续损失和全局大场收益。",
+      "memoryCue": "不是不管角，是先问别处有没有更急。",
+      "commonMistake": "学 AI 脱先但不知道局部后续，被连续压迫后才补救。",
+      "drill": "前 40 手每次被挂角，写下“应、夹、脱先”三者各自理由。"
+    }
+  },
+  {
+    "id": "joseki_34_low_approach_attach_extend",
+    "title": "小目低挂：靠压取势",
+    "category": "joseki",
+    "patternType": "corner_joseki",
+    "phase": ["opening"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner"],
+    "tags": ["小目", "低挂", "靠压", "外势", "定式", "方向"],
+    "aliases": ["komoku attach", "low approach attach", "attach and extend"],
+    "boardSignals": ["corner", "3-4", "approach", "contact", "influence"],
+    "triggers": {
+      "moveFeatures": ["3-4", "approach"],
+      "candidateFeatures": ["contact", "third-line", "corner"],
+      "pvFeatures": ["contact", "corner"],
+      "contextTags": ["小目", "靠压", "低挂", "定式"],
+      "minMoveNumber": 1,
+      "maxMoveNumber": 80
+    },
+    "shape": {
+      "anchor": "nearest-corner",
+      "canonicalMoves": ["3-4", "low-approach", "attach", "extend"],
+      "gtpExamples": ["Q16 R14 Q14", "D16 C14 D14"],
+      "symmetry": "corner"
+    },
+    "variations": [
+      {
+        "name": "靠压取势",
+        "mainLine": "守角方靠住挂角子，通过压迫取得外势或先手。",
+        "whenToChoose": "外侧有发展价值，或需要限制对方轻松拆边。",
+        "warning": "靠压通常会给对方安定机会，不能只看局部舒服。"
+      },
+      {
+        "name": "滑守角",
+        "mainLine": "选择滑时更重视角部实地，变化简单。",
+        "whenToChoose": "外侧价值不大，或自己想降低复杂度。"
+      }
+    ],
+    "teaching": {
+      "recognition": "小目低挂后，靠压和滑是两种完全不同的价值选择。",
+      "correctIdea": "靠压要看外势有没有用，滑要看会不会太缓。",
+      "memoryCue": "滑拿角，靠压拿势。",
+      "commonMistake": "靠压后没有外部目标，结果只是帮对方安定。",
+      "drill": "把小目低挂局面分成“我要角”或“我要势”两类。"
+    }
+  },
+  {
+    "id": "joseki_34_high_approach_one_space_low_pincer",
+    "title": "小目高挂：一间低夹",
+    "category": "joseki",
+    "patternType": "corner_joseki",
+    "phase": ["opening"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner"],
+    "tags": ["小目", "高挂", "一间低夹", "夹攻", "定式"],
+    "aliases": ["high approach low pincer", "komoku pincer", "一间低夹"],
+    "boardSignals": ["corner", "3-4", "approach", "pincer", "third-line"],
+    "triggers": {
+      "moveFeatures": ["3-4", "approach"],
+      "candidateFeatures": ["third-line", "corner"],
+      "pvFeatures": ["running", "corner"],
+      "contextTags": ["高挂", "小目", "夹攻", "定式"],
+      "minMoveNumber": 1,
+      "maxMoveNumber": 80
+    },
+    "shape": {
+      "anchor": "nearest-corner",
+      "canonicalMoves": ["3-4", "high-approach", "low-pincer"],
+      "gtpExamples": ["Q16 O17 R14", "D16 E17 C14"],
+      "symmetry": "corner"
+    },
+    "variations": [
+      {
+        "name": "一间低夹",
+        "mainLine": "低位夹攻强调限制对方根基，逼高挂子向中央处理。",
+        "whenToChoose": "想攻击挂角子，同时保留角部实地。",
+        "warning": "夹攻后自己也要准备战斗，不能夹完就脱先。"
+      },
+      {
+        "name": "简明应对",
+        "mainLine": "直接应住角部，放弃主动攻击，换来稳定。",
+        "whenToChoose": "自己外侧没有支援，或局面不适合开战。"
+      }
+    ],
+    "teaching": {
+      "recognition": "高挂比低挂更轻，夹攻时更容易形成中央战斗。",
+      "correctIdea": "一间低夹的核心是压低对方根基，而不是马上吃掉。",
+      "memoryCue": "高挂轻，夹攻要看后续追击。",
+      "commonMistake": "低夹后没有连续攻击计划，让对方轻松跑出。",
+      "drill": "看到高挂夹攻，先想对方跳出后我下一手在哪里追。"
+    }
+  },
+  {
+    "id": "joseki_star_double_wing_splitting_invasion",
+    "title": "星位双翼展开：分投与打入",
+    "category": "joseki",
+    "patternType": "opening_invasion",
+    "phase": ["opening", "middlegame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["side", "center"],
+    "tags": ["星位", "双翼", "分投", "打入", "侵消", "模样"],
+    "aliases": ["double wing formation", "splitting invasion", "framework invasion"],
+    "boardSignals": ["side", "framework", "invasion", "third-line"],
+    "triggers": {
+      "moveFeatures": ["side", "third-line"],
+      "candidateFeatures": ["side", "third-line"],
+      "pvFeatures": ["running", "invasion"],
+      "contextTags": ["模样", "打入", "侵消", "分投"],
+      "minMoveNumber": 20,
+      "maxMoveNumber": 120
+    },
+    "shape": {
+      "anchor": "side-framework",
+      "canonicalMoves": ["double-wing", "splitting-invasion", "settle-lightly"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "三线分投",
+        "mainLine": "在对方框架中间轻轻落子，目标是就地安定或腾挪出头。",
+        "whenToChoose": "对方模样开始成形，但还没有完全封锁。"
+      },
+      {
+        "name": "浅消",
+        "mainLine": "不深入打入，只在外侧压缩对方发展。",
+        "whenToChoose": "自己薄，深入后可能被攻击。"
+      }
+    ],
+    "teaching": {
+      "recognition": "对方星位双翼展开时，中间三线常有分投点。",
+      "correctIdea": "分投不是为了吃地，而是让对方模样无法自然成空。",
+      "memoryCue": "模样未封先分投，已厚就浅消。",
+      "commonMistake": "太晚才进，进来后只能逃命。",
+      "drill": "复盘每个大模样，标出最早可以分投的一手。"
+    }
+  },
+  {
+    "id": "life_death_l_group_basic",
+    "title": "角部 L 形：基础死活判断",
+    "category": "life_death",
+    "patternType": "corner_tsumego",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner"],
+    "tags": ["角部死活", "L形", "眼位", "一线", "二线", "死活题"],
+    "aliases": ["L group", "corner L shape", "L形死活"],
+    "boardSignals": ["corner", "first-line", "second-line", "eye-shape"],
+    "triggers": {
+      "moveFeatures": ["corner", "second-line"],
+      "candidateFeatures": ["first-line", "second-line", "corner"],
+      "pvFeatures": ["eye-shape", "capture"],
+      "contextTags": ["死活", "角部", "眼形", "计算"],
+      "minLossScore": 2,
+      "judgements": ["mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "nearest-corner",
+      "canonicalMoves": ["l-group", "inside-vital-point", "liberty-count"],
+      "gtpExamples": [],
+      "symmetry": "corner"
+    },
+    "variations": [
+      {
+        "name": "外气足",
+        "mainLine": "外气充足时，防守方可能通过内部要点做活或成劫。",
+        "whenToChoose": "外围不紧，攻方不能直接收气。"
+      },
+      {
+        "name": "外气紧",
+        "mainLine": "外气不足时，攻方一线或二线要点会直接破眼。",
+        "whenToChoose": "防守方不能脱先，必须先补眼位。"
+      }
+    ],
+    "teaching": {
+      "recognition": "角部 L 形不要凭形状名判断，先数外气再找内部要点。",
+      "correctIdea": "角部边界会减少变化空间，很多“看似有眼”的形状其实只是劫或死。",
+      "memoryCue": "L 形先数气，再点眼。",
+      "commonMistake": "只看空有多大，不看外气是否允许做活。",
+      "drill": "每道角部 L 形题先写外气数，再看第一手。"
+    }
+  },
+  {
+    "id": "life_death_corner_throw_in_1_2_point",
+    "title": "角部一二路扑入：破眼急所",
+    "category": "life_death",
+    "patternType": "corner_tsumego",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["beginner", "intermediate", "advanced", "dan"],
+    "regions": ["corner"],
+    "tags": ["角部死活", "扑", "一二路", "破眼", "倒扑", "死活题"],
+    "aliases": ["1-2 point throw-in", "corner throw-in", "角上一二路"],
+    "boardSignals": ["corner", "first-line", "second-line", "throw-in", "eye-shape"],
+    "triggers": {
+      "moveFeatures": ["corner", "second-line"],
+      "candidateFeatures": ["first-line", "second-line", "corner"],
+      "pvFeatures": ["capture", "eye-shape"],
+      "contextTags": ["死活", "扑", "角部", "破眼"],
+      "minLossScore": 2,
+      "judgements": ["mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "nearest-corner",
+      "canonicalMoves": ["throw-in", "false-eye", "capture"],
+      "gtpExamples": ["A2", "B1", "S2", "R1"],
+      "symmetry": "corner"
+    },
+    "variations": [
+      {
+        "name": "扑入破眼",
+        "mainLine": "攻方在一二路送一子，迫使对方吃后形成假眼或倒扑。",
+        "whenToChoose": "对方角部眼位紧凑，吃子后会自紧气。"
+      },
+      {
+        "name": "防守补要点",
+        "mainLine": "防守方抢先补住一二路要点，避免眼形被破。",
+        "whenToChoose": "这块棋关系全局安全，不能让对方先手破眼。"
+      }
+    ],
+    "teaching": {
+      "recognition": "角上一二路常出现看似送死、实际破眼的扑入。",
+      "correctIdea": "送进去以后要看对方吃完是不是少一口气、假一个眼。",
+      "memoryCue": "角上小点不小，一二路常是命门。",
+      "commonMistake": "怕送子，错过唯一杀棋。",
+      "drill": "做角部死活题时，先检查一线、二线有没有扑入点。"
+    }
+  },
+  {
+    "id": "life_death_side_second_line_hane",
+    "title": "边上二路扳：缩眼空间",
+    "category": "life_death",
+    "patternType": "side_tsumego",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["beginner", "intermediate", "advanced"],
+    "regions": ["side"],
+    "tags": ["边上死活", "二路扳", "缩眼", "做活", "死活题"],
+    "aliases": ["second-line hane", "side hane", "边上扳"],
+    "boardSignals": ["side", "second-line", "eye-shape", "contact"],
+    "triggers": {
+      "moveFeatures": ["side", "second-line"],
+      "candidateFeatures": ["second-line", "contact"],
+      "pvFeatures": ["eye-shape", "capture"],
+      "contextTags": ["死活", "边上", "做活", "扳"],
+      "minLossScore": 1.5,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "side-shape",
+      "canonicalMoves": ["second-line-hane", "eye-space-reduction"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "扳缩眼",
+        "mainLine": "攻方二路扳压缩眼位，让防守方无法分出两个真眼。",
+        "whenToChoose": "对方沿边做活，眼位空间还没定型。"
+      },
+      {
+        "name": "先手补眼",
+        "mainLine": "防守方先在二路补要点，保留两眼空间。",
+        "whenToChoose": "边上大龙未活，外面也没有接应。"
+      }
+    ],
+    "teaching": {
+      "recognition": "边上做活时，二路线扳常常比外面追击更急。",
+      "correctIdea": "死活的关键是眼位空间，不是外面多围一点。",
+      "memoryCue": "边上二路扳，先问眼够不够。",
+      "commonMistake": "只从外面封锁，放过里面做活要点。",
+      "drill": "边上死活题先画出两个可能眼位，再找扳点。"
+    }
+  },
+  {
+    "id": "life_death_seki_false_capture",
+    "title": "双活：不能随便吃",
+    "category": "life_death",
+    "patternType": "seki",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["双活", "公气", "假吃", "死活", "收官"],
+    "aliases": ["seki", "mutual life", "shared liberties"],
+    "boardSignals": ["semeai", "shared-liberty", "eye-shape"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["vital-point", "contact"],
+      "pvFeatures": ["capture", "eye-shape"],
+      "contextTags": ["双活", "公气", "死活", "对杀"],
+      "minLossScore": 2,
+      "judgements": ["mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-fight",
+      "canonicalMoves": ["shared-liberty", "do-not-capture", "seki"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "维持双活",
+        "mainLine": "双方都不能先吃，先吃反而让对方形成真眼或反杀。",
+        "whenToChoose": "局部双方共享公气，且谁先动谁亏。"
+      },
+      {
+        "name": "破双活",
+        "mainLine": "当外气或劫材变化后，原本双活可能被破坏。",
+        "whenToChoose": "全局变化让一方多出紧气或打劫手段。"
+      }
+    ],
+    "teaching": {
+      "recognition": "双活局面常有诱人的吃子点，但那可能是陷阱。",
+      "correctIdea": "先判断谁先动会不会减少自己的气或给对方成眼。",
+      "memoryCue": "双活不是没棋，是先动可能亏。",
+      "commonMistake": "看到能吃就吃，结果把双活变成自己死。",
+      "drill": "复盘所有双活，标出哪些点双方都不能下。"
+    }
+  },
+  {
+    "id": "tesuji_shortage_of_liberties",
+    "title": "紧气手筋：让对方自己缺气",
+    "category": "tesuji",
+    "patternType": "capture_tesuji",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["beginner", "intermediate", "advanced", "dan"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["紧气", "气紧", "手筋", "吃子", "对杀"],
+    "aliases": ["shortage of liberties", "liberty shortage", "气合い"],
+    "boardSignals": ["liberty-shortage", "contact", "capture"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["contact", "vital-point"],
+      "pvFeatures": ["capture", "contact"],
+      "contextTags": ["紧气", "手筋", "吃子", "对杀"],
+      "minLossScore": 2,
+      "judgements": ["mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-fight",
+      "canonicalMoves": ["force", "self-atari-risk", "capture"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "逼应紧气",
+        "mainLine": "先走 forcing move，让对方不得不应，随后气数不足。",
+        "whenToChoose": "对方几块棋互相牵连，补一边会亏另一边。"
+      },
+      {
+        "name": "弃子紧气",
+        "mainLine": "送一子进去迫使对方吃，吃完反而气紧。",
+        "whenToChoose": "送子后能形成倒扑或接不归。"
+      }
+    ],
+    "teaching": {
+      "recognition": "局部接触战中，先数气，再看有没有逼对方自紧的手。",
+      "correctIdea": "紧气手筋的价值不在这一手吃多少，而在让后续吃子变成必然。",
+      "memoryCue": "先逼它应，再看它气。",
+      "commonMistake": "直接打吃太早，让对方轻松补气。",
+      "drill": "每个吃子题先数双方气，再找 forcing move。"
+    }
+  },
+  {
+    "id": "tesuji_clamp_under_connection",
+    "title": "夹：压缩眼位与连接",
+    "category": "tesuji",
+    "patternType": "shape_tesuji",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["side", "corner"],
+    "tags": ["夹", "二路", "连接", "破眼", "手筋", "腾挪"],
+    "aliases": ["clamp", "hasami-tsuke", "under the stones"],
+    "boardSignals": ["side", "second-line", "contact", "connection"],
+    "triggers": {
+      "moveFeatures": ["side", "second-line"],
+      "candidateFeatures": ["contact", "second-line"],
+      "pvFeatures": ["connection", "eye-shape"],
+      "contextTags": ["手筋", "连接", "夹", "腾挪"],
+      "minLossScore": 2,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "side-shape",
+      "canonicalMoves": ["clamp", "connect-under", "squeeze"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "二路夹",
+        "mainLine": "从下方夹住对方形状，压缩眼位或制造连接手段。",
+        "whenToChoose": "边上双方接触，二路还有潜在连接。"
+      },
+      {
+        "name": "弃子转换",
+        "mainLine": "夹不一定要救出所有子，常用来换取先手或外围厚味。",
+        "whenToChoose": "局部小子可以弃，外面收益更大。"
+      }
+    ],
+    "teaching": {
+      "recognition": "边上二路接触时，夹常常比直接长更有弹性。",
+      "correctIdea": "夹的目标是同时威胁连接、破眼和收气。",
+      "memoryCue": "二路有夹，先看下方通不通。",
+      "commonMistake": "只会直接连接，错过二路制造手段。",
+      "drill": "边上手筋题先找夹，再找直接长或接。"
+    }
+  },
+  {
+    "id": "tesuji_peep_before_cut",
+    "title": "先窥再断：保留强制应手",
+    "category": "tesuji",
+    "patternType": "probe_tesuji",
+    "phase": ["opening", "middlegame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["窥", "试应手", "断", "手筋", "味"],
+    "aliases": ["peep before cut", "probe", "forcing peep"],
+    "boardSignals": ["connection", "cut", "probe"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["contact", "connection"],
+      "pvFeatures": ["cut", "shape"],
+      "contextTags": ["窥", "试探", "断", "味"],
+      "minLossScore": 1.5,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-shape",
+      "canonicalMoves": ["peep", "answer", "cut-or-connect"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "先窥定型",
+        "mainLine": "先逼对方补连接，再根据对方形状选择断或转身。",
+        "whenToChoose": "对方连接点薄，且窥是先手。"
+      },
+      {
+        "name": "保留味道",
+        "mainLine": "不急着窥，保留将来利用的可能。",
+        "whenToChoose": "现在窥会帮对方补强，后续反而少了味。"
+      }
+    ],
+    "teaching": {
+      "recognition": "窥是让对方表态，但不是所有窥都要马上走。",
+      "correctIdea": "好窥是先手且让后续选择更清楚；坏窥是帮对方补强。",
+      "memoryCue": "窥之前问：它是不是先手？会不会帮对方变厚？",
+      "commonMistake": "习惯性先窥，把自己的味消掉。",
+      "drill": "复盘所有窥，标记它是好交换还是味消。"
+    }
+  },
+  {
+    "id": "tesuji_throw_in_for_ko",
+    "title": "扑入造劫：把死棋变成劫争",
+    "category": "tesuji",
+    "patternType": "ko_tesuji",
+    "phase": ["middlegame", "endgame"],
+    "levels": ["intermediate", "advanced", "dan"],
+    "regions": ["corner", "side"],
+    "tags": ["扑", "造劫", "劫", "死活", "手筋"],
+    "aliases": ["throw-in for ko", "ko tesuji", "劫活"],
+    "boardSignals": ["throw-in", "ko", "first-line", "second-line"],
+    "triggers": {
+      "moveFeatures": ["corner", "second-line"],
+      "candidateFeatures": ["first-line", "second-line", "contact"],
+      "pvFeatures": ["capture", "ko"],
+      "contextTags": ["劫", "扑", "死活", "角部"],
+      "minLossScore": 2.5,
+      "judgements": ["mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "corner-or-side",
+      "canonicalMoves": ["throw-in", "capture", "ko"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "造劫求活",
+        "mainLine": "防守方通过扑入制造劫，给本来可能死的棋留下争劫机会。",
+        "whenToChoose": "全盘有足够劫材，直接做活不成立。"
+      },
+      {
+        "name": "消劫杀棋",
+        "mainLine": "攻方判断劫材优势后，可以选择把局部变成劫争。",
+        "whenToChoose": "自己劫材多，局部价值足够大。"
+      }
+    ],
+    "teaching": {
+      "recognition": "死活题中如果直活不行，要看能不能扑入造劫。",
+      "correctIdea": "劫不是局部答案，必须和全盘劫材一起判断。",
+      "memoryCue": "活不了先想劫，打不赢劫就别开。",
+      "commonMistake": "只看到局部能成劫，却没数全盘劫材。",
+      "drill": "每个劫活题写两列：我的劫材、对方劫材。"
+    }
+  },
+  {
+    "id": "shape_tiger_mouth_connection",
+    "title": "虎口连接：厚而不笨",
+    "category": "shape",
+    "patternType": "good_shape",
+    "phase": ["opening", "middlegame"],
+    "levels": ["beginner", "intermediate"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["虎口", "连接", "好形", "厚薄", "形状"],
+    "aliases": ["tiger mouth", "tiger connection", "虎"],
+    "boardSignals": ["connection", "good-shape", "contact"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["connection", "knight-move"],
+      "pvFeatures": ["shape"],
+      "contextTags": ["连接", "虎口", "好形", "厚薄"],
+      "minLossScore": 1,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-shape",
+      "canonicalMoves": ["tiger-mouth", "connection", "eye-potential"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "虎口连接",
+        "mainLine": "用虎口保持连接，同时留下眼形和反击弹性。",
+        "whenToChoose": "两边棋都重要，不能被切断。"
+      },
+      {
+        "name": "轻灵跳出",
+        "mainLine": "如果对方暂时切不断，跳出比虎口更有速度。",
+        "whenToChoose": "当前目标是发展和出头，不是局部补厚。"
+      }
+    ],
+    "teaching": {
+      "recognition": "虎口是既连接又有眼形潜力的基本好形。",
+      "correctIdea": "好形也要看时机：该快时不要补得过厚，该稳时虎口很可靠。",
+      "memoryCue": "怕断用虎，不怕断就跳。",
+      "commonMistake": "该跳出时补虎，效率变低。",
+      "drill": "复盘所有连接手，比较虎口、粘、跳三种选择。"
+    }
+  },
+  {
+    "id": "shape_bamboo_joint_connection",
+    "title": "竹节：难以切断的好形",
+    "category": "shape",
+    "patternType": "good_shape",
+    "phase": ["opening", "middlegame"],
+    "levels": ["beginner", "intermediate", "advanced"],
+    "regions": ["side", "center", "corner"],
+    "tags": ["竹节", "连接", "好形", "切断", "形状"],
+    "aliases": ["bamboo joint", "bamboo connection", "竹节连接"],
+    "boardSignals": ["connection", "good-shape", "cut"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["connection", "jump"],
+      "pvFeatures": ["shape", "connection"],
+      "contextTags": ["竹节", "连接", "好形", "切断"],
+      "minLossScore": 1,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-shape",
+      "canonicalMoves": ["bamboo-joint", "anti-cut", "shape-efficiency"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "竹节防断",
+        "mainLine": "两组棋形成竹节，对方即使冲断也难以真正切开。",
+        "whenToChoose": "需要兼顾连接和效率，不想粘得太笨。"
+      },
+      {
+        "name": "直接粘",
+        "mainLine": "局部气紧或有战术风险时，直接粘更安全。",
+        "whenToChoose": "竹节有被打吃或利用的缺陷。"
+      }
+    ],
+    "teaching": {
+      "recognition": "竹节看起来有空隙，但通常是很强的连接形。",
+      "correctIdea": "竹节的价值是省一手粘，同时保留形状弹性。",
+      "memoryCue": "竹节有空，但不容易断。",
+      "commonMistake": "看见空隙就补粘，把好形补成低效。",
+      "drill": "看到连接问题时，先找有没有竹节形。"
+    }
+  },
+  {
+    "id": "shape_hane_at_head_two_stones",
+    "title": "二子头必扳：压迫形状急所",
+    "category": "shape",
+    "patternType": "shape_tesuji",
+    "phase": ["opening", "middlegame"],
+    "levels": ["beginner", "intermediate", "advanced"],
+    "regions": ["corner", "side", "center"],
+    "tags": ["二子头必扳", "扳", "压迫", "形状", "手筋"],
+    "aliases": ["hane at the head of two stones", "head of two stones", "二子头"],
+    "boardSignals": ["contact", "hane", "shape"],
+    "triggers": {
+      "moveFeatures": ["contact"],
+      "candidateFeatures": ["contact", "vital-point"],
+      "pvFeatures": ["shape", "running"],
+      "contextTags": ["扳", "形状", "二子头", "攻击"],
+      "minLossScore": 1,
+      "judgements": ["inaccuracy", "mistake", "blunder"]
+    },
+    "shape": {
+      "anchor": "local-shape",
+      "canonicalMoves": ["two-stones", "hane-at-head", "shape-pressure"],
+      "gtpExamples": [],
+      "symmetry": "local"
+    },
+    "variations": [
+      {
+        "name": "扳头压迫",
+        "mainLine": "在对方两子头部扳，压低对方形状并争取先手。",
+        "whenToChoose": "对方两子还未安定，扳后自己不薄。"
+      },
+      {
+        "name": "不扳保留",
+        "mainLine": "如果扳会把自己走重，暂时保留更好。",
+        "whenToChoose": "全局更大，或局部扳后对方反击严厉。"
+      }
+    ],
+    "teaching": {
+      "recognition": "对方两子并排向前时，头部扳常是形状急所。",
+      "correctIdea": "这条格言不是绝对命令，而是提醒你先检查压迫点。",
+      "memoryCue": "二子头先看扳，扳完别把自己变薄。",
+      "commonMistake": "机械套格言，不看周围厚薄。",
+      "drill": "每次看到二子头，写下扳的收益和风险各一条。"
+    }
   }
 ]

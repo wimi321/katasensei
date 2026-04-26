@@ -7,6 +7,7 @@ GoMentor uses KataGo as the factual judge and the local knowledge base as the te
 1. **Concept cards**: broad teaching ideas in `data/knowledge/p0-cards.json`, such as direction, thickness, shape, endgame, and review method.
 2. **Markdown essays**: longer YiGo-style teaching notes under `data/knowledge/**`.
 3. **Pattern cards**: structured joseki, tsumego, tesuji, and shape cards in `data/knowledge/pattern-cards.json`.
+4. **Source registry**: licensing and usage notes in `data/knowledge/source-registry.json`.
 
 Pattern cards are the most important layer for professional-looking teaching. Each card stores:
 
@@ -43,6 +44,18 @@ Pattern matching is helpful but not omniscient. The teacher prompt tells the mod
 - Do not invent coordinates, winrate, score lead, joseki names, or variations.
 - KataGo data decides whether the actual move was good or bad.
 - Knowledge cards explain why the pattern is memorable and how the student should train it.
+
+## GitHub Source Review
+
+The knowledge base is expanded from public research, but GoMentor does not blindly import raw SGF/problem data.
+
+- `sanderland/tsumego`: useful as a tsumego product and category reference. The repository has an MIT-style license, but the problem folders reference classic book collections, so raw positions are not imported.
+- `SzalonySamuraj/Joseki-Master`: MIT licensed. Its collection taxonomy is useful for star-point and komoku joseki coverage planning.
+- `billyellow/Kogo-s-Joseki-Dictionary`: no explicit license found. Do not import SGF data.
+- `online-go/godojo-server`: joseki-feature server, but no explicit license found during review. Do not import code/data.
+- `kovarex/tsumego-hero`: useful product architecture reference, but no top-level license found during review. Do not import problem data.
+
+When adding future material, keep the source registry updated with the review decision. A source marked `do-not-import` may still inspire original teaching categories, but it must not be copied into packaged data.
 
 ## Expansion Plan
 

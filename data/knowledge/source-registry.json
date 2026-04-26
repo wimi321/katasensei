@@ -1,0 +1,47 @@
+[
+  {
+    "id": "github_sanderland_tsumego",
+    "name": "Ten Thousand Tsumego",
+    "url": "https://github.com/sanderland/tsumego",
+    "license": "MIT-style LICENSE in repository",
+    "status": "taxonomy-reference-only",
+    "why": "The repository documents a large tsumego app and exposes useful training categories, but its problem folders reference classic book collections. GoMentor should not import raw positions from those books without a separate rights review.",
+    "usedFor": ["life-death taxonomy", "difficulty ladder", "training-card coverage planning"]
+  },
+  {
+    "id": "github_szalonysamuraj_joseki_master",
+    "name": "Joseki-Master",
+    "url": "https://github.com/SzalonySamuraj/Joseki-Master",
+    "license": "MIT",
+    "status": "safe-for-structural-reference",
+    "why": "The repository is MIT licensed and its collection names give a compact joseki training taxonomy. GoMentor uses original teaching summaries rather than copying collection data verbatim.",
+    "usedFor": ["star-point joseki families", "komoku joseki families", "joseki training taxonomy"]
+  },
+  {
+    "id": "github_billyellow_kogo",
+    "name": "Kogo's Joseki Dictionary Chinese SGF",
+    "url": "https://github.com/billyellow/Kogo-s-Joseki-Dictionary",
+    "license": "not found",
+    "status": "do-not-import",
+    "why": "The repository contains a translated SGF but no explicit license. It is useful only as a reminder that joseki content needs careful licensing.",
+    "usedFor": ["source-risk review"]
+  },
+  {
+    "id": "github_online_go_godojo",
+    "name": "OGS godojo-server",
+    "url": "https://github.com/online-go/godojo-server",
+    "license": "not found",
+    "status": "do-not-import",
+    "why": "The README identifies it as a server for OGS joseki features, but no license was found during review.",
+    "usedFor": ["source-risk review", "future integration idea"]
+  },
+  {
+    "id": "github_kovarex_tsumego_hero",
+    "name": "tsumego-hero refactor",
+    "url": "https://github.com/kovarex/tsumego-hero",
+    "license": "not found",
+    "status": "architecture-reference-only",
+    "why": "The repository is a modernized tsumego-hero codebase. It is useful for product and data-flow ideas, not for importing problem data.",
+    "usedFor": ["tsumego product architecture", "source-risk review"]
+  }
+]
