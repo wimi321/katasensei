@@ -163,4 +163,6 @@ test('StudentRailCard stays compact and visual QA capture exists', () => {
   assert.match(preload, /getStudentForGame/)
   assert.equal(existsSync(join(root, 'scripts/capture_ui_gallery.mjs')), true)
   assert.equal(existsSync(join(root, 'docs/VISUAL_QA_CAPTURE.md')), true)
+  const galleryStyles = read('src/renderer/src/features/gallery/ui-gallery.css')
+  assert.match(galleryStyles, /\.ui-gallery__grid\s*\{[^}]*align-items:\s*start/s)
 })
