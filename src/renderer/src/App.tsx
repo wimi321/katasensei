@@ -87,6 +87,7 @@ type ChatMessage = {
 
 type EvaluationByMove = Record<number, KataGoMoveAnalysis>
 type StatusTone = 'good' | 'warn' | 'neutral'
+type TimelineIssueColor = 'B' | 'W'
 
 interface StatusPill {
   label: string
@@ -108,6 +109,15 @@ interface LiveAnalysisState {
   round: number
 }
 
+interface TimelineIssueItem {
+  moveNumber: number
+  color: TimelineIssueColor
+  playedMove: string
+  bestMove: string
+  loss: number
+  severity: 'quiet' | 'inaccuracy' | 'mistake' | 'blunder'
+}
+
 type DesktopCommand =
   | 'open-command-palette'
   | 'open-settings'
@@ -125,6 +135,7 @@ const LIVE_ANALYSIS_BEST_VISIT_LIMIT = 1800
 const LIVE_ANALYSIS_TIME_LIMIT_MS = 150_000
 const LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS = 0.2
 const LIBRARY_PAGE_SIZE = 10
+const TIMELINE_ISSUE_MIN_LOSS = 1
 
 function safePlayerName(name: string | undefined, fallback: string): string {
   const value = (name ?? '').trim()
@@ -167,6 +178,13 @@ function candidateBestVisits(analysis: KataGoMoveAnalysis | null | undefined): n
   return Math.max(0, Number(analysis?.before.topMoves[0]?.visits ?? analysis?.after.topMoves[0]?.visits) || 0)
 }
 
+function normalizeLossPercent(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0
+  }
+  return Math.max(0, Math.abs(value) <= 1 ? Math.abs(value) * 100 : Math.abs(value))
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -199,6 +217,35 @@ function keyMoveSummariesFromEvaluations(evaluations: EvaluationByMove): KeyMove
       return rightLoss - leftLoss || left.moveNumber - right.moveNumber
     })
     .slice(0, 8)
+}
+
+function timelineIssuesFromEvaluations(
+  evaluations: EvaluationByMove,
+  record: GameRecord | null,
+  color: TimelineIssueColor
+): TimelineIssueItem[] {
+  return Object.values(evaluations)
+    .flatMap((item) => {
+      const moveColor = item.currentMove?.color ?? record?.moves[item.moveNumber - 1]?.color
+      if (moveColor !== color) {
+        return []
+      }
+      const loss = normalizeLossPercent(item.playedMove?.winrateLoss)
+      if (loss < TIMELINE_ISSUE_MIN_LOSS) {
+        return []
+      }
+      const playedMove = item.playedMove?.move ?? item.currentMove?.gtp ?? record?.moves[item.moveNumber - 1]?.gtp ?? ''
+      const bestMove = item.before.topMoves[0]?.move ?? item.after.topMoves[0]?.move ?? ''
+      return [{
+        moveNumber: item.moveNumber,
+        color: moveColor,
+        playedMove,
+        bestMove,
+        loss,
+        severity: evaluationSeverity(item)
+      } satisfies TimelineIssueItem]
+    })
+    .sort((left, right) => right.loss - left.loss || left.moveNumber - right.moveNumber)
 }
 
 function keyMoveMarksFromSummaries(
@@ -238,6 +285,7 @@ export function App(): ReactElement {
   const [moveNumber, setMoveNumber] = useState(0)
   const [analysis, setAnalysis] = useState<KataGoMoveAnalysis | null>(null)
   const [evaluations, setEvaluations] = useState<EvaluationByMove>({})
+  const [timelineIssueColor, setTimelineIssueColor] = useState<TimelineIssueColor>('B')
   const [foxKeyword, setFoxKeyword] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -299,6 +347,10 @@ export function App(): ReactElement {
     [dashboard.games, selectedId]
   )
   const keyMoveSummaries = useMemo(() => keyMoveSummariesFromEvaluations(evaluations), [evaluations])
+  const timelineIssues = useMemo(
+    () => timelineIssuesFromEvaluations(evaluations, record, timelineIssueColor),
+    [evaluations, record, timelineIssueColor]
+  )
   const boardKeyMoveMarks = useMemo(
     () => keyMoveMarksFromSummaries(keyMoveSummaries, evaluations, record?.boardSize ?? 19),
     [keyMoveSummaries, evaluations, record?.boardSize]
@@ -1302,16 +1354,26 @@ export function App(): ReactElement {
             )}
           </section>
 
-          <section className="timeline-panel">
+          <section className={`timeline-panel ${record ? 'timeline-panel--with-issues' : 'timeline-panel--empty'}`}>
             {record ? (
-              <WinrateTimelineV2
-                evaluations={Object.values(evaluations)}
-                currentMoveNumber={moveNumber}
-                totalMoves={record.moves.length}
-                loading={graphBusy}
-                loadingLabel={graphProgress}
-                onMove={jumpToMove}
-              />
+              <>
+                <TimelineIssueList
+                  color={timelineIssueColor}
+                  issues={timelineIssues}
+                  currentMoveNumber={moveNumber}
+                  loading={graphBusy}
+                  onColorChange={setTimelineIssueColor}
+                  onJump={jumpToMove}
+                />
+                <WinrateTimelineV2
+                  evaluations={Object.values(evaluations)}
+                  currentMoveNumber={moveNumber}
+                  totalMoves={record.moves.length}
+                  loading={graphBusy}
+                  loadingLabel={graphProgress}
+                  onMove={jumpToMove}
+                />
+              </>
             ) : (
               <EvaluationGraph
                 analysis={analysis}
@@ -2352,6 +2414,75 @@ function evaluationSeverity(item: KataGoMoveAnalysis): 'quiet' | 'inaccuracy' | 
     return 'inaccuracy'
   }
   return 'quiet'
+}
+
+function formatIssueLoss(loss: number): string {
+  return `${loss.toFixed(loss >= 10 ? 0 : 1)}%`
+}
+
+function timelineIssueColorLabel(color: TimelineIssueColor): string {
+  return color === 'B' ? '黑棋' : '白棋'
+}
+
+function TimelineIssueList({
+  color,
+  issues,
+  currentMoveNumber,
+  loading,
+  onColorChange,
+  onJump
+}: {
+  color: TimelineIssueColor
+  issues: TimelineIssueItem[]
+  currentMoveNumber: number
+  loading: boolean
+  onColorChange: (color: TimelineIssueColor) => void
+  onJump: (moveNumber: number) => void
+}): ReactElement {
+  return (
+    <aside className="timeline-issues" aria-label="问题手列表">
+      <div className="timeline-issues__head">
+        <div className="timeline-issues__title">
+          <span>问题手</span>
+          <strong>{issues.length}</strong>
+        </div>
+        <div className="timeline-issues__switch" role="group" aria-label="选择棋手颜色">
+          {(['B', 'W'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={item === color ? 'is-active' : ''}
+              aria-pressed={item === color}
+              onClick={() => onColorChange(item)}
+            >
+              {timelineIssueColorLabel(item)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="timeline-issues__list">
+        {issues.length > 0 ? issues.map((issue) => (
+          <button
+            key={`${issue.color}-${issue.moveNumber}`}
+            type="button"
+            className={`timeline-issue timeline-issue--${issue.severity} ${issue.moveNumber === currentMoveNumber ? 'is-current' : ''}`}
+            onClick={() => onJump(issue.moveNumber)}
+            title={`第 ${issue.moveNumber} 手，胜率差 ${formatIssueLoss(issue.loss)}`}
+          >
+            <span className="timeline-issue__move">第 {issue.moveNumber} 手</span>
+            <span className="timeline-issue__line">
+              {issue.playedMove || '实战'}{issue.bestMove ? ` → ${issue.bestMove}` : ''}
+            </span>
+            <strong>{formatIssueLoss(issue.loss)}</strong>
+          </button>
+        )) : (
+          <div className="timeline-issues__empty">
+            {loading ? '正在生成问题手…' : `${timelineIssueColorLabel(color)}暂无明显问题手`}
+          </div>
+        )}
+      </div>
+    </aside>
+  )
 }
 
 function EvaluationGraph({

@@ -519,6 +519,41 @@
   font-weight: 860;
 }
 
+.ks-timeline-current-loss {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--ks-border-soft, rgba(255,255,255,.08)) 82%, transparent);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ks-text-muted, #a9b2bb);
+  font-size: 11px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.ks-timeline-current-loss strong {
+  color: var(--ks-text-main, #f4efe7);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.ks-timeline-current-loss--blunder strong {
+  color: var(--ks-red, #ed6b61);
+}
+
+.ks-timeline-current-loss--mistake strong {
+  color: var(--ks-orange, #db9862);
+}
+
+.ks-timeline-current-loss--inaccuracy strong {
+  color: var(--ks-gold, #d8b567);
+}
+
 .ks-timeline-summary {
   display: flex;
   margin-left: auto;

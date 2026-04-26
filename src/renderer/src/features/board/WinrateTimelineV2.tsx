@@ -122,6 +122,8 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
       if (!nearest) return point
       return Math.abs(point.moveNumber - hoveredMove) < Math.abs(nearest.moveNumber - hoveredMove) ? point : nearest
     }, null)
+  const currentPoint = points.find((point) => point.moveNumber === currentMoveNumber)
+  const currentLossLabel = formatWinrateLoss(currentPoint?.loss)
 
   function moveFromEvent(event: React.PointerEvent<SVGSVGElement>): number {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -191,6 +193,10 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
           <small>{loading ? (loadingLabel || '分析中') : '胜率 / 目差曲线'}</small>
         </div>
         <div className="ks-timeline-move-count">{currentMoveNumber} / {totalMoves}</div>
+        <div className={`ks-timeline-current-loss ks-timeline-current-loss--${currentPoint?.severity ?? 'quiet'}`}>
+          <span>当前胜率差</span>
+          <strong>{currentLossLabel}</strong>
+        </div>
         <div className="ks-timeline-legend" aria-label="曲线说明">
           <span><i className="ks-timeline-legend__swatch ks-timeline-legend__swatch--winrate" />黑胜率</span>
           <span><i className="ks-timeline-legend__swatch ks-timeline-legend__swatch--score" />目差</span>
