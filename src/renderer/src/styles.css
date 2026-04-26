@@ -806,7 +806,7 @@ label,
 
 .board-workspace {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 150px;
+  grid-template-rows: 44px minmax(0, 1fr) 118px;
   min-width: 0;
   min-height: 0;
   background: var(--surface-0);
@@ -823,8 +823,8 @@ label,
 }
 
 .topbar {
-  min-height: 54px;
-  padding: 7px 14px;
+  min-height: 44px;
+  padding: 5px 12px;
   flex-wrap: nowrap;
 }
 
@@ -922,7 +922,7 @@ label,
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: 4px 18px 6px;
+  padding: 0 12px;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 8%, rgb(214 182 110 / 0.06), transparent 34%),
@@ -1138,7 +1138,7 @@ label,
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  padding: 7px 14px 8px;
+  padding: 5px 12px 6px;
   border-top: 1px solid var(--line-soft);
   background: linear-gradient(180deg, #12161b, #0f1317);
 }

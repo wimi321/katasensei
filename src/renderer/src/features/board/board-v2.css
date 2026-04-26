@@ -1,7 +1,7 @@
 .ks-board-shell {
   position: relative;
   display: grid;
-  width: min(100%, calc(100vh - 292px), 720px);
+  width: min(100%, calc(100vh - 212px), 820px);
   min-width: min(360px, 100%);
   aspect-ratio: 1;
   place-items: center;
