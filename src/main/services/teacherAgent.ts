@@ -290,6 +290,7 @@ function systemPrompt(level: CoachUserLevel): string {
     '回复方式像人类围棋老师讲棋：先抓方向和轻重，再解释局部为什么成立；少念数字，多讲学生下次能照着想的判断顺序。',
     '不要每次固定输出一堆栏目。用户问得小，就用一两段话讲清楚；用户要求整盘或训练计划，再使用短标题和列表。',
     '讲当前手时优先回答：这手想法哪里偏了、好点为什么更自然、下次遇到类似局面先看什么。',
+    '如果知识库匹配到定式、死活题或手筋型，要像老师一样讲“识别特征、常见变化、这一局该按哪条思路下、下次怎么记”；匹配不完整时必须说“像这个型”，不要硬说完全同形。',
     'KataGo 数字只作为证据点到为止，例如“这里亏约 3 目”或“一选搜索更稳定”；不要把答案写成机器报告。',
     levelLine[level],
     '输出中文，口吻像坐在学生旁边复盘，清楚、克制、能落到下一盘棋。'
@@ -329,7 +330,8 @@ function currentMovePayload(
       guidance: [
         '直接给学生讲，不要先输出 JSON。',
         '当前手只保留最有教育价值的一两个变化。',
-        '如果引用 KataGo，只引用胜率/目差/候选点作为证据，不要堆表格。'
+        '如果引用 KataGo，只引用胜率/目差/候选点作为证据，不要堆表格。',
+        '如果 knowledgePacket 里有 joseki、life_death、tesuji 或 shape pattern，优先讲它的识别特征、常见变化、记忆法和本局适用边界。'
       ]
     }
   }, null, 2)
@@ -363,6 +365,7 @@ async function maybeSearchWeb(prompt: string, logs: TeacherToolLog[]): Promise<s
 function genericKnowledgeForPrompt(prompt: string, profile: StudentProfile): KnowledgePacket[] {
   const themes = themesFromProfile(profile)
   return searchKnowledge({
+    text: prompt,
     moveNumber: /布局|开局|序盘/.test(prompt) ? 30 : /收官|官子|终局/.test(prompt) ? 170 : 90,
     totalMoves: 180,
     boardSize: 19,
@@ -587,6 +590,7 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
 
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '按阶段、区域、学生水平和 KataGo 损失检索 YiGo 知识库。')
   const knowledge = searchKnowledge({
+    text: request.prompt,
     moveNumber,
     totalMoves: record?.moves.length ?? moveNumber,
     boardSize: record?.boardSize ?? analysis.boardSize,
@@ -595,6 +599,9 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
     lossScore: analysis.playedMove?.scoreLoss,
     judgement: analysis.judgement,
     contextTags: tagsFromAnalysis(analysis, analysis.currentMove),
+    playedMove: analysis.playedMove?.move ?? analysis.currentMove?.gtp,
+    candidateMoves: analysis.before.topMoves.slice(0, 8).map((candidate) => candidate.move),
+    principalVariation: analysis.before.topMoves.slice(0, 3).flatMap((candidate) => candidate.pv.slice(0, 8)),
     maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条知识卡片。`)
@@ -747,7 +754,9 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
 
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '根据批量问题检索训练主题知识。')
   const themes = themesFromProfile(profileUpdate)
+  const topIssue = issues.filter((issue) => issue.loss > 0).sort((a, b) => b.loss - a.loss)[0]
   const knowledge = searchKnowledge({
+    text: request.prompt,
     moveNumber: 60,
     totalMoves: 180,
     boardSize: 19,
@@ -756,6 +765,9 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
     lossScore: Math.max(...issues.map((issue) => issue.loss), 0) / 2,
     judgement: issues.some((issue) => issue.loss >= 15) ? 'blunder' : 'mistake',
     contextTags: ['布局', '方向', '手筋', '形势判断', ...themes],
+    playedMove: topIssue?.playedMove,
+    candidateMoves: topIssue?.bestMove ? [topIssue.bestMove] : [],
+    principalVariation: topIssue?.pv ?? [],
     maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条训练参考。`)
@@ -857,7 +869,9 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
   emitToolState(context, logs, '本局问题已写入棋手画像。')
 
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '根据整盘关键问题检索教学主题。')
+  const topIssue = issues.filter((issue) => issue.loss > 0).sort((a, b) => b.loss - a.loss)[0]
   const knowledge = searchKnowledge({
+    text: request.prompt,
     moveNumber: issues[0]?.moveNumber ?? Math.min(80, record.moves.length),
     totalMoves: record.moves.length,
     boardSize: record.boardSize,
@@ -866,6 +880,9 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
     lossScore: Math.max(...issues.map((issue) => issue.loss), 0) / 2,
     judgement: issues.some((issue) => issue.loss >= 15) ? 'blunder' : 'mistake',
     contextTags: ['整盘复盘', '关键手', '形势判断', ...profileTagsFromIssues(issues)],
+    playedMove: topIssue?.playedMove,
+    candidateMoves: topIssue?.bestMove ? [topIssue.bestMove] : [],
+    principalVariation: topIssue?.pv ?? [],
     maxResults: 4
   })
   finishTool(knowledgeLog, 'done', `选中 ${knowledge.length} 条知识卡片。`)
@@ -935,6 +952,7 @@ async function runTrainingPlan(request: TeacherRunRequest, logs: TeacherToolLog[
   const themes = themesFromProfile(profile)
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '围绕学生薄弱主题检索训练参考。')
   const knowledge = searchKnowledge({
+    text: request.prompt,
     moveNumber: 80,
     totalMoves: 180,
     boardSize: 19,

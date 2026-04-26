@@ -2,15 +2,49 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { KnowledgeCard, KnowledgeSearchQuery, KnowledgeSearchResult } from './schema'
+import { loadKnowledgePatternCards, type KnowledgePatternCard } from './patterns'
 
 let cache: KnowledgeCard[] | null = null
 
-function knowledgePath(): string {
+function knowledgeRoot(): string {
   const candidates = [
-    join(process.cwd(), 'data', 'knowledge', 'p0-cards.json'),
-    process.resourcesPath ? join(process.resourcesPath, 'data', 'knowledge', 'p0-cards.json') : ''
+    join(process.cwd(), 'data'),
+    process.resourcesPath ? join(process.resourcesPath, 'data') : ''
   ].filter(Boolean)
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]
+  return candidates.find((candidate) => existsSync(join(candidate, 'knowledge', 'p0-cards.json'))) ?? candidates[0]
+}
+
+function knowledgePath(): string {
+  return join(knowledgeRoot(), 'knowledge', 'p0-cards.json')
+}
+
+function patternKind(card: KnowledgePatternCard): KnowledgeCard['kind'] {
+  if (card.category === 'joseki') return 'joseki'
+  if (card.category === 'life_death') return 'life_death'
+  if (card.category === 'tesuji') return 'tesuji_pattern'
+  return 'shape_pattern'
+}
+
+function patternToKnowledgeCard(card: KnowledgePatternCard): KnowledgeCard {
+  return {
+    id: card.id,
+    title: card.title,
+    kind: patternKind(card),
+    phase: card.phase,
+    errorTypes: card.category === 'joseki' ? ['direction'] : card.category === 'life_death' ? ['life-death', 'reading'] : ['shape', 'reading'],
+    tags: [...new Set([...card.tags, ...card.aliases, card.patternType])],
+    katagoSignals: card.triggers.candidateFeatures ?? [],
+    boardSignals: [...new Set([...card.boardSignals, ...card.shape.canonicalMoves])],
+    summary: card.teaching.recognition,
+    coachShort: card.teaching.correctIdea,
+    coachLong: [
+      `记忆法: ${card.teaching.memoryCue}`,
+      `常见误区: ${card.teaching.commonMistake}`,
+      `变化: ${card.variations.map((variation) => `${variation.name} - ${variation.whenToChoose}`).join('；')}`
+    ].join('\n'),
+    drill: card.teaching.drill,
+    related: []
+  }
 }
 
 export async function loadKnowledgeCards(): Promise<KnowledgeCard[]> {
@@ -19,8 +53,9 @@ export async function loadKnowledgeCards(): Promise<KnowledgeCard[]> {
   }
   const text = await readFile(knowledgePath(), 'utf8')
   const cards = JSON.parse(text) as KnowledgeCard[]
-  cache = cards
-  return cards
+  const patternCards = loadKnowledgePatternCards(knowledgeRoot()).map(patternToKnowledgeCard)
+  cache = [...cards, ...patternCards]
+  return cache
 }
 
 function normalize(text: string): string[] {

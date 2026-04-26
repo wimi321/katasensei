@@ -1,4 +1,13 @@
-export type KnowledgeCardKind = 'concept' | 'error_type' | 'position_pattern' | 'training' | 'review_method'
+export type KnowledgeCardKind =
+  | 'concept'
+  | 'error_type'
+  | 'position_pattern'
+  | 'training'
+  | 'review_method'
+  | 'joseki'
+  | 'life_death'
+  | 'tesuji_pattern'
+  | 'shape_pattern'
 export type GamePhase = 'opening' | 'middlegame' | 'endgame'
 
 export interface KnowledgeCard {

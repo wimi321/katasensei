@@ -2,6 +2,13 @@ import { app } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { CoachUserLevel, GameMove, KnowledgePacket } from '@main/lib/types'
+import {
+  formatPatternForPrompt,
+  loadKnowledgePatternCards,
+  searchKnowledgePatterns,
+  type PatternRegion,
+  type PatternSearchMatch
+} from './knowledge/patterns'
 
 interface KnowledgeEntry {
   id: string
@@ -30,6 +37,7 @@ interface P0KnowledgeCard {
 }
 
 export interface KnowledgeQuery {
+  text?: string
   moveNumber: number
   totalMoves: number
   boardSize: number
@@ -38,6 +46,9 @@ export interface KnowledgeQuery {
   lossScore?: number
   judgement?: string
   contextTags?: string[]
+  playedMove?: string
+  candidateMoves?: string[]
+  principalVariation?: string[]
   maxResults?: number
 }
 
@@ -115,6 +126,10 @@ function p0Phase(phase: ReturnType<typeof detectGamePhase>): 'opening' | 'middle
   return phase === 'middle' ? 'middlegame' : phase
 }
 
+function patternRegion(region: ReturnType<typeof detectBoardRegion>): PatternRegion {
+  return region
+}
+
 function detectBoardRegion(recentMoves: GameMove[], boardSize: number): 'corner' | 'side' | 'center' {
   if (recentMoves.length === 0) {
     return 'center'
@@ -179,6 +194,21 @@ export function searchKnowledge(query: KnowledgeQuery): KnowledgePacket[] {
   const region = detectBoardRegion(query.recentMoves, query.boardSize)
   const scored: Array<{ entry: KnowledgeEntry; score: number }> = []
   const p0Scored: Array<{ card: P0KnowledgeCard; score: number }> = []
+  const patternScored: PatternSearchMatch[] = searchKnowledgePatterns(loadKnowledgePatternCards(root), {
+    userLevel: query.userLevel,
+    phase: p0Phase(phase),
+    region: patternRegion(region),
+    boardSize: query.boardSize,
+    moveNumber: query.moveNumber,
+    recentMoves: query.recentMoves,
+    contextTags: query.contextTags,
+    text: query.text,
+    playedMove: query.playedMove,
+    candidateMoves: query.candidateMoves,
+    principalVariation: query.principalVariation,
+    lossScore: query.lossScore,
+    judgement: query.judgement
+  })
 
   for (const entry of entries) {
     if (!entry.content || !entry.levels.includes(query.userLevel)) {
@@ -277,7 +307,18 @@ export function searchKnowledge(query: KnowledgeQuery): KnowledgePacket[] {
     score
   }))
 
-  return [...markdownPackets, ...p0Packets]
+  const patternPackets = patternScored.map((match) => ({
+    id: match.card.id,
+    title: match.card.title,
+    category: match.card.category,
+    phase: match.card.phase.join(','),
+    tags: [...new Set([...match.card.tags, match.card.patternType, match.confidence])],
+    summary: match.card.teaching.recognition,
+    selectedBody: formatPatternForPrompt(match),
+    score: match.score
+  }))
+
+  return [...markdownPackets, ...p0Packets, ...patternPackets]
     .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
     .slice(0, query.maxResults ?? 4)
 }
