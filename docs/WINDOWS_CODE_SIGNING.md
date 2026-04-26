@@ -27,7 +27,7 @@ pnpm dist:win
 P0 beta publishes Windows x64 only:
 
 - `GoMentor-0.2.0-beta.1-win-x64.exe`
-- optional portable: `GoMentor-0.2.0-beta.1-win-x64-portable.exe`
+- optional portable ZIP: `GoMentor-0.2.0-beta.1-win-x64-portable.zip`
 
 Do not publish Windows ARM64 until `win32-arm64` KataGo assets and checks exist.
 

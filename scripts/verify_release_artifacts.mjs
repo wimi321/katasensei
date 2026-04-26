@@ -41,6 +41,8 @@ const artifacts = files.filter(isPackagedArtifact)
 const macArm64Dmg = artifacts.filter((file) => /mac-arm64\.dmg$/i.test(file))
 const macX64Dmg = artifacts.filter((file) => /mac-x64\.dmg$/i.test(file))
 const winX64Installer = artifacts.filter((file) => /win-x64\.exe$/i.test(file) && !/portable/i.test(file))
+const winX64PortableZip = artifacts.filter((file) => /win-x64-portable\.zip$/i.test(file))
+const winPortableExe = artifacts.filter((file) => /win-x64-portable\.exe$/i.test(file))
 const winArm64 = artifacts.filter((file) => /win-arm64/i.test(file))
 const tiny = artifacts.filter((file) => statSync(file).size < minSizeBytes)
 
@@ -64,6 +66,8 @@ if (mode === 'release') {
   if (macArm64Dmg.length === 0) failures.push('No macOS arm64 DMG found')
   if (macX64Dmg.length === 0) failures.push('No macOS x64 DMG found')
   if (winX64Installer.length === 0) failures.push('No Windows x64 installer found')
+  if (winX64PortableZip.length === 0) failures.push('No Windows x64 portable ZIP found')
+  if (winPortableExe.length > 0) failures.push(`Windows portable artifact must be a ZIP, not an EXE: ${winPortableExe.map((file) => file.replace(root + '/', '')).join(', ')}`)
   if (winArm64.length > 0) failures.push(`Windows ARM64 artifacts are not supported for P0 beta: ${winArm64.map((file) => file.replace(root + '/', '')).join(', ')}`)
   if (tiny.length > 0) failures.push(`Artifact too small: ${tiny.map((file) => file.replace(root + '/', '')).join(', ')}`)
 } else if (tiny.length > 0) {

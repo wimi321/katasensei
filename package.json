@@ -117,6 +117,7 @@
     },
     "win": {
       "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${os}-${arch}-portable.${ext}",
       "target": [
         {
           "target": "nsis",
@@ -125,7 +126,7 @@
           ]
         },
         {
-          "target": "portable",
+          "target": "zip",
           "arch": [
             "x64"
           ]
@@ -134,9 +135,6 @@
     },
     "nsis": {
       "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}-${os}-${arch}-portable.${ext}"
     },
     "linux": {
       "icon": "assets/icon.png",

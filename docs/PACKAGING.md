@@ -28,7 +28,7 @@ git push origin v0.2.0-beta.1
 The workflow builds on native runners:
 
 - macOS: DMG and ZIP.
-- Windows: x64 NSIS installer and x64 portable EXE for P0 beta.
+- Windows: x64 NSIS installer and x64 portable ZIP for P0 beta.
 - Linux: AppImage, DEB, and tar.gz.
 
 Windows ARM64 is not supported in `v0.2.0-beta.1`.

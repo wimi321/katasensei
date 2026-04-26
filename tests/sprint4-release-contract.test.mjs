@@ -34,6 +34,14 @@ test('Sprint 4 scripts exist', () => {
   assert.equal(existsSync(join(root, 'scripts/package_artifact_smoke.mjs')), true)
 })
 
+test('Windows portable release artifact is a ZIP, not a portable EXE', () => {
+  const packageJson = JSON.parse(read('package.json'))
+  const targets = packageJson.build.win.target.map((entry) => entry.target)
+  assert.equal(targets.includes('zip'), true)
+  assert.equal(targets.includes('portable'), false)
+  assert.match(packageJson.build.win.artifactName, /portable\.\$\{ext\}/)
+})
+
 test('timelineInteraction exports move helpers', () => {
   const text = read('src/renderer/src/features/board/timelineInteraction.ts')
   assert.match(text, /moveFromPointer/)

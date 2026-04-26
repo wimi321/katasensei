@@ -31,6 +31,8 @@ const artifacts = files.filter((file) => artifactPatterns.some((pattern) => patt
 const hasMacArm64Dmg = artifacts.some((file) => /mac-arm64\.dmg$/i.test(file))
 const hasMacX64Dmg = artifacts.some((file) => /mac-x64\.dmg$/i.test(file))
 const hasWinX64Installer = artifacts.some((file) => /win-x64\.exe$/i.test(file) && !/portable/i.test(file))
+const hasWinX64PortableZip = artifacts.some((file) => /win-x64-portable\.zip$/i.test(file))
+const winPortableExe = artifacts.filter((file) => /win-x64-portable\.exe$/i.test(file))
 const winArm64 = artifacts.filter((file) => /win-arm64/i.test(file))
 
 console.log('\nGoMentor Package Artifact Smoke Check')
@@ -48,6 +50,8 @@ if (mode === 'release') {
   if (!hasMacArm64Dmg) failures.push('macOS arm64 DMG missing')
   if (!hasMacX64Dmg) failures.push('macOS x64 DMG missing')
   if (!hasWinX64Installer) failures.push('Windows x64 installer missing')
+  if (!hasWinX64PortableZip) failures.push('Windows x64 portable ZIP missing')
+  if (winPortableExe.length > 0) failures.push(`Windows portable artifact must be a ZIP, not an EXE: ${winPortableExe.join(', ')}`)
   if (winArm64.length > 0) failures.push(`Windows ARM64 artifacts are not supported for P0 beta: ${winArm64.join(', ')}`)
   if (failures.length) {
     for (const failure of failures) console.error(`❌ ${failure}`)
