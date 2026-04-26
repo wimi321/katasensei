@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { KeyboardEvent, ReactElement, ReactNode } from 'react'
 import { useMemo, useRef, useState } from 'react'
 import type { KataGoMoveAnalysis } from '@main/lib/types'
 import { getAnalysisMoveNumber, getAnalysisWinrate, classifyMoveLoss, normalizeWinrate } from './boardGeometry'
@@ -28,16 +28,33 @@ function valueOf(record: unknown, key: string): unknown {
 }
 
 function extractLoss(item: unknown): number | undefined {
-  const raw = valueOf(item, 'winrateLoss') ?? valueOf(item, 'loss') ?? valueOf(item, 'mistakeLoss')
+  const raw = valueOf(valueOf(item, 'playedMove'), 'winrateLoss') ?? valueOf(item, 'winrateLoss') ?? valueOf(item, 'loss') ?? valueOf(item, 'mistakeLoss')
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return raw
+    return Math.abs(raw) <= 1 ? raw * 100 : raw
   }
   const before = normalizeWinrate(valueOf(valueOf(item, 'before'), 'winrate'))
   const after = normalizeWinrate(valueOf(valueOf(item, 'after'), 'winrate'))
   if (before !== null && after !== null) {
-    return before - after
+    const color = valueOf(valueOf(item, 'currentMove'), 'color')
+    const playerBefore = color === 'W' ? 1 - before : before
+    const playerAfter = color === 'W' ? 1 - after : after
+    return Math.max(0, (playerBefore - playerAfter) * 100)
   }
   return undefined
+}
+
+function severityLabel(severity: TimelinePoint['severity']): string {
+  if (severity === 'blunder') return '重大问题'
+  if (severity === 'mistake') return '问题手'
+  if (severity === 'inaccuracy') return '缓手'
+  return '走势点'
+}
+
+function formatWinrateLoss(loss: number | undefined): string {
+  if (typeof loss !== 'number' || !Number.isFinite(loss)) {
+    return '—'
+  }
+  return `${loss.toFixed(loss >= 10 ? 0 : 1)}%`
 }
 
 function extractScoreLead(item: unknown): number | undefined {
@@ -77,6 +94,7 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
   const [hoveredMove, setHoveredMove] = useState<number | null>(null)
   const [hoverLeft, setHoverLeft] = useState(0)
   const draggingRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const points = useMemo(() => buildPoints(evaluations, totalMoves), [evaluations, totalMoves])
   const width = 980
   const height = 132
@@ -123,6 +141,7 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
   }
 
   function handlePointerDown(event: React.PointerEvent<SVGSVGElement>): void {
+    containerRef.current?.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture(event.pointerId)
     draggingRef.current = true
     setDragging(true)
@@ -149,13 +168,29 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
     selectMove(event)
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (!onMove || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+      return
+    }
+    event.preventDefault()
+    const delta = event.key === 'ArrowLeft' ? -1 : 1
+    onMove(Math.max(0, Math.min(totalMoves, currentMoveNumber + delta)))
+  }
+
   return (
-    <div className="ks-timeline-v2">
+    <div
+      ref={containerRef}
+      className="ks-timeline-v2"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      aria-label="胜率图，点击后可用左右方向键切换手数"
+    >
       <div className="ks-timeline-head">
         <div className="ks-timeline-title">
           <span>胜率走势</span>
           <small>{loading ? (loadingLabel || '分析中') : '胜率 / 目差曲线'}</small>
         </div>
+        <div className="ks-timeline-move-count">{currentMoveNumber} / {totalMoves}</div>
         <div className="ks-timeline-legend" aria-label="曲线说明">
           <span><i className="ks-timeline-legend__swatch ks-timeline-legend__swatch--winrate" />黑胜率</span>
           <span><i className="ks-timeline-legend__swatch ks-timeline-legend__swatch--score" />目差</span>
@@ -209,7 +244,7 @@ export function WinrateTimelineV2({ evaluations, currentMoveNumber, totalMoves, 
       {hoverPoint ? (
         <div className="ks-timeline-tooltip" style={{ left: `${Math.round(hoverLeft)}px` }}>
           <strong>第 {hoverPoint.moveNumber} 手 · {Math.round(hoverPoint.winrate * 100)}%</strong>
-          <span>目差 {typeof hoverPoint.scoreLead === 'number' ? hoverPoint.scoreLead.toFixed(1) : '—'} · {hoverPoint.severity === 'blunder' ? '重大问题' : hoverPoint.severity === 'mistake' ? '问题手' : hoverPoint.severity === 'inaccuracy' ? '缓手' : '走势点'}</span>
+          <span>胜率差 {formatWinrateLoss(hoverPoint.loss)} · {severityLabel(hoverPoint.severity)}</span>
         </div>
       ) : null}
     </div>

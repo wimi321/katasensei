@@ -81,12 +81,10 @@
   width: 100%;
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "label name action"
-    "label meta action";
+    "label name action";
   align-items: center;
   column-gap: 8px;
-  row-gap: 1px;
-  padding: 7px 9px;
+  padding: 8px 9px;
   border: 1px solid var(--line-soft, #242b31);
   border-radius: 10px;
   background:
@@ -127,6 +125,7 @@
   line-height: 1.2;
 }
 .student-rail-card small {
+  display: none;
   grid-area: meta;
   overflow: hidden;
   color: var(--text-muted, #6f6860);

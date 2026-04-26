@@ -136,6 +136,12 @@ function gameDisplayName(game: LibraryGame): string {
   return `${black} vs ${white}`
 }
 
+function boardGameTitle(game: LibraryGame): string {
+  const black = safePlayerName(game.black, '黑方')
+  const white = safePlayerName(game.white, '白方')
+  return `黑棋 ${black} vs 白棋 ${white}`
+}
+
 function boardCandidateMoves(analysis: KataGoMoveAnalysis | null): KataGoCandidate[] {
   if (!analysis) {
     return []
@@ -1184,17 +1190,13 @@ export function App(): ReactElement {
     {
       label: dashboard.systemProfile.hasLlmApiKey ? 'LLM 就绪' : 'LLM 未配置',
       tone: dashboard.systemProfile.hasLlmApiKey ? 'good' : 'warn'
-    },
-    {
-      label: `${dashboard.games.length} 棋谱`,
-      tone: 'neutral'
     }
   ]
 
   return (
     <DiagnosticsGate>
       <div className="desktop-shell">
-        <DesktopTitleBar statusItems={statusItems} busy={busy} onCommand={runDesktopCommand} />
+        <DesktopTitleBar statusItems={statusItems} onCommand={runDesktopCommand} />
         <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
         <aside className="library-rail">
           <div className={`rail-head library-rail-head ${libraryCollapsed ? 'is-collapsed' : ''}`}>
@@ -1228,7 +1230,7 @@ export function App(): ReactElement {
           <header className="topbar">
             {record ? (
               <BoardContextBar
-                title={selectedGame ? gameDisplayName(selectedGame) : '未选择棋谱'}
+                title={selectedGame ? boardGameTitle(selectedGame) : '未选择棋谱'}
                 record={record}
                 moveNumber={moveNumber}
                 analysis={(analysis?.moveNumber === moveNumber ? analysis : evaluations[moveNumber]) ?? null}
@@ -1298,7 +1300,6 @@ export function App(): ReactElement {
             onAnalyze={() => void runCurrentMoveAnalysis()}
             onAnalyzeGame={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')}
             onAnalyzeRecent={() => void runTeacherQuickTask('分析当前棋手最近10局围棋，找出常见问题、薄弱环节，并更新棋手画像。')}
-            onSettingsOpen={() => setSettingsOpen(true)}
             onJumpToMove={jumpToMove}
             onAnalyzeMove={(targetMove) => void runMoveAnalysisAt(targetMove)}
           />
@@ -1338,7 +1339,10 @@ export function App(): ReactElement {
         open={Boolean(studentBinding)}
         blackName={studentBinding?.game.black}
         whiteName={studentBinding?.game.white}
-        suggestions={studentBinding?.suggestions.map((suggestion) => suggestion.student)}
+        suggestions={studentBinding?.suggestions.map((suggestion) => ({
+          ...suggestion.student,
+          ...(suggestion.color ? { suggestedColor: suggestion.color } : {})
+        }))}
         onClose={() => setStudentBinding(null)}
         onSkip={() => setStudentBinding(null)}
         onBindExisting={(input) => void bindImportedGameToExisting(input)}
@@ -1419,7 +1423,6 @@ function LibraryPanel({
       <StudentRailCard
         displayName={currentStudent?.displayName}
         primaryFoxNickname={currentStudent?.primaryFoxNickname}
-        gameCount={currentStudent?.recentGameIds.length ?? 0}
         disabled={!selectedGame}
         onChangeBinding={onChangePlayerBinding}
       />
@@ -1474,11 +1477,9 @@ function StatusPills({ items }: { items: StatusPill[] }): ReactElement {
 
 function DesktopTitleBar({
   statusItems,
-  busy,
   onCommand
 }: {
   statusItems: StatusPill[]
-  busy: string
   onCommand: (command: DesktopCommand) => void
 }): ReactElement {
   return (
@@ -1487,16 +1488,13 @@ function DesktopTitleBar({
         <img src={logoUrl} alt="" aria-hidden="true" />
         <div>
           <strong>GoMentor</strong>
-          <span>AI Go Workbench</span>
         </div>
       </div>
       <div className="desktop-titlebar__center">
         <StatusPills items={statusItems} />
       </div>
       <div className="desktop-titlebar__actions">
-        <button type="button" onClick={() => onCommand('open-command-palette')}>Command</button>
-        <button type="button" onClick={() => onCommand('open-settings')}>Preferences</button>
-        <span>{busy ? 'Working' : 'Idle'}</span>
+        <button type="button" onClick={() => onCommand('open-settings')}>设置</button>
       </div>
     </header>
   )
@@ -1551,7 +1549,7 @@ function CommandPalette({
     { id: 'analyze-game' as const, title: '分析整盘围棋', detail: '扫描关键问题手和胜负转折点', shortcut: 'Ctrl/Cmd 2', disabled: !hasRecord || busy !== '' },
     { id: 'analyze-recent' as const, title: '分析近 10 局', detail: '聚合棋手稳定问题并更新画像', shortcut: 'Ctrl/Cmd 3', disabled: !hasGames || busy !== '' },
     { id: 'import-sgf' as const, title: '导入 SGF', detail: '从本机文件系统添加棋谱', shortcut: 'Ctrl/Cmd O', disabled: busy !== '' },
-    { id: 'open-settings' as const, title: '打开 Preferences', detail: '配置模型、KataGo 资源和发布 readiness', shortcut: 'Ctrl/Cmd ,', disabled: false },
+    { id: 'open-settings' as const, title: '打开设置', detail: '配置模型、KataGo 资源和发布 readiness', shortcut: 'Ctrl/Cmd ,', disabled: false },
     { id: 'toggle-library' as const, title: '切换棋谱栏', detail: '收起或展开左侧棋手棋谱栏', shortcut: 'Ctrl/Cmd B', disabled: false },
     { id: 'open-ui-gallery' as const, title: '打开 UI Gallery', detail: '进入内部视觉 QA 样例页', shortcut: 'Ctrl/Cmd Shift G', disabled: false }
   ], [busy, hasGames, hasRecord])
@@ -1632,14 +1630,14 @@ function DesktopPreferencesModal({
     return null
   }
   return (
-    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="GoMentor preferences" onMouseDown={onClose}>
+    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="GoMentor 设置" onMouseDown={onClose}>
       <section className="desktop-preferences__window" onMouseDown={(event) => event.stopPropagation()}>
         <header className="desktop-preferences__titlebar">
           <div>
-            <span>Preferences</span>
+            <span>设置</span>
             <strong>桌面运行设置</strong>
           </div>
-          <button type="button" onClick={onClose}>Close</button>
+          <button type="button" onClick={onClose}>关闭</button>
         </header>
         <SettingsDrawer
           dashboard={dashboard}
@@ -1778,7 +1776,6 @@ function TeacherPanel({
   onAnalyze,
   onAnalyzeGame,
   onAnalyzeRecent,
-  onSettingsOpen,
   onJumpToMove,
   onAnalyzeMove
 }: {
@@ -1793,7 +1790,6 @@ function TeacherPanel({
   onAnalyze: () => void
   onAnalyzeGame: () => void
   onAnalyzeRecent: () => void
-  onSettingsOpen: () => void
   onJumpToMove: (moveNumber: number) => void
   onAnalyzeMove: (moveNumber: number) => void
 }): ReactElement {
@@ -1820,7 +1816,6 @@ function TeacherPanel({
         </div>
         <div className="teacher-editor-actions">
           <span className={`teacher-status ${hasRunningTask ? 'is-running' : ''}`}>{hasRunningTask ? 'Running' : 'Ready'}</span>
-          <button className="icon-button" onClick={onSettingsOpen} title="LLM 配置">⚙</button>
         </div>
       </header>
 

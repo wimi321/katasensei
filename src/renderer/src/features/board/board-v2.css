@@ -456,6 +456,12 @@
   gap: 6px;
   min-width: 0;
   min-height: 0;
+  outline: none;
+}
+
+.ks-timeline-v2:focus-visible {
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ks-teal, #4fa391) 48%, transparent);
 }
 
 .ks-timeline-head {
@@ -485,6 +491,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ks-timeline-move-count {
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--ks-border-soft, rgba(255,255,255,.08)) 82%, transparent);
+  border-radius: 999px;
+  color: var(--ks-text-main, #f4efe7);
+  background: rgb(255 255 255 / 0.04);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 860;
 }
 
 .ks-timeline-summary {

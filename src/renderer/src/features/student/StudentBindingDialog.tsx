@@ -7,6 +7,7 @@ export interface StudentOption {
   displayName: string
   primaryFoxNickname?: string
   aliases?: string[]
+  suggestedColor?: 'B' | 'W'
 }
 
 export interface StudentBindingDialogProps {
@@ -33,16 +34,26 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
     return ''
   }, [color, props.blackName, props.whiteName])
 
+  function studentOptionLabel(student: StudentOption): string {
+    const displayName = student.displayName.trim()
+    const foxNickname = student.primaryFoxNickname?.trim()
+    if (!foxNickname || foxNickname.toLowerCase() === displayName.toLowerCase()) {
+      return displayName
+    }
+    return `${displayName} · Fox ${foxNickname}`
+  }
+
   useEffect(() => {
     if (!props.open) {
       return
     }
-    setMode(props.suggestions?.length ? 'existing' : 'create')
-    setStudentId(props.suggestions?.[0]?.id ?? '')
+    const firstSuggestion = props.suggestions?.[0]
+    setMode(firstSuggestion ? 'existing' : 'create')
+    setStudentId(firstSuggestion?.id ?? '')
     setDisplayName('')
     setFoxNickname('')
-    setColor('')
-  }, [props.open, props.blackName, props.whiteName, props.suggestions?.length, props.suggestions?.[0]?.id])
+    setColor(firstSuggestion?.suggestedColor ?? '')
+  }, [props.open, props.blackName, props.whiteName, props.suggestions?.length, props.suggestions?.[0]?.id, props.suggestions?.[0]?.suggestedColor])
 
   if (!props.open) return null
 
@@ -75,7 +86,7 @@ export function StudentBindingDialog(props: StudentBindingDialogProps): ReactEle
               <option value="">请选择</option>
               {(props.suggestions ?? []).map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.displayName}{student.primaryFoxNickname ? ` · ${student.primaryFoxNickname}` : ''}
+                  {studentOptionLabel(student)}
                 </option>
               ))}
             </select>

@@ -4,7 +4,6 @@ import './student.css'
 export interface StudentRailCardProps {
   displayName?: string
   primaryFoxNickname?: string
-  gameCount?: number
   disabled?: boolean
   onChangeBinding?: () => void
 }
@@ -12,15 +11,11 @@ export interface StudentRailCardProps {
 export function StudentRailCard({
   displayName,
   primaryFoxNickname,
-  gameCount = 0,
   disabled = false,
   onChangeBinding
 }: StudentRailCardProps): ReactElement {
   const name = displayName || primaryFoxNickname || '未绑定棋手'
   const hasPlayer = Boolean(displayName || primaryFoxNickname)
-  const meta = hasPlayer
-    ? `${primaryFoxNickname ? `Fox ${primaryFoxNickname}` : '本地棋手'} · ${gameCount} 盘`
-    : '点击绑定'
   return (
     <section className="student-rail-card">
       <button
@@ -32,7 +27,6 @@ export function StudentRailCard({
       >
         <span>棋手</span>
         <strong>{name}</strong>
-        <small>{meta}</small>
         <em>{hasPlayer ? '修改' : '绑定'}</em>
       </button>
     </section>
