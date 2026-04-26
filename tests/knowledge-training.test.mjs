@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { existsSync, readdirSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -11,6 +12,22 @@ const patternIds = new Set(patterns.map((card) => card.id))
 const allowedSourceKinds = new Set(['original', 'common-pattern', 'licensed-source'])
 const pointPattern = /^[A-HJ-T](?:[1-9]|1[0-9])$/
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+function findJitiCli() {
+  const direct = join(repoRoot, 'node_modules', 'jiti', 'lib', 'jiti-cli.mjs')
+  if (existsSync(direct)) return direct
+
+  const pnpmStore = join(repoRoot, 'node_modules', '.pnpm')
+  if (existsSync(pnpmStore)) {
+    const jitiPackage = readdirSync(pnpmStore).find((entry) => entry.startsWith('jiti@'))
+    if (jitiPackage) {
+      const cli = join(pnpmStore, jitiPackage, 'node_modules', 'jiti', 'lib', 'jiti-cli.mjs')
+      if (existsSync(cli)) return cli
+    }
+  }
+
+  throw new Error('Unable to locate jiti CLI for TypeScript fixture execution')
+}
 
 function assertPoint(point, label) {
   assert.match(point, pointPattern, label)
@@ -85,9 +102,8 @@ test('matching engine and teacher runtime expose knowledge matches and training 
 })
 
 test('matching engine ranks exact joseki, life-death, and tesuji matches ahead of broad patterns', () => {
-  const jiti = join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'jiti.CMD' : 'jiti')
   const fixture = join(repoRoot, 'tests', 'fixtures', 'knowledge-match-engine-smoke.ts')
-  const output = execFileSync(jiti, [fixture], {
+  const output = execFileSync(process.execPath, [findJitiCli(), fixture], {
     cwd: repoRoot,
     encoding: 'utf8'
   })
