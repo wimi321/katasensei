@@ -1,8 +1,10 @@
 import { searchKnowledgeMatchEngine, recommendedProblemsFromMatches } from '../../src/main/services/knowledge/matchEngine'
+import { loadKnowledgeTrainingLibrary } from '../../src/main/services/knowledge/training'
 import { fileURLToPath } from 'node:url'
 
 const dataRoot = fileURLToPath(new URL('../../data', import.meta.url))
 const letters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'
+const catalog = loadKnowledgeTrainingLibrary(dataRoot)
 
 function move(moveNumber: number, color: 'B' | 'W', gtp: string) {
   return {
@@ -33,6 +35,36 @@ function summarize(query: Parameters<typeof searchKnowledgeMatchEngine>[1]) {
       problemType: problem.problemType
     }))
   }
+}
+
+function pointToCoord(gtp: string) {
+  return {
+    col: letters.indexOf(gtp[0]),
+    row: 19 - Number(gtp.slice(1))
+  }
+}
+
+function coordToPoint(row: number, col: number) {
+  return `${letters[col]}${19 - row}`
+}
+
+function rotateLocal90(dx: number, dy: number): [number, number] {
+  return [-dy, dx]
+}
+
+function transformedProblemStones(problemId: string, originalAnchor: string, newAnchor: string) {
+  const problem = catalog.lifeDeathProblems.find((item) => item.id === problemId) ?? catalog.tesujiProblems.find((item) => item.id === problemId)
+  if (!problem) throw new Error(`Missing fixture problem ${problemId}`)
+  const original = pointToCoord(originalAnchor)
+  const target = pointToCoord(newAnchor)
+  return problem.initialStones.map((stone) => {
+    const point = pointToCoord(stone.point)
+    const [dx, dy] = rotateLocal90(point.col - original.col, point.row - original.row)
+    return {
+      color: stone.color,
+      point: coordToPoint(target.row + dy, target.col + dx)
+    }
+  })
 }
 
 const star33 = summarize({
@@ -143,4 +175,23 @@ const connectAndDie = summarize({
   maxResults: 8
 })
 
-console.log(JSON.stringify({ star33, trueFalseEye, snapback, avalanche, plumSix, connectAndDie }))
+const geometricTrueFalseEye = summarize({
+  text: '这块棋怎么做活，急所在哪里',
+  moveNumber: 118,
+  totalMoves: 220,
+  boardSize: 19,
+  recentMoves: [move(114, 'B', 'J12'), move(115, 'W', 'K12'), move(116, 'B', 'L10'), move(117, 'W', 'J10')],
+  userLevel: 'intermediate',
+  studentLevel: 'intermediate',
+  playerColor: 'B',
+  lossScore: 7.2,
+  judgement: 'mistake',
+  contextTags: ['死活', '急所'],
+  playedMove: 'K10',
+  candidateMoves: ['K10', 'L9'],
+  principalVariation: ['K10', 'L9', 'J9'],
+  boardSnapshot: transformedProblemStones('life_death_true_false_eye_vital_point', 'E2', 'K10'),
+  maxResults: 8
+})
+
+console.log(JSON.stringify({ star33, trueFalseEye, snapback, avalanche, plumSix, connectAndDie, geometricTrueFalseEye }))

@@ -20,7 +20,7 @@ import type {
 } from '@main/lib/types'
 import { analyzePosition } from './katago'
 import { searchKnowledge, searchKnowledgeMatches } from './knowledge'
-import { recommendedProblemsFromMatches } from './knowledge/matchEngine'
+import { recommendedProblemsFromMatches, type BoardSnapshotStone, type LocalWindow } from './knowledge/matchEngine'
 import { readGameRecord } from './sgf'
 import { ensureFoxGameDownloaded } from './fox'
 import { callMultimodalTeacher, callTeacherText } from './llm'
@@ -216,6 +216,104 @@ function findGamesForStudent(studentName: string, count: number): LibraryGame[] 
       )
     : games
   return (matched.length > 0 ? matched : games).slice(0, count)
+}
+
+function gtpToCoord(point: string, boardSize: number): { row: number; col: number } | null {
+  const match = point.trim().toUpperCase().match(/^([A-HJ-T])(\d{1,2})$/)
+  if (!match) return null
+  const letters = 'ABCDEFGHJKLMNOPQRST'
+  const col = letters.indexOf(match[1])
+  const number = Number(match[2])
+  if (col < 0 || col >= boardSize || number < 1 || number > boardSize) return null
+  return { row: boardSize - number, col }
+}
+
+function coordToGtp(row: number, col: number, boardSize: number): string {
+  const letters = 'ABCDEFGHJKLMNOPQRST'
+  return `${letters[col]}${boardSize - row}`
+}
+
+function coordKey(row: number, col: number): string {
+  return `${row},${col}`
+}
+
+function neighborsOf(row: number, col: number, boardSize: number): Array<{ row: number; col: number }> {
+  return [
+    { row: row - 1, col },
+    { row: row + 1, col },
+    { row, col: col - 1 },
+    { row, col: col + 1 }
+  ].filter((point) => point.row >= 0 && point.col >= 0 && point.row < boardSize && point.col < boardSize)
+}
+
+function collectGroup(board: Map<string, 'B' | 'W'>, row: number, col: number, boardSize: number): Array<{ row: number; col: number }> {
+  const color = board.get(coordKey(row, col))
+  if (!color) return []
+  const seen = new Set<string>()
+  const group: Array<{ row: number; col: number }> = []
+  const stack = [{ row, col }]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    const key = coordKey(current.row, current.col)
+    if (seen.has(key)) continue
+    if (board.get(key) !== color) continue
+    seen.add(key)
+    group.push(current)
+    for (const next of neighborsOf(current.row, current.col, boardSize)) {
+      if (board.get(coordKey(next.row, next.col)) === color) {
+        stack.push(next)
+      }
+    }
+  }
+  return group
+}
+
+function groupHasLiberty(board: Map<string, 'B' | 'W'>, group: Array<{ row: number; col: number }>, boardSize: number): boolean {
+  return group.some((stone) => neighborsOf(stone.row, stone.col, boardSize).some((next) => !board.has(coordKey(next.row, next.col))))
+}
+
+function buildBoardSnapshot(moves: GameMove[], uptoMoveNumber: number, boardSize: number): BoardSnapshotStone[] {
+  const board = new Map<string, 'B' | 'W'>()
+  for (const move of moves.slice(0, Math.max(0, uptoMoveNumber))) {
+    if (move.pass) continue
+    const coord = move.row !== null && move.col !== null ? { row: move.row, col: move.col } : gtpToCoord(move.gtp, boardSize)
+    if (!coord) continue
+    const key = coordKey(coord.row, coord.col)
+    board.set(key, move.color)
+    const opponent = move.color === 'B' ? 'W' : 'B'
+    for (const next of neighborsOf(coord.row, coord.col, boardSize)) {
+      if (board.get(coordKey(next.row, next.col)) !== opponent) continue
+      const group = collectGroup(board, next.row, next.col, boardSize)
+      if (!groupHasLiberty(board, group, boardSize)) {
+        for (const stone of group) board.delete(coordKey(stone.row, stone.col))
+      }
+    }
+    const ownGroup = collectGroup(board, coord.row, coord.col, boardSize)
+    if (!groupHasLiberty(board, ownGroup, boardSize)) {
+      for (const stone of ownGroup) board.delete(coordKey(stone.row, stone.col))
+    }
+  }
+  return [...board.entries()].map(([key, color]) => {
+    const [row, col] = key.split(',').map(Number)
+    return { color, point: coordToGtp(row, col, boardSize) }
+  })
+}
+
+function buildLocalWindows(snapshot: BoardSnapshotStone[], anchors: Array<string | undefined>, boardSize: number): LocalWindow[] {
+  return [...new Set(anchors.filter(Boolean) as string[])]
+    .filter((anchor) => gtpToCoord(anchor, boardSize))
+    .map((anchor) => {
+      const anchorPoint = gtpToCoord(anchor, boardSize)!
+      return {
+        anchor,
+        stones: snapshot.filter((stone) => {
+          const point = gtpToCoord(stone.point, boardSize)
+          if (!point) return false
+          return Math.max(Math.abs(point.row - anchorPoint.row), Math.abs(point.col - anchorPoint.col)) <= 4
+        })
+      }
+    })
+    .filter((window) => window.stones.length > 0)
 }
 
 function tagsFromAnalysis(analysis: KataGoMoveAnalysis, move?: GameMove): string[] {
@@ -455,6 +553,14 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
   emitToolState(context, logs, 'KataGo 证据已就绪，开始找教学概念。')
 
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '按阶段、区域、学生水平和 KataGo 损失检索定式、死活、手筋和教学卡。')
+  const boardSnapshot = record ? buildBoardSnapshot(record.moves, Math.max(0, moveNumber - 1), record.boardSize) : undefined
+  const localWindows = boardSnapshot
+    ? buildLocalWindows(boardSnapshot, [
+        analysis.playedMove?.move ?? analysis.currentMove?.gtp,
+        ...analysis.before.topMoves.slice(0, 6).map((candidate) => candidate.move),
+        ...analysis.before.topMoves.slice(0, 2).flatMap((candidate) => candidate.pv.slice(0, 4))
+      ], record?.boardSize ?? analysis.boardSize)
+    : undefined
   const knowledgeQuery = {
     text: request.prompt,
     moveNumber,
@@ -470,6 +576,8 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
     playedMove: analysis.playedMove?.move ?? analysis.currentMove?.gtp,
     candidateMoves: analysis.before.topMoves.slice(0, 8).map((candidate) => candidate.move),
     principalVariation: analysis.before.topMoves.slice(0, 3).flatMap((candidate) => candidate.pv.slice(0, 8)),
+    boardSnapshot,
+    localWindows,
     maxResults: 4
   }
   const knowledgeMatches = searchKnowledgeMatches({ ...knowledgeQuery, maxResults: 8 })
@@ -633,6 +741,19 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '根据批量问题检索训练主题知识。')
   const themes = themesFromProfile(profileUpdate)
   const topIssue = issues.filter((issue) => issue.loss > 0).sort((a, b) => b.loss - a.loss)[0]
+  let batchIssueBoardSnapshot: BoardSnapshotStone[] | undefined
+  let batchIssueLocalWindows: LocalWindow[] | undefined
+  if (topIssue) {
+    try {
+      const topGame = await ensureFoxGameDownloaded(topIssue.game)
+      const topRecord = readGameRecord(topGame)
+      batchIssueBoardSnapshot = buildBoardSnapshot(topRecord.moves, Math.max(0, topIssue.moveNumber - 1), topRecord.boardSize)
+      batchIssueLocalWindows = buildLocalWindows(batchIssueBoardSnapshot, [topIssue.playedMove, topIssue.bestMove, ...topIssue.pv.slice(0, 4)], topRecord.boardSize)
+    } catch {
+      batchIssueBoardSnapshot = undefined
+      batchIssueLocalWindows = undefined
+    }
+  }
   const knowledgeQuery = {
     text: request.prompt,
     moveNumber: 60,
@@ -646,6 +767,8 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
     playedMove: topIssue?.playedMove,
     candidateMoves: topIssue?.bestMove ? [topIssue.bestMove] : [],
     principalVariation: topIssue?.pv ?? [],
+    boardSnapshot: batchIssueBoardSnapshot,
+    localWindows: batchIssueLocalWindows,
     maxResults: 4
   }
   const knowledgeMatches = searchKnowledgeMatches({ ...knowledgeQuery, maxResults: 8 })
@@ -766,6 +889,10 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
 
   const knowledgeLog = startTool(logs, 'knowledge.searchLocal', '本地知识库', '根据整盘关键问题检索教学主题。')
   const topIssue = issues.filter((issue) => issue.loss > 0).sort((a, b) => b.loss - a.loss)[0]
+  const issueBoardSnapshot = topIssue ? buildBoardSnapshot(record.moves, Math.max(0, topIssue.moveNumber - 1), record.boardSize) : undefined
+  const issueLocalWindows = issueBoardSnapshot
+    ? buildLocalWindows(issueBoardSnapshot, [topIssue?.playedMove, topIssue?.bestMove, ...(topIssue?.pv ?? []).slice(0, 4)], record.boardSize)
+    : undefined
   const knowledgeQuery = {
     text: request.prompt,
     moveNumber: issues[0]?.moveNumber ?? Math.min(80, record.moves.length),
@@ -779,6 +906,8 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
     playedMove: topIssue?.playedMove,
     candidateMoves: topIssue?.bestMove ? [topIssue.bestMove] : [],
     principalVariation: topIssue?.pv ?? [],
+    boardSnapshot: issueBoardSnapshot,
+    localWindows: issueLocalWindows,
     maxResults: 4
   }
   const knowledgeMatches = searchKnowledgeMatches({ ...knowledgeQuery, maxResults: 8 })

@@ -66,8 +66,27 @@ interface QueryFeatures {
 }
 
 type ProblemEntry = LifeDeathProblem | TesujiProblem
+type RelativeTransform = (dx: number, dy: number) => [number, number]
+
+interface RelativeStone {
+  dx: number
+  dy: number
+  color: 'B' | 'W'
+}
+
+interface GeometryMatchResult {
+  score: number
+  ratio: number
+  matched: number
+  expected: number
+  transform: string
+  colorMode: 'same-color' | 'color-swapped'
+  queryAnchor: string
+  problemAnchor: string
+}
 
 const TOKEN_SPLIT = /[，。！？、；：,.!?;:()\[\]【】\s/_-]+/
+const LOCAL_SHAPE_RADIUS = 4
 const CONFIDENCE_RANK: Record<KnowledgeMatchConfidence, number> = {
   exact: 4,
   strong: 3,
@@ -170,6 +189,17 @@ const BROAD_TRAINING_TAGS = new Set([
   '后手',
   'ai定式'
 ])
+
+const LOCAL_SHAPE_TRANSFORMS: Array<{ name: string; apply: RelativeTransform }> = [
+  { name: 'identity', apply: (dx, dy) => [dx, dy] },
+  { name: 'rotate90', apply: (dx, dy) => [-dy, dx] },
+  { name: 'rotate180', apply: (dx, dy) => [-dx, -dy] },
+  { name: 'rotate270', apply: (dx, dy) => [dy, -dx] },
+  { name: 'mirror-x', apply: (dx, dy) => [-dx, dy] },
+  { name: 'mirror-y', apply: (dx, dy) => [dx, -dy] },
+  { name: 'mirror-main-diagonal', apply: (dx, dy) => [dy, dx] },
+  { name: 'mirror-anti-diagonal', apply: (dx, dy) => [-dy, -dx] }
+]
 
 function phaseFromMove(moveNumber: number, totalMoves: number): PatternPhase {
   const ratio = totalMoves > 0 ? moveNumber / totalMoves : 0
@@ -370,6 +400,108 @@ function sequenceOverlap(sequence: string[], points: Set<string>, reasons: strin
   return overlap
 }
 
+function uniqueValidPoints(points: Array<string | undefined>, boardSize: number): string[] {
+  const seen = new Set<string>()
+  const values: string[] = []
+  for (const point of points) {
+    if (!point || seen.has(point)) continue
+    if (!gtpToPoint(point, boardSize)) continue
+    seen.add(point)
+    values.push(point)
+  }
+  return values
+}
+
+function stonesNearAnchor(stones: BoardSnapshotStone[], anchor: string, boardSize: number): RelativeStone[] {
+  const anchorPoint = gtpToPoint(anchor, boardSize)
+  if (!anchorPoint) return []
+  const seen = new Set<string>()
+  const relatives: RelativeStone[] = []
+  for (const stone of stones) {
+    const point = gtpToPoint(stone.point, boardSize)
+    if (!point) continue
+    const dx = point.col - anchorPoint.col
+    const dy = point.row - anchorPoint.row
+    if (dx === 0 && dy === 0) continue
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > LOCAL_SHAPE_RADIUS) continue
+    const key = `${stone.color}:${dx}:${dy}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    relatives.push({ dx, dy, color: stone.color })
+  }
+  return relatives
+}
+
+function stoneKey(stone: RelativeStone, transform: RelativeTransform, swapColors: boolean): string {
+  const [dx, dy] = transform(stone.dx, stone.dy)
+  const color = swapColors ? (stone.color === 'B' ? 'W' : 'B') : stone.color
+  return `${color}:${dx}:${dy}`
+}
+
+function queryStonesForAnchor(query: KnowledgeMatchQuery, anchor: string): BoardSnapshotStone[] {
+  const localWindow = (query.localWindows ?? []).find((window) => window.anchor === anchor)
+  if (localWindow && localWindow.stones.length > 0) {
+    return localWindow.stones
+  }
+  return query.boardSnapshot ?? []
+}
+
+function localShapeGeometryMatch(problem: ProblemEntry, query: KnowledgeMatchQuery): GeometryMatchResult | null {
+  const queryAnchors = uniqueValidPoints([
+    query.playedMove,
+    ...(query.candidateMoves ?? []).slice(0, 6),
+    ...(query.principalVariation ?? []).slice(0, 4),
+    ...(query.localWindows ?? []).map((window) => window.anchor)
+  ], query.boardSize)
+  const problemAnchors = uniqueValidPoints(problem.correctMoves.slice(0, 2).map((move) => move.move), query.boardSize)
+  if (queryAnchors.length === 0 || problemAnchors.length === 0) return null
+
+  let best: GeometryMatchResult | null = null
+  for (const queryAnchor of queryAnchors) {
+    const queryRelatives = stonesNearAnchor(queryStonesForAnchor(query, queryAnchor), queryAnchor, query.boardSize)
+    if (queryRelatives.length < 3) continue
+    const queryKeys = new Set(queryRelatives.map((stone) => stoneKey(stone, (dx, dy) => [dx, dy], false)))
+
+    for (const problemAnchor of problemAnchors) {
+      const problemRelatives = stonesNearAnchor(problem.initialStones, problemAnchor, query.boardSize)
+      if (problemRelatives.length < 3) continue
+
+      for (const transform of LOCAL_SHAPE_TRANSFORMS) {
+        for (const swapColors of [false, true]) {
+          let matched = 0
+          const transformedKeys = new Set(problemRelatives.map((stone) => stoneKey(stone, transform.apply, swapColors)))
+          for (const key of transformedKeys) {
+            if (queryKeys.has(key)) {
+              matched += 1
+            }
+          }
+          const expected = transformedKeys.size
+          const rawRatio = expected > 0 ? matched / expected : 0
+          const ratio = swapColors ? rawRatio * 0.92 : rawRatio
+          if (matched < 3 || ratio < 0.55) continue
+
+          const score = Math.round(ratio * 24) + Math.min(matched, 8)
+          const candidate: GeometryMatchResult = {
+            score,
+            ratio,
+            matched,
+            expected,
+            transform: transform.name,
+            colorMode: swapColors ? 'color-swapped' : 'same-color',
+            queryAnchor,
+            problemAnchor
+          }
+          if (!best || candidate.score > best.score || (candidate.score === best.score && candidate.ratio > best.ratio)) {
+            best = candidate
+          }
+        }
+      }
+    }
+  }
+
+  return best
+}
+
 function confidence(score: number, exactish = false): KnowledgeMatchConfidence {
   if (exactish && score >= 28) return 'exact'
   if (score >= 21) return 'strong'
@@ -384,7 +516,8 @@ function capConfidence(value: KnowledgeMatchConfidence, max: KnowledgeMatchConfi
 function sortMatchScore(match: KnowledgeMatch): number {
   const intentBonus = match.reason.some((reason) => reason.startsWith('explicit-intent:')) ? 8 : 0
   const exactEvidenceBonus = match.reason.some((reason) => reason.startsWith('answer-overlap') || reason.startsWith('sequence-overlap')) ? 4 : 0
-  return CONFIDENCE_RANK[match.confidence] * 1000 + match.score + intentBonus + exactEvidenceBonus
+  const geometryBonus = match.reason.some((reason) => reason.startsWith('geometry:')) ? 6 : 0
+  return CONFIDENCE_RANK[match.confidence] * 1000 + match.score + intentBonus + exactEvidenceBonus + geometryBonus
 }
 
 function applicabilityFor(confidenceValue: KnowledgeMatchConfidence, type: KnowledgeMatchType): string {
@@ -540,6 +673,15 @@ function problemMatch(
   score += featureOverlap(problem.tags, new Set([...features.moveFeatures, ...features.candidateFeatures, ...features.pvFeatures]), 3, reasons, 'shape')
   const answerOverlap = sequenceOverlap(problem.correctMoves.map((move) => move.move), features.allPoints, reasons)
   score += answerOverlap * 12
+  const geometry = localShapeGeometryMatch(problem, query)
+  if (geometry) {
+    score += geometry.score
+    reasons.push(`geometry:${geometry.transform}:${geometry.colorMode}:${geometry.matched}/${geometry.expected}`)
+    if (geometry.ratio >= 0.72) {
+      score += 6
+      reasons.push('geometry-strong-local-shape')
+    }
+  }
   const answerPoints = new Set(problem.correctMoves.map((move) => move.move))
   if (query.playedMove && answerPoints.has(query.playedMove)) {
     score += 5
@@ -562,7 +704,7 @@ function problemMatch(
     reasons.push('local-tesuji-relation')
   }
   if (score < 8) return null
-  const exactish = answerOverlap >= 1 && specificTextHit && (explicitTypeIntent || score >= 24)
+  const exactish = (answerOverlap >= 1 && specificTextHit && (explicitTypeIntent || score >= 24)) || Boolean(geometry && geometry.ratio >= 0.72 && geometry.matched >= 3)
   const confidenceValue = confidence(score, exactish)
   const lifeTeaching = type === 'life_death' ? (problem as LifeDeathProblem).teaching : undefined
   const tesujiTeaching = type === 'tesuji' ? (problem as TesujiProblem).teaching : undefined

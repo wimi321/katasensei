@@ -24,6 +24,7 @@ The match engine ranks results using:
 - Explicit user intent: joseki / life-death / tesuji words in the prompt.
 - Position facts: move number, phase, region, current move, candidate moves, PV, and loss.
 - Local features: corner, side, 3-3, 4-4, 3-4, first/second/third/fourth line, contact, jump, eye-shape.
+- Local geometry: board snapshots are compared around candidate / played anchors with rotation and mirror normalization.
 - Exact evidence: catalog sequence overlap, answer move overlap, played move, candidate move, and PV overlap.
 
 Important quality rules:
@@ -33,6 +34,7 @@ Important quality rules:
 - Weak matches should not be used as the main teaching point.
 - Joseki matches are suppressed when the prompt clearly asks for tactical reading or tesuji.
 - Training problem recommendations ignore broad tags such as corner, direction, joseki, life-death, and tesuji; they require specific tags such as snapback, true/false eyes, bent three, or ladder.
+- Geometry evidence is used only when at least three local stones match inside the analysis window. Color-swapped matches are allowed but scored lower.
 
 ## Regression Scenarios
 
@@ -42,6 +44,13 @@ The automated matching smoke test covers:
 - True/false eye: exact life-and-death match ranks before broad corner patterns.
 - Snapback: exact tesuji match ranks before broad joseki or generic corner life-and-death patterns.
 - Named coverage: avalanche, plum six, and connect-and-die direct user prompts match their intended joseki / life-death / tesuji entries.
+- Rotation / mirror coverage: a true/false-eye local shape rotated into a different board area still matches the intended life-and-death type through `geometry:*` evidence.
+
+## Runtime Wiring
+
+Current-move analysis now builds a board snapshot from the SGF main line immediately before the selected move. Captures are simulated before the snapshot is sent to the knowledge matcher, so stale captured stones should not pollute the local shape window and candidate anchors stay empty.
+
+Whole-game and recent-game reviews also attach the board snapshot for the largest-loss issue when an SGF record is available. This lets the teacher match dead/alive and tesuji patterns from the actual local position instead of relying only on tags such as "problem move" or "corner".
 
 ## Next Content Expansion
 
@@ -65,4 +74,4 @@ Prioritized next tesuji additions:
 - More probe-before-sacrifice sequences in center fighting.
 - More geta/net examples with distinct local coordinates.
 
-Before adding another large batch, improve geometric matching so local shapes are compared by normalized stone layout rather than mostly tags and points.
+Before adding another large batch, continue improving geometric matching with liberties, empty-point constraints, and local ownership features. The current matcher already handles rotation / mirror normalization; the next quality jump is to distinguish "same stones, different liberties".
