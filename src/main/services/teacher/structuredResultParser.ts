@@ -1,5 +1,4 @@
 import type { StructuredTeacherResult, TeacherTaskType } from './resultSchema'
-import { renderStructuredTeacherResult } from './resultSchema'
 
 function extractJson(text: string): unknown | null {
   const trimmed = text.trim()
@@ -13,8 +12,8 @@ function extractJson(text: string): unknown | null {
   }
 }
 
-function asString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback
+function asString(value: unknown, defaultValue = ''): string {
+  return typeof value === 'string' ? value : defaultValue
 }
 
 function asStringArray(value: unknown): string[] {
@@ -26,9 +25,9 @@ function normalizeSeverity(value: unknown): 'inaccuracy' | 'mistake' | 'blunder'
   return 'mistake'
 }
 
-function normalizeTaskType(value: unknown, fallback: TeacherTaskType): TeacherTaskType {
+function normalizeTaskType(value: unknown, defaultValue: TeacherTaskType): TeacherTaskType {
   if (value === 'current-move' || value === 'full-game' || value === 'recent-games' || value === 'freeform') return value
-  return fallback
+  return defaultValue
 }
 
 function normalizeColor(value: unknown): 'B' | 'W' | undefined {
@@ -51,23 +50,23 @@ export function parseStructuredTeacherResult(input: {
             color: normalizeColor(row.color),
             played: asString(row.played),
             recommended: asString(row.recommended),
-            errorType: asString(row.errorType, '未分类'),
+            errorType: asString(row.errorType),
             severity: normalizeSeverity(row.severity),
-            evidence: asString(row.evidence, 'KataGo 分析显示该处存在明显收益差。'),
-            explanation: asString(row.explanation, '这手需要结合全局方向重新判断。')
+            evidence: asString(row.evidence),
+            explanation: asString(row.explanation)
           }
         })
       : []
 
     const result: StructuredTeacherResult = {
       taskType: normalizeTaskType(obj.taskType, input.taskType),
-      headline: asString(obj.headline, '这盘棋最重要的是先抓住主问题'),
-      summary: asString(obj.summary, input.text.slice(0, 500)),
+      headline: asString(obj.headline),
+      summary: asString(obj.summary, input.text.split('\n').find((line) => line.trim())?.trim() ?? ''),
       keyMistakes,
       correctThinking: asStringArray(obj.correctThinking),
       drills: asStringArray(obj.drills),
       followupQuestions: asStringArray(obj.followupQuestions),
-      markdown: asString(obj.markdown),
+      markdown: asString(obj.markdown) || input.text,
       knowledgeCardIds: asStringArray(obj.knowledgeCardIds).length > 0 ? asStringArray(obj.knowledgeCardIds) : input.knowledgeCardIds ?? [],
       profileUpdates: {
         errorTypes: asStringArray((obj.profileUpdates as Record<string, unknown> | undefined)?.errorTypes),
@@ -75,20 +74,17 @@ export function parseStructuredTeacherResult(input: {
         trainingFocus: asStringArray((obj.profileUpdates as Record<string, unknown> | undefined)?.trainingFocus)
       }
     }
-    return {
-      ...result,
-      markdown: result.markdown || renderStructuredTeacherResult(result)
-    }
+    return result
   }
 
-  const fallback: StructuredTeacherResult = {
+  return {
     taskType: input.taskType,
-    headline: '老师分析完成',
-    summary: input.text.split('\n').find((line) => line.trim())?.trim() ?? '已完成本次复盘分析。',
+    headline: '',
+    summary: input.text.split('\n').find((line) => line.trim())?.trim() ?? '',
     keyMistakes: [],
     correctThinking: [],
     drills: [],
-    followupQuestions: ['要不要我把这盘棋的最大转折点单独展开讲？'],
+    followupQuestions: [],
     markdown: input.text,
     knowledgeCardIds: input.knowledgeCardIds ?? [],
     profileUpdates: {
@@ -97,23 +93,4 @@ export function parseStructuredTeacherResult(input: {
       trainingFocus: []
     }
   }
-  return fallback
-}
-
-export function structuredResultOutputInstruction(): string {
-  return [
-    '请优先输出 JSON，不要包在 markdown 里。JSON 结构如下：',
-    '{',
-    '  "taskType": "current-move|full-game|recent-games|freeform",',
-    '  "headline": "一句话核心结论",',
-    '  "summary": "面向学生的简洁总结",',
-    '  "keyMistakes": [{"moveNumber": 42, "color": "B", "played": "D4", "recommended": "Q16", "errorType": "方向", "severity": "mistake", "evidence": "KataGo证据", "explanation": "老师解释"}],',
-    '  "correctThinking": ["正确思路1"],',
-    '  "drills": ["训练建议1"],',
-    '  "followupQuestions": ["可追问问题1"],',
-    '  "knowledgeCardIds": ["direction_global_over_local"],',
-    '  "profileUpdates": {"errorTypes": ["方向"], "patterns": ["局部过重"], "trainingFocus": ["方向感复盘"]}',
-    '}',
-    '如果无法严格 JSON，也必须按：结论、关键证据、为什么错、正确思路、训练建议 五段输出。'
-  ].join('\n')
 }

@@ -255,7 +255,7 @@ export const galleryTeacherResult: TeacherRunResult = {
         memoryCue: '定式先问方向，再问先手，最后才背手顺。',
         commonMistakes: ['只背局部手顺，不看旁边厚薄。'],
         drills: ['星位点三三专项：方向判断'],
-        boundary: 'partial 匹配只能说像这个型。',
+        boundary: '匹配不完整时只作为相似型参考。',
         sourceKind: 'common-pattern'
       },
       relatedProblems: []

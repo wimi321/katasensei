@@ -300,24 +300,20 @@ function knowledgeFocusFromMatches(matches: KnowledgeMatch[], problems: Recommen
 
 function systemPrompt(level: CoachUserLevel): string {
   const levelLine: Record<CoachUserLevel, string> = {
-    beginner: '学生是入门水平，请少用术语，句子短，先讲方向再讲变化。',
-    intermediate: '学生是业余中级，可以使用常见术语，但要把判断步骤讲清楚。',
-    advanced: '学生是业余高级，可以直接讨论厚薄、目差、PV 和攻防转换。',
-    dan: '学生是高段水平，请简洁、精确，重点讲判断和变化。'
+    beginner: '学生是入门水平，少用术语。',
+    intermediate: '学生是业余中级，讲清判断顺序。',
+    advanced: '学生是业余高级，可以直接讲厚薄、目差和变化。',
+    dan: '学生是高段水平，简洁精确。'
   }
   return [
-    '你是 GoMentor 的围棋老师智能体。',
-    '你不是固定按钮流程，也不是只会复盘当前手的聊天机器人；你会像 Claude Code 一样先理解任务、规划步骤、选择工具、整合结果。',
-    '只要工具目录里存在能力，就可以为了完成学生的学习目标主动使用；不要因为任务不属于预设模板就拒绝或改写成模板。',
-    'KataGo 结构化数据永远是事实裁判；棋盘截图只用于视觉理解；知识库只用于教学解释。',
-    '不要编造坐标、胜率、目差或不存在的变化。',
-    '回复方式像人类围棋老师讲棋：先抓方向和轻重，再解释局部为什么成立；少念数字，多讲学生下次能照着想的判断顺序。',
-    '不要每次固定输出一堆栏目。用户问得小，就用一两段话讲清楚；用户要求整盘或训练计划，再使用短标题和列表。',
-    '讲当前手时优先回答：这手想法哪里偏了、好点为什么更自然、下次遇到类似局面先看什么。',
-    '如果知识库匹配到定式、死活题或手筋型，要像老师一样讲“识别特征、常见变化、这一局该按哪条思路下、下次怎么记”；匹配不完整时必须说“像这个型”，不要硬说完全同形。',
-    'KataGo 数字只作为证据点到为止，例如“这里亏约 3 目”或“一选搜索更稳定”；不要把答案写成机器报告。',
+    '你是 GoMentor 的围棋老师。',
+    'KataGo 数据是事实依据；截图只辅助看棋；知识库只用于解释。',
+    '不要编造坐标、胜率、目差、定式名或变化。',
+    '像真人老师一样自然讲棋，不套固定栏目。',
+    '优先讲：这手想法偏在哪里、好点为什么自然、下次先看什么。',
+    '数据点到为止，少写报告腔。',
     levelLine[level],
-    '输出中文，口吻像坐在学生旁边复盘，清楚、克制、能落到下一盘棋。'
+    '输出中文。'
   ].join('\n')
 }
 
@@ -352,18 +348,7 @@ function currentMovePayload(
     studentProfile: profile,
     knowledgePacket: knowledge,
     knowledgeMatches,
-    recommendedProblems,
-    responseStyle: {
-      format: 'natural_chat',
-      guidance: [
-        '直接给学生讲，不要先输出 JSON。',
-        '当前手只保留最有教育价值的一两个变化。',
-        '如果引用 KataGo，只引用胜率/目差/候选点作为证据，不要堆表格。',
-        '如果 knowledgeMatches 里有 exact/strong 的 joseki、life_death、tesuji 或 shape，优先讲它的识别特征、常见变化、记忆法和本局适用边界。',
-        'partial 匹配只能说“像某某型”，weak 匹配不要进入主讲，只能作为备用训练题。',
-        '推荐训练题时只给 2-3 道，先讲题型目标和第一提示，不要变成完整刷题系统。'
-      ]
-    }
+    recommendedProblems
   }, null, 2)
 }
 
@@ -418,174 +403,10 @@ function saveReport(id: string, title: string, markdown: string, extra: Record<s
   return markdownPath
 }
 
-function firstMarkdownLine(markdown: string, fallback: string): string {
-  return markdown
-    .split('\n')
-    .map((line) => line.replace(/^#+\s*/, '').trim())
-    .find(Boolean) ?? fallback
-}
-
-function playerWinrateForPrompt(blackWinrate: number, color: 'B' | 'W' | undefined): number {
-  return color === 'W' ? 100 - blackWinrate : blackWinrate
-}
-
-function playerScoreForPrompt(scoreLead: number, color: 'B' | 'W' | undefined): number {
-  return color === 'W' ? -scoreLead : scoreLead
-}
-
-function formatCandidateForPrompt(candidate: KataGoMoveAnalysis['before']['topMoves'][number], color?: 'B' | 'W'): string {
-  const winrate = playerWinrateForPrompt(candidate.winrate, color)
-  const scoreLead = playerScoreForPrompt(candidate.scoreLead, color)
-  return `${candidate.move}（当前方胜率 ${winrate.toFixed(1)}%，当前方目差 ${scoreLead.toFixed(1)}，搜索 ${candidate.visits}）`
-}
-
-function severityFromJudgement(judgement: KataGoMoveAnalysis['judgement']): 'inaccuracy' | 'mistake' | 'blunder' {
-  if (judgement === 'blunder') {
-    return 'blunder'
-  }
-  if (judgement === 'mistake') {
-    return 'mistake'
-  }
-  return 'inaccuracy'
-}
-
-function structuredCurrentMoveResult(
-  title: string,
-  markdown: string,
-  analysis: KataGoMoveAnalysis,
-  knowledge: KnowledgePacket[],
-  knowledgeMatches: KnowledgeMatch[] = [],
-  recommendedProblems: RecommendedProblem[] = []
-): StructuredTeacherResult {
-  const best = analysis.before.topMoves[0]
-  const mistake = analysis.playedMove && analysis.playedMove.winrateLoss > 0.5
-    ? [{
-        moveNumber: analysis.moveNumber,
-        color: analysis.currentMove?.color,
-        played: analysis.playedMove.move,
-        recommended: best?.move,
-        errorType: tagsFromAnalysis(analysis, analysis.currentMove)[0] ?? '形势判断',
-        severity: severityFromJudgement(analysis.judgement),
-        evidence: `胜率损失 ${analysis.playedMove.winrateLoss.toFixed(1)}%，目差损失 ${analysis.playedMove.scoreLoss.toFixed(1)}。`,
-        explanation: best
-          ? `实战 ${analysis.playedMove.move} 的效率低于 KataGo 1 选 ${best.move}。`
-          : `实战 ${analysis.playedMove.move} 造成了明显损失。`
-      }]
-    : []
-  return {
-    taskType: 'current-move',
-    headline: title,
-    summary: firstMarkdownLine(markdown, best ? `KataGo 当前首选 ${best.move}。` : '当前局面已完成分析。'),
-    keyMistakes: mistake,
-    correctThinking: [
-      best ? `先比较 1 选 ${formatCandidateForPrompt(best, analysis.currentMove?.color)}。` : '先确认当前局面的最大价值点。',
-      analysis.before.topMoves[1] ? `再看 2 选 ${formatCandidateForPrompt(analysis.before.topMoves[1], analysis.currentMove?.color)}，理解不同方案的代价。` : '把实战手和候选点放在同一张棋盘上比较。'
-    ],
-    drills: [
-      ...recommendedProblems.slice(0, 3).map((problem) => `${problem.title}: ${problem.objective}。提示：${problem.firstHint}`),
-      ...knowledge.slice(0, 2).map((card) => `${card.title}: ${card.summary}`)
-    ].slice(0, 5),
-    followupQuestions: [
-      '把这手的前两选变化拆开讲',
-      '这类问题下次怎么提前发现'
-    ],
-    markdown,
-    knowledgeCardIds: knowledge.map((card) => card.id),
-    knowledgeMatches,
-    recommendedProblems,
-    profileUpdates: {
-      errorTypes: mistake.map((item) => item.errorType),
-      patterns: [...mistake.map((item) => item.explanation), ...knowledgeMatches.slice(0, 3).map((match) => match.title)],
-      trainingFocus: [...knowledgeFocusFromMatches(knowledgeMatches, recommendedProblems), ...knowledge.slice(0, 2).map((card) => card.title)].slice(0, 6)
-    }
-  }
-}
-
-function structuredIssueResult(
-  taskType: StructuredTeacherResult['taskType'],
-  title: string,
-  markdown: string,
-  issues: BatchIssue[],
-  knowledge: KnowledgePacket[],
-  profile: StudentProfile,
-  knowledgeMatches: KnowledgeMatch[] = [],
-  recommendedProblems: RecommendedProblem[] = []
-): StructuredTeacherResult {
-  const keyMistakes = issues
-    .filter((issue) => issue.loss > 0)
-    .slice(0, 5)
-    .map((issue) => ({
-      moveNumber: issue.moveNumber,
-      played: issue.playedMove,
-      recommended: issue.bestMove,
-      errorType: issue.moveNumber <= 40 ? '布局方向' : issue.loss >= 15 ? '重大错手' : '形势判断',
-      severity: issue.loss >= 15 ? 'blunder' as const : issue.loss >= 8 ? 'mistake' as const : 'inaccuracy' as const,
-      evidence: `胜率损失约 ${issue.loss.toFixed(1)}%，KataGo 建议 ${issue.bestMove || '未知'}。`,
-      explanation: `${issue.game.black} vs ${issue.game.white} 第 ${issue.moveNumber} 手，实战 ${issue.playedMove || '未知'} 可作为复盘样本。`
-    }))
-  const profileThemes = themesFromProfile(profile)
-  return {
-    taskType,
-    headline: title,
-    summary: firstMarkdownLine(markdown, keyMistakes.length ? `共定位 ${keyMistakes.length} 个重点问题手。` : '本次没有稳定的大损问题。'),
-    keyMistakes,
-    correctThinking: profileThemes.slice(0, 4),
-    drills: [
-      ...recommendedProblems.slice(0, 3).map((problem) => `${problem.title}: ${problem.objective}。提示：${problem.firstHint}`),
-      ...knowledge.slice(0, 3).map((card) => `${card.title}: ${card.summary}`)
-    ].slice(0, 5),
-    followupQuestions: [
-      '按损失最大的一手展开变化',
-      '把这些问题整理成一周训练表'
-    ],
-    markdown,
-    knowledgeCardIds: knowledge.map((card) => card.id),
-    knowledgeMatches,
-    recommendedProblems,
-    profileUpdates: {
-      errorTypes: keyMistakes.map((item) => item.errorType),
-      patterns: [...keyMistakes.map((item) => item.explanation), ...knowledgeMatches.slice(0, 4).map((match) => match.title)],
-      trainingFocus: [...profileThemes, ...knowledgeFocusFromMatches(knowledgeMatches, recommendedProblems), ...knowledge.slice(0, 2).map((card) => card.title)].slice(0, 6)
-    }
-  }
-}
-
-function structuredFreeformResult(
-  title: string,
-  markdown: string,
-  knowledge: KnowledgePacket[],
-  profile: StudentProfile,
-  knowledgeMatches: KnowledgeMatch[] = [],
-  recommendedProblems: RecommendedProblem[] = []
-): StructuredTeacherResult {
-  return {
-    taskType: 'freeform',
-    headline: title,
-    summary: firstMarkdownLine(markdown, '老师任务已完成。'),
-    keyMistakes: [],
-    correctThinking: themesFromProfile(profile).slice(0, 4),
-    drills: knowledge.slice(0, 4).map((card) => `${card.title}: ${card.summary}`),
-    followupQuestions: [
-      '基于这个结论继续分析当前棋谱',
-      '生成下一次训练重点'
-    ],
-    markdown,
-    knowledgeCardIds: knowledge.map((card) => card.id),
-    knowledgeMatches,
-    recommendedProblems,
-    profileUpdates: {
-      errorTypes: [],
-      patterns: knowledgeMatches.slice(0, 4).map((match) => match.title),
-      trainingFocus: [...knowledgeFocusFromMatches(knowledgeMatches, recommendedProblems), ...knowledge.slice(0, 3).map((card) => card.title)].slice(0, 6)
-    }
-  }
-}
-
 function structuredFromTeacherText(
   markdown: string,
   taskType: StructuredTeacherResult['taskType'],
   knowledge: KnowledgePacket[],
-  fallback: () => StructuredTeacherResult,
   knowledgeMatches: KnowledgeMatch[] = [],
   recommendedProblems: RecommendedProblem[] = []
 ): StructuredTeacherResult {
@@ -594,34 +415,15 @@ function structuredFromTeacherText(
     taskType,
     knowledgeCardIds: knowledge.map((card) => card.id)
   }) as StructuredTeacherResult
-  const looksStructured = parsed.headline !== '老师分析完成' ||
-    parsed.keyMistakes.length > 0 ||
-    parsed.correctThinking.length > 0 ||
-    parsed.drills.length > 0 ||
-    parsed.profileUpdates.errorTypes.length > 0
-  if (looksStructured) {
-    return {
-      ...parsed,
-      knowledgeMatches: parsed.knowledgeMatches?.length ? parsed.knowledgeMatches : knowledgeMatches,
-      recommendedProblems: parsed.recommendedProblems?.length ? parsed.recommendedProblems : recommendedProblems,
-      drills: parsed.drills.length > 0
-        ? parsed.drills
-        : recommendedProblems.slice(0, 3).map((problem) => `${problem.title}: ${problem.objective}。提示：${problem.firstHint}`),
-      profileUpdates: {
-        ...parsed.profileUpdates,
-        patterns: Array.from(new Set([...parsed.profileUpdates.patterns, ...knowledgeMatches.slice(0, 4).map((match) => match.title)])),
-        trainingFocus: Array.from(new Set([...parsed.profileUpdates.trainingFocus, ...knowledgeFocusFromMatches(knowledgeMatches, recommendedProblems)])).slice(0, 6)
-      }
-    }
-  }
-  const generated = fallback()
   return {
-    ...generated,
-    headline: firstMarkdownLine(markdown, generated.headline),
-    summary: parsed.summary || generated.summary,
-    markdown: markdown || generated.markdown,
-    knowledgeMatches: generated.knowledgeMatches?.length ? generated.knowledgeMatches : knowledgeMatches,
-    recommendedProblems: generated.recommendedProblems?.length ? generated.recommendedProblems : recommendedProblems
+    ...parsed,
+    knowledgeMatches: parsed.knowledgeMatches?.length ? parsed.knowledgeMatches : knowledgeMatches,
+    recommendedProblems: parsed.recommendedProblems?.length ? parsed.recommendedProblems : recommendedProblems,
+    profileUpdates: {
+      ...parsed.profileUpdates,
+      patterns: parsed.profileUpdates.patterns,
+      trainingFocus: parsed.profileUpdates.trainingFocus
+    }
   }
 }
 
@@ -733,7 +535,6 @@ async function runCurrentMove(request: TeacherRunRequest, logs: TeacherToolLog[]
     markdown,
     'current-move',
     knowledge,
-    () => structuredCurrentMoveResult(title, markdown, analysis, knowledge, knowledgeMatches, recommendedProblems),
     knowledgeMatches,
     recommendedProblems
   )
@@ -894,7 +695,6 @@ async function runBatchReview(request: TeacherRunRequest, logs: TeacherToolLog[]
     markdown,
     'recent-games',
     knowledge,
-    () => structuredIssueResult('recent-games', title, markdown, issues, knowledge, profileUpdate, knowledgeMatches, recommendedProblems),
     knowledgeMatches,
     recommendedProblems
   )
@@ -1035,7 +835,6 @@ async function runGameReview(request: TeacherRunRequest, logs: TeacherToolLog[],
     markdown,
     'full-game',
     knowledge,
-    () => structuredIssueResult('full-game', title, markdown, issues, knowledge, updatedProfile, knowledgeMatches, recommendedProblems),
     knowledgeMatches,
     recommendedProblems
   )
@@ -1113,7 +912,6 @@ async function runTrainingPlan(request: TeacherRunRequest, logs: TeacherToolLog[
     markdown,
     'freeform',
     knowledge,
-    () => structuredFreeformResult(title, markdown, knowledge, profile, knowledgeMatches, recommendedProblems),
     knowledgeMatches,
     recommendedProblems
   )
@@ -1299,7 +1097,6 @@ async function runOpenEndedTask(request: TeacherRunRequest, logs: TeacherToolLog
     markdown,
     'freeform',
     knowledge,
-    () => structuredFreeformResult(title, markdown, knowledge, profile, knowledgeMatches, recommendedProblems),
     knowledgeMatches,
     recommendedProblems
   )

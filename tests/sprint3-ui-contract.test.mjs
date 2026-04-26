@@ -29,7 +29,7 @@ test('GoBoardV2 keeps candidate, last move, and key move layers', () => {
   assert.match(text, /ks-keymoves-layer/)
 })
 
-test('TeacherRunCardPro supports markdown fallback and folded tool logs', () => {
+test('TeacherRunCardPro supports raw markdown display and folded tool logs', () => {
   const text = readFileSync(join(root, 'src/renderer/src/features/teacher/TeacherRunCardPro.tsx'), 'utf8')
   assert.match(text, /ks-teacher-pro-markdown/)
   assert.match(text, /setToolsOpen/)

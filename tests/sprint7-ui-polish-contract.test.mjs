@@ -125,11 +125,12 @@ test('KataGo benchmark tuning is wired from main process to settings UI', () => 
   assert.match(app, /一键测速并优化/)
 })
 
-test('TeacherRunCardPro renders structured product modules', () => {
+test('TeacherRunCardPro prioritizes raw assistant output with optional evidence modules', () => {
   const teacher = read('src/renderer/src/features/teacher/TeacherRunCardPro.tsx')
-  assert.match(teacher, /一句话结论/)
+  assert.match(teacher, /ks-teacher-pro-markdown/)
   assert.match(teacher, /推荐思路/)
   assert.match(teacher, /可继续追问/)
+  assert.doesNotMatch(teacher, /一句话结论/)
   assert.match(teacher, /ks-teacher-pro-evidence/)
   const app = read('src/renderer/src/App.tsx')
   assert.match(app, /teacher-agent-editor/)
@@ -149,7 +150,7 @@ test('TeacherRunCardPro renders structured product modules', () => {
   assert.match(composer, /ks-composer-pro__chrome/)
   assert.doesNotMatch(composer, /问任何复盘问题/)
   const agent = read('src/main/services/teacherAgent.ts')
-  assert.match(agent, /像人类围棋老师讲棋/)
+  assert.match(agent, /像真人老师一样自然讲棋/)
   assert.match(agent, /emitAssistantDelta/)
   assert.match(agent, /assistant-start/)
   const provider = read('src/main/services/llm/openaiCompatibleProvider.ts')

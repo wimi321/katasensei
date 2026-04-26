@@ -31,7 +31,7 @@ function pickStructured(result: unknown): AnyRecord {
 }
 
 function pickSummary(structured: AnyRecord, markdown?: string): string {
-  return stringValue(structured.headline) || stringValue(structured.summary) || stringValue(structured.oneLineSummary) || stringValue(structured.title) || (markdown ?? '').split('\n').find((line) => line.trim())?.trim() || '老师正在整理这盘棋的重点。'
+  return stringValue(structured.headline) || stringValue(structured.summary) || stringValue(structured.oneLineSummary) || stringValue(structured.title) || (markdown ?? '').split('\n').find((line) => line.trim())?.trim() || ''
 }
 
 function pickKeyMoves(structured: AnyRecord): AnyRecord[] {
@@ -167,24 +167,29 @@ export function TeacherRunCardPro({
       <header className="ks-teacher-pro-card__header">
         <div>
           <span className="ks-teacher-pro-card__eyebrow">assistant response</span>
-          <h3>{running ? '正在分析棋局…' : summary}</h3>
+          <h3>{running ? '正在分析棋局…' : summary || 'GoMentor'}</h3>
         </div>
         <span className="ks-teacher-pro-card__status">{running ? '执行中' : error ? '需处理' : '完成'}</span>
       </header>
 
       {error ? <div className="ks-teacher-pro-error">{error}</div> : null}
 
-      {!running ? (
-        <section className="ks-teacher-pro-summary">
-          <span>一句话结论</span>
-          <p>{responseSummary}</p>
-        </section>
-      ) : (
+      {running ? (
         <section className="ks-teacher-pro-summary ks-teacher-pro-summary--loading">
           <span>agent is working</span>
-          <p>正在看棋盘、查 KataGo 候选点、检索教学卡，并把结果整理成学生能执行的训练建议。</p>
+          <p>正在分析…</p>
         </section>
-      )}
+      ) : !markdown && responseSummary ? (
+        <section className="ks-teacher-pro-summary">
+          <p>{responseSummary}</p>
+        </section>
+      ) : null}
+
+      {markdown ? (
+        <section className="ks-teacher-pro-markdown">
+          {markdown}
+        </section>
+      ) : null}
 
       {evidence.length > 0 ? (
         <details className="ks-teacher-pro-section ks-agent-item">
@@ -214,7 +219,9 @@ export function TeacherRunCardPro({
                   <strong>{stringValue(match.title)}</strong>
                   <span>{stringValue(match.matchType) || 'pattern'} · {stringValue(match.confidence) || 'partial'}</span>
                 </div>
-                <p>{stringValue(match.applicability) || stringValue(asRecord(match.teachingPayload).recognition) || '老师会把这个棋形作为讲解参考，并说明本局适用边界。'}</p>
+                {stringValue(match.applicability) || stringValue(asRecord(match.teachingPayload).recognition) ? (
+                  <p>{stringValue(match.applicability) || stringValue(asRecord(match.teachingPayload).recognition)}</p>
+                ) : null}
                 {arrayValue(match.reason).length > 0 ? (
                   <small>{arrayValue(match.reason).map((item) => stringValue(item)).filter(Boolean).slice(0, 3).join(' / ')}</small>
                 ) : null}
@@ -234,7 +241,9 @@ export function TeacherRunCardPro({
                   <strong>{moveTitle(move, index)}</strong>
                   <span>{stringValue(move.severity ?? move.errorType ?? move.type) || '重点'}</span>
                 </div>
-                <p>{stringValue(move.explanation ?? move.reason ?? move.summary ?? move.problem) || '这手需要结合棋盘和 KataGo 候选点重点复盘。'}</p>
+                {stringValue(move.explanation ?? move.reason ?? move.summary ?? move.problem) ? (
+                  <p>{stringValue(move.explanation ?? move.reason ?? move.summary ?? move.problem)}</p>
+                ) : null}
                 {stringValue(move.bestMove ?? move.recommendation ?? move.suggestion) ? (
                   <small>建议：{stringValue(move.bestMove ?? move.recommendation ?? move.suggestion)}</small>
                 ) : null}
@@ -265,7 +274,7 @@ export function TeacherRunCardPro({
                   <span>{stringValue(problem.difficulty) || 'standard'}</span>
                 </div>
                 <p>{stringValue(problem.objective)}</p>
-                <small>第一提示：{stringValue(problem.firstHint) || '先找局部急所，再看失败第一手。'}</small>
+                {stringValue(problem.firstHint) ? <small>第一提示：{stringValue(problem.firstHint)}</small> : null}
               </div>
             ))}
           </div>
@@ -288,12 +297,6 @@ export function TeacherRunCardPro({
             {followups.map((item) => <button key={item} type="button">{item}</button>)}
           </div>
         </details>
-      ) : null}
-
-      {markdown && keyMoves.length === 0 && training.length === 0 ? (
-        <section className="ks-teacher-pro-markdown">
-          {markdown}
-        </section>
       ) : null}
 
       {toolLogs.length > 0 ? (
