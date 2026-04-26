@@ -79,10 +79,17 @@ interface GeometryMatchResult {
   ratio: number
   matched: number
   expected: number
+  libertyScore: number
   transform: string
   colorMode: 'same-color' | 'color-swapped'
   queryAnchor: string
   problemAnchor: string
+}
+
+interface AnchorLibertyProfile {
+  adjacent: Record<'B' | 'W' | 'empty' | 'edge', number>
+  groups: Record<'B' | 'W', number>
+  minLiberties: Partial<Record<'B' | 'W', number>>
 }
 
 const TOKEN_SPLIT = /[，。！？、；：,.!?;:()\[\]【】\s/_-]+/
@@ -446,6 +453,135 @@ function queryStonesForAnchor(query: KnowledgeMatchQuery, anchor: string): Board
   return query.boardSnapshot ?? []
 }
 
+function boardKey(row: number, col: number): string {
+  return `${row},${col}`
+}
+
+function localBoard(stones: BoardSnapshotStone[], boardSize: number): Map<string, 'B' | 'W'> {
+  const board = new Map<string, 'B' | 'W'>()
+  for (const stone of stones) {
+    const point = gtpToPoint(stone.point, boardSize)
+    if (point) {
+      board.set(boardKey(point.row, point.col), stone.color)
+    }
+  }
+  return board
+}
+
+function neighbors(row: number, col: number, boardSize: number): Array<{ row: number; col: number }> {
+  return [
+    { row: row - 1, col },
+    { row: row + 1, col },
+    { row, col: col - 1 },
+    { row, col: col + 1 }
+  ].filter((point) => point.row >= 0 && point.col >= 0 && point.row < boardSize && point.col < boardSize)
+}
+
+function collectLocalGroup(board: Map<string, 'B' | 'W'>, row: number, col: number, boardSize: number): Array<{ row: number; col: number }> {
+  const color = board.get(boardKey(row, col))
+  if (!color) return []
+  const seen = new Set<string>()
+  const group: Array<{ row: number; col: number }> = []
+  const stack = [{ row, col }]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    const key = boardKey(current.row, current.col)
+    if (seen.has(key) || board.get(key) !== color) continue
+    seen.add(key)
+    group.push(current)
+    for (const next of neighbors(current.row, current.col, boardSize)) {
+      if (board.get(boardKey(next.row, next.col)) === color) {
+        stack.push(next)
+      }
+    }
+  }
+  return group
+}
+
+function localLibertyCount(board: Map<string, 'B' | 'W'>, group: Array<{ row: number; col: number }>, boardSize: number): number {
+  const liberties = new Set<string>()
+  for (const stone of group) {
+    for (const next of neighbors(stone.row, stone.col, boardSize)) {
+      const key = boardKey(next.row, next.col)
+      if (!board.has(key)) {
+        liberties.add(key)
+      }
+    }
+  }
+  return liberties.size
+}
+
+function anchorLibertyProfile(stones: BoardSnapshotStone[], anchor: string, boardSize: number): AnchorLibertyProfile | null {
+  const anchorPoint = gtpToPoint(anchor, boardSize)
+  if (!anchorPoint) return null
+  const board = localBoard(stones, boardSize)
+  if (board.has(boardKey(anchorPoint.row, anchorPoint.col))) {
+    return null
+  }
+
+  const profile: AnchorLibertyProfile = {
+    adjacent: { B: 0, W: 0, empty: 0, edge: 4 },
+    groups: { B: 0, W: 0 },
+    minLiberties: {}
+  }
+  const visitedGroups = new Set<string>()
+  const validNeighbors = neighbors(anchorPoint.row, anchorPoint.col, boardSize)
+  profile.adjacent.edge = 4 - validNeighbors.length
+
+  for (const next of validNeighbors) {
+    const key = boardKey(next.row, next.col)
+    const color = board.get(key)
+    if (!color) {
+      profile.adjacent.empty += 1
+      continue
+    }
+
+    profile.adjacent[color] += 1
+    const group = collectLocalGroup(board, next.row, next.col, boardSize)
+    const groupKey = group.map((stone) => boardKey(stone.row, stone.col)).sort().join('|')
+    if (visitedGroups.has(groupKey)) continue
+    visitedGroups.add(groupKey)
+    profile.groups[color] += 1
+    const liberties = localLibertyCount(board, group, boardSize)
+    profile.minLiberties[color] = Math.min(profile.minLiberties[color] ?? liberties, liberties)
+  }
+
+  return profile
+}
+
+function swappedColor(color: 'B' | 'W'): 'B' | 'W' {
+  return color === 'B' ? 'W' : 'B'
+}
+
+function profileValue(profile: AnchorLibertyProfile, color: 'B' | 'W', field: 'adjacent' | 'groups' | 'minLiberties', swapColors: boolean): number | undefined {
+  const sourceColor = swapColors ? swappedColor(color) : color
+  return field === 'minLiberties' ? profile.minLiberties[sourceColor] : profile[field][sourceColor]
+}
+
+function closeCountScore(queryValue: number | undefined, expectedValue: number | undefined, exactScore: number, nearScore: number): number {
+  const queryCount = queryValue ?? 0
+  const expectedCount = expectedValue ?? 0
+  if (queryCount === expectedCount) return exactScore
+  if (Math.abs(queryCount - expectedCount) <= 1) return nearScore
+  return 0
+}
+
+function anchorProfileScore(queryProfile: AnchorLibertyProfile, problemProfile: AnchorLibertyProfile, swapColors: boolean): number {
+  let score = 0
+  score += closeCountScore(queryProfile.adjacent.empty, problemProfile.adjacent.empty, 2, 1)
+  score += closeCountScore(queryProfile.adjacent.edge, problemProfile.adjacent.edge, 2, 1)
+  for (const color of ['B', 'W'] as const) {
+    score += closeCountScore(queryProfile.adjacent[color], profileValue(problemProfile, color, 'adjacent', swapColors), 2, 1)
+    score += closeCountScore(queryProfile.groups[color], profileValue(problemProfile, color, 'groups', swapColors), 1, 0)
+    const queryLiberties = queryProfile.minLiberties[color]
+    const expectedLiberties = profileValue(problemProfile, color, 'minLiberties', swapColors)
+    if (queryLiberties !== undefined || expectedLiberties !== undefined) {
+      score += closeCountScore(queryLiberties, expectedLiberties, 2, 1)
+    }
+  }
+  return score
+}
+
 function localShapeGeometryMatch(problem: ProblemEntry, query: KnowledgeMatchQuery): GeometryMatchResult | null {
   const queryAnchors = uniqueValidPoints([
     query.playedMove,
@@ -458,11 +594,16 @@ function localShapeGeometryMatch(problem: ProblemEntry, query: KnowledgeMatchQue
 
   let best: GeometryMatchResult | null = null
   for (const queryAnchor of queryAnchors) {
-    const queryRelatives = stonesNearAnchor(queryStonesForAnchor(query, queryAnchor), queryAnchor, query.boardSize)
+    const queryStones = queryStonesForAnchor(query, queryAnchor)
+    const queryProfile = anchorLibertyProfile(queryStones, queryAnchor, query.boardSize)
+    if (!queryProfile) continue
+    const queryRelatives = stonesNearAnchor(queryStones, queryAnchor, query.boardSize)
     if (queryRelatives.length < 3) continue
     const queryKeys = new Set(queryRelatives.map((stone) => stoneKey(stone, (dx, dy) => [dx, dy], false)))
 
     for (const problemAnchor of problemAnchors) {
+      const problemProfile = anchorLibertyProfile(problem.initialStones, problemAnchor, query.boardSize)
+      if (!problemProfile) continue
       const problemRelatives = stonesNearAnchor(problem.initialStones, problemAnchor, query.boardSize)
       if (problemRelatives.length < 3) continue
 
@@ -477,15 +618,18 @@ function localShapeGeometryMatch(problem: ProblemEntry, query: KnowledgeMatchQue
           }
           const expected = transformedKeys.size
           const rawRatio = expected > 0 ? matched / expected : 0
-          const ratio = swapColors ? rawRatio * 0.92 : rawRatio
-          if (matched < 3 || ratio < 0.55) continue
+          const libertyScore = anchorProfileScore(queryProfile, problemProfile, swapColors)
+          const profileRatio = Math.min(1, libertyScore / 12)
+          const ratio = (swapColors ? 0.92 : 1) * (rawRatio * 0.76 + profileRatio * 0.24)
+          if (matched < 3 || ratio < 0.55 || libertyScore < 3) continue
 
-          const score = Math.round(ratio * 24) + Math.min(matched, 8)
+          const score = Math.round(ratio * 24) + Math.min(matched, 8) + libertyScore
           const candidate: GeometryMatchResult = {
             score,
             ratio,
             matched,
             expected,
+            libertyScore,
             transform: transform.name,
             colorMode: swapColors ? 'color-swapped' : 'same-color',
             queryAnchor,
@@ -677,6 +821,7 @@ function problemMatch(
   if (geometry) {
     score += geometry.score
     reasons.push(`geometry:${geometry.transform}:${geometry.colorMode}:${geometry.matched}/${geometry.expected}`)
+    reasons.push(`liberties:${geometry.libertyScore}`)
     if (geometry.ratio >= 0.72) {
       score += 6
       reasons.push('geometry-strong-local-shape')

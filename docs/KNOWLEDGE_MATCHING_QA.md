@@ -25,6 +25,7 @@ The match engine ranks results using:
 - Position facts: move number, phase, region, current move, candidate moves, PV, and loss.
 - Local features: corner, side, 3-3, 4-4, 3-4, first/second/third/fourth line, contact, jump, eye-shape.
 - Local geometry: board snapshots are compared around candidate / played anchors with rotation and mirror normalization.
+- Liberty / empty-point constraints: the candidate anchor must still be empty, and adjacent colors, edge contact, neighboring groups, and approximate liberties are scored.
 - Exact evidence: catalog sequence overlap, answer move overlap, played move, candidate move, and PV overlap.
 
 Important quality rules:
@@ -35,6 +36,7 @@ Important quality rules:
 - Joseki matches are suppressed when the prompt clearly asks for tactical reading or tesuji.
 - Training problem recommendations ignore broad tags such as corner, direction, joseki, life-death, and tesuji; they require specific tags such as snapback, true/false eyes, bent three, or ladder.
 - Geometry evidence is used only when at least three local stones match inside the analysis window. Color-swapped matches are allowed but scored lower.
+- Geometry matches with weak liberty / empty-point compatibility are filtered out even if the visible stones look similar.
 
 ## Regression Scenarios
 
@@ -44,7 +46,7 @@ The automated matching smoke test covers:
 - True/false eye: exact life-and-death match ranks before broad corner patterns.
 - Snapback: exact tesuji match ranks before broad joseki or generic corner life-and-death patterns.
 - Named coverage: avalanche, plum six, and connect-and-die direct user prompts match their intended joseki / life-death / tesuji entries.
-- Rotation / mirror coverage: a true/false-eye local shape rotated into a different board area still matches the intended life-and-death type through `geometry:*` evidence.
+- Rotation / mirror coverage: a true/false-eye local shape rotated into a different board area still matches the intended life-and-death type through `geometry:*` and `liberties:*` evidence.
 
 ## Runtime Wiring
 
@@ -74,4 +76,4 @@ Prioritized next tesuji additions:
 - More probe-before-sacrifice sequences in center fighting.
 - More geta/net examples with distinct local coordinates.
 
-Before adding another large batch, continue improving geometric matching with liberties, empty-point constraints, and local ownership features. The current matcher already handles rotation / mirror normalization; the next quality jump is to distinguish "same stones, different liberties".
+Before adding another large batch, continue improving geometric matching with explicit empty-point masks and local ownership features. The current matcher already handles rotation / mirror normalization plus approximate liberties; the next quality jump is to distinguish "same stones and similar liberties, but different vital empty points".

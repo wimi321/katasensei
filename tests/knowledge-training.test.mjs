@@ -143,4 +143,5 @@ test('matching engine ranks exact joseki, life-death, and tesuji matches ahead o
   assert.equal(result.geometricTrueFalseEye.matches[0].matchType, 'life_death')
   assert.match(result.geometricTrueFalseEye.matches[0].title, /真眼假眼/)
   assert.ok(result.geometricTrueFalseEye.matches[0].reason.some((reason) => reason.startsWith('geometry:')))
+  assert.ok(result.geometricTrueFalseEye.matches[0].reason.some((reason) => reason.startsWith('liberties:')))
 })
