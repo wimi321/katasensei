@@ -43,5 +43,50 @@
     "status": "architecture-reference-only",
     "why": "The repository is a modernized tsumego-hero codebase. It is useful for product and data-flow ideas, not for importing problem data.",
     "usedFor": ["tsumego product architecture", "source-risk review"]
+  },
+  {
+    "id": "web_josekipedia_games",
+    "name": "Josekipedia game collection",
+    "url": "https://www.josekipedia.com/game/info.php",
+    "license": "Creative Commons stated for game database",
+    "status": "future-import-candidate",
+    "why": "Josekipedia states that its game database is freely distributed under a Creative Commons License and discards comments/variations. This may be useful for future joseki frequency mining, but GoMentor currently only records it as a potential source until the exact CC terms and attribution path are reviewed.",
+    "usedFor": ["future joseki frequency mining", "license review"]
+  },
+  {
+    "id": "web_wikipedia_life_death",
+    "name": "Wikipedia: Life and death",
+    "url": "https://en.wikipedia.org/wiki/Life_and_death",
+    "license": "CC BY-SA 4.0",
+    "status": "concept-reference-only",
+    "why": "The page summarizes fundamental life-and-death concepts such as two eyes, dead groups, unsettled groups, and eye-space. GoMentor uses original teaching text and does not copy article prose.",
+    "usedFor": ["life-death concept coverage", "beginner terminology checks"]
+  },
+  {
+    "id": "web_wikipedia_go_rules",
+    "name": "Wikipedia: Go game rules and strategy overview",
+    "url": "https://en.wikipedia.org/wiki/Go_(game)",
+    "license": "CC BY-SA 4.0",
+    "status": "concept-reference-only",
+    "why": "The article summarizes life status, semeai, corners/sides opening priority, joseki, ko, and seki. GoMentor uses it only to cross-check broad coverage.",
+    "usedFor": ["rules terminology", "strategy coverage checklist"]
+  },
+  {
+    "id": "web_goproblems_best_practices",
+    "name": "goproblems.com best practices",
+    "url": "https://www.goproblems.com/article/bestpractices",
+    "license": "not found",
+    "status": "taxonomy-reference-only",
+    "why": "The page describes common problem classes such as life-and-death and tesuji. It is useful as a taxonomy reference, but GoMentor does not import problem text or diagrams.",
+    "usedFor": ["problem taxonomy", "training UX terminology"]
+  },
+  {
+    "id": "web_ogs_cc_discussion",
+    "name": "Online Go Forum: Go books/content in the Creative Commons",
+    "url": "https://forums.online-go.com/t/go-books-content-in-the-creative-commons/24517",
+    "license": "forum content, not a data source",
+    "status": "source-risk-reference",
+    "why": "The discussion highlights that Internet availability and archive copies do not imply Creative Commons rights. GoMentor uses this as a policy reminder to avoid importing classic book scans or problem collections without explicit permission.",
+    "usedFor": ["copyright review policy"]
   }
 ]

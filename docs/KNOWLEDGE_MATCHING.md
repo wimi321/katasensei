@@ -54,6 +54,10 @@ The knowledge base is expanded from public research, but GoMentor does not blind
 - `billyellow/Kogo-s-Joseki-Dictionary`: no explicit license found. Do not import SGF data.
 - `online-go/godojo-server`: joseki-feature server, but no explicit license found during review. Do not import code/data.
 - `kovarex/tsumego-hero`: useful product architecture reference, but no top-level license found during review. Do not import problem data.
+- `Josekipedia game collection`: states that its game database is Creative Commons. Treat as a future import candidate only after exact license terms and attribution handling are confirmed.
+- `Wikipedia: Life and death` and `Wikipedia: Go`: useful for broad terminology checks around eyes, life status, semeai, ko, seki, corners, sides, and joseki. GoMentor uses original teaching text rather than copying article prose.
+- `goproblems.com best practices`: useful as problem taxonomy reference. Do not import problem text or diagrams without permission.
+- OGS Creative Commons discussion: useful policy reminder that archived or publicly posted Go books may still be all-rights-reserved.
 
 When adding future material, keep the source registry updated with the review decision. A source marked `do-not-import` may still inspire original teaching categories, but it must not be copied into packaged data.
 
@@ -69,3 +73,10 @@ Add future cards in small, verified batches:
 6. Common bad-shape corrections.
 
 Avoid copying copyrighted problem collections. Store original teaching descriptions, compact pattern metadata, and links or citations only when the source license allows it.
+
+Current pattern-card coverage includes 44 original cards across joseki, life-and-death, tesuji, and shape. The target for the next milestone is not just more cards; it is better matching precision:
+
+- Add exact corner coordinate fingerprints for the most common star-point and komoku joseki.
+- Add local-shape normalization so rotated and mirrored tsumego patterns match the same card.
+- Add KataGo PV motif extraction, such as ko, throw-in, snapback, connection, cut, cap, and monkey jump.
+- Add attribution fields if future cards are derived from explicitly licensed datasets.
