@@ -64,3 +64,25 @@ test('Timeline and issue list treat KataGo winrate loss as percentage points', (
   assert.match(app, /normalizeLossPercent\(item\.playedMove\?\.winrateLoss\)/)
   assert.doesNotMatch(app, /sortedEvaluations\.map\(\(item\) => Math\.max\(0, item\.playedMove\?\.scoreLoss/)
 })
+
+test('Quick winrate graph uses KaTrain-style fast visits and refines suspected mistakes', () => {
+  const katago = read('src/main/services/katago.ts')
+  assert.match(katago, /QUICK_ANALYSIS_FAST_VISITS = 25/)
+  assert.match(katago, /QUICK_ANALYSIS_REFINE_VISITS = 120/)
+  assert.match(katago, /QUICK_ANALYSIS_WIDE_ROOT_NOISE = 0\.04/)
+  assert.match(katago, /overrideSettings/)
+  assert.match(katago, /quick-refine-before/)
+  assert.match(katago, /quick-refine-actual/)
+  assert.match(katago, /refineTopN/)
+
+  const app = read('src/renderer/src/App.tsx')
+  assert.match(app, /QUICK_GRAPH_FAST_VISITS = 25/)
+  assert.match(app, /QUICK_GRAPH_REFINE_VISITS = 120/)
+  assert.match(app, /quickGraphFastVisits/)
+  assert.match(app, /refineVisits/)
+  assert.doesNotMatch(app, /maxVisits: 12,/)
+
+  const review = read('scripts/review_game.py')
+  assert.match(review, /allowMoves/)
+  assert.match(review, /best_wr_black if color == "B" else 100\.0 - best_wr_black/)
+})

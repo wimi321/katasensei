@@ -134,6 +134,10 @@ const LIVE_ANALYSIS_TOTAL_VISIT_LIMIT = 5200
 const LIVE_ANALYSIS_BEST_VISIT_LIMIT = 1800
 const LIVE_ANALYSIS_TIME_LIMIT_MS = 150_000
 const LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS = 0.2
+const QUICK_GRAPH_FAST_VISITS = 25
+const QUICK_GRAPH_FAST_VISITS_STRONG = 40
+const QUICK_GRAPH_REFINE_VISITS = 120
+const QUICK_GRAPH_REFINE_TOP_N = 18
 const LIBRARY_PAGE_SIZE = 10
 const TIMELINE_ISSUE_MIN_LOSS = 1
 
@@ -183,6 +187,13 @@ function normalizeLossPercent(value: number | undefined): number {
     return 0
   }
   return Math.max(0, Math.abs(value))
+}
+
+function quickGraphFastVisits(visitsPerSecond: number): number {
+  if (!Number.isFinite(visitsPerSecond) || visitsPerSecond <= 0) {
+    return QUICK_GRAPH_FAST_VISITS
+  }
+  return visitsPerSecond >= 450 ? QUICK_GRAPH_FAST_VISITS_STRONG : QUICK_GRAPH_FAST_VISITS
 }
 
 function sleep(ms: number): Promise<void> {
@@ -483,9 +494,12 @@ export function App(): ReactElement {
       }
     })
     try {
+      const fastVisits = quickGraphFastVisits(dashboard.settings.katagoBenchmarkVisitsPerSecond)
       const quickEvaluations = await window.gomentor.analyzeGameQuick({
         gameId,
-        maxVisits: 12,
+        maxVisits: fastVisits,
+        refineVisits: Math.max(QUICK_GRAPH_REFINE_VISITS, fastVisits * 3),
+        refineTopN: QUICK_GRAPH_REFINE_TOP_N,
         runId
       })
       if (graphRunId.current !== runId) {

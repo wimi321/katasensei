@@ -435,6 +435,8 @@ export interface AnalyzePositionProgress {
 export interface AnalyzeGameQuickRequest {
   gameId: string
   maxVisits?: number
+  refineVisits?: number
+  refineTopN?: number
   runId?: string
 }
 

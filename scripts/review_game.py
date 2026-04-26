@@ -92,7 +92,7 @@ class KataGoAnalyzer:
         )
         self.size = size
 
-    def query(self, moves, komi, max_visits, idx):
+    def query(self, moves, komi, max_visits, idx, allow_moves=None):
         payload = {
             "id": f"query-{idx}",
             "moves": moves,
@@ -103,6 +103,8 @@ class KataGoAnalyzer:
             "boardYSize": self.size,
             "maxVisits": max_visits,
         }
+        if allow_moves:
+            payload["allowMoves"] = allow_moves
         self.proc.stdin.write(json.dumps(payload) + "\n")
         self.proc.stdin.flush()
         line = self.proc.stdout.readline()
@@ -336,10 +338,19 @@ def main():
             if not move_infos:
                 continue
             best = move_infos[0]
-            best_wr = float(best.get("winrate", 0.5)) * 100.0
-            played_response = analyzer.query(moves[: index + 1], info["komi"], args.max_visits, f"played-{index}")
-            played_root = played_response.get("rootInfo", {})
-            played_wr = float(played_root.get("winrate", 0.5)) * 100.0
+            best_wr_black = float(best.get("winrate", 0.5)) * 100.0
+            played_response = analyzer.query(
+                history,
+                info["komi"],
+                args.max_visits,
+                f"played-{index}",
+                allow_moves=[{"player": color, "moves": [played_move], "untilDepth": 1}],
+            )
+            played_infos = played_response.get("moveInfos", [])
+            played_info = next((item for item in played_infos if item.get("move") == played_move), played_infos[0] if played_infos else {})
+            played_wr_black = float(played_info.get("winrate", 0.5)) * 100.0
+            best_wr = best_wr_black if color == "B" else 100.0 - best_wr_black
+            played_wr = played_wr_black if color == "B" else 100.0 - played_wr_black
             loss = max(0.0, best_wr - played_wr)
             if loss < args.min_winrate_drop:
                 continue

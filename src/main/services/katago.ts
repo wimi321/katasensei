@@ -33,6 +33,7 @@ interface AnalysisQuery {
   komi: number
   maxVisits: number
   reportDuringSearchEvery?: number
+  overrideSettings?: Record<string, number | boolean | string>
   allowMoves?: Array<{
     player: GameMove['color']
     moves: string[]
@@ -45,6 +46,12 @@ interface QuickProgress {
   analyzedPositions: number
   totalPositions: number
 }
+
+const QUICK_ANALYSIS_FAST_VISITS = 25
+const QUICK_ANALYSIS_REFINE_VISITS = 120
+const QUICK_ANALYSIS_REFINE_TOP_N = 18
+const QUICK_ANALYSIS_REFINE_MIN_LOSS = 4
+const QUICK_ANALYSIS_WIDE_ROOT_NOISE = 0.04
 
 function moveHistory(moves: GameMove[]): Array<[string, string]> {
   return moves.filter((move) => !move.pass).map((move) => [move.color, move.gtp])
@@ -163,7 +170,8 @@ function forcePlayedMoveQuery(
   boardSize: number,
   komi: number,
   maxVisits: number,
-  reportDuringSearchEvery?: number
+  reportDuringSearchEvery?: number,
+  overrideSettings?: AnalysisQuery['overrideSettings']
 ): AnalysisQuery | undefined {
   if (!currentMove || currentMove.pass || !moveKey(currentMove.gtp)) {
     return undefined
@@ -175,6 +183,7 @@ function forcePlayedMoveQuery(
     komi,
     maxVisits,
     reportDuringSearchEvery,
+    overrideSettings,
     allowMoves: [{
       player: currentMove.color,
       moves: [currentMove.gtp],
@@ -319,6 +328,9 @@ async function queryKataGoBatch(
       }
       if (query.reportDuringSearchEvery !== undefined) {
         payload.reportDuringSearchEvery = query.reportDuringSearchEvery
+      }
+      if (query.overrideSettings) {
+        payload.overrideSettings = query.overrideSettings
       }
       if (query.allowMoves) {
         payload.allowMoves = query.allowMoves
@@ -528,8 +540,12 @@ export async function analyzePositionWithProgress(
 
 export async function analyzeGameQuick(
   gameId: string,
-  maxVisits = 12,
-  onProgress?: (progress: QuickProgress) => void
+  maxVisits = QUICK_ANALYSIS_FAST_VISITS,
+  onProgress?: (progress: QuickProgress) => void,
+  options: {
+    refineVisits?: number
+    refineTopN?: number
+  } = {}
 ): Promise<KataGoMoveAnalysis[]> {
   const indexedGame = findGame(gameId)
   if (!indexedGame) {
@@ -541,6 +557,9 @@ export async function analyzeGameQuick(
   const normalizedKomi = normalizeKomi(record.komi)
   const moves = record.moves
   const queries: AnalysisQuery[] = []
+  const quickVisits = Math.max(QUICK_ANALYSIS_FAST_VISITS, Math.round(maxVisits))
+  const quickOverrideSettings = { wideRootNoise: QUICK_ANALYSIS_WIDE_ROOT_NOISE }
+  const rootPositionCount = moves.length + 1
 
   for (let moveNumber = 0; moveNumber <= moves.length; moveNumber += 1) {
     queries.push({
@@ -548,7 +567,8 @@ export async function analyzeGameQuick(
       moves: moveHistory(moves.slice(0, moveNumber)),
       boardSize: record.boardSize,
       komi: normalizedKomi,
-      maxVisits
+      maxVisits: quickVisits,
+      overrideSettings: quickOverrideSettings
     })
     const currentMove = moves[moveNumber]
     const actualQuery = forcePlayedMoveQuery(
@@ -557,7 +577,9 @@ export async function analyzeGameQuick(
       currentMove,
       record.boardSize,
       normalizedKomi,
-      Math.max(4, maxVisits),
+      quickVisits,
+      undefined,
+      quickOverrideSettings
     )
     if (actualQuery) {
       queries.push(actualQuery)
@@ -629,8 +651,8 @@ export async function analyzeGameQuick(
     emitted.add(moveNumber)
     onProgress({
       evaluation,
-      analyzedPositions: roots.size,
-      totalPositions: queries.length
+      analyzedPositions: Math.min(roots.size, rootPositionCount),
+      totalPositions: rootPositionCount
     })
   }
 
@@ -701,5 +723,85 @@ export async function analyzeGameQuick(
     evaluations.push(evaluation)
   }
 
-  return evaluations
+  const refineVisits = Math.max(quickVisits, Math.round(options.refineVisits ?? QUICK_ANALYSIS_REFINE_VISITS))
+  const refineTopN = Math.max(0, Math.round(options.refineTopN ?? QUICK_ANALYSIS_REFINE_TOP_N))
+  const refineMoveNumbers = refineVisits > quickVisits && refineTopN > 0
+    ? evaluations
+      .filter((item) => (item.playedMove?.winrateLoss ?? 0) >= QUICK_ANALYSIS_REFINE_MIN_LOSS)
+      .sort((left, right) =>
+        (right.playedMove?.winrateLoss ?? 0) - (left.playedMove?.winrateLoss ?? 0) ||
+        left.moveNumber - right.moveNumber
+      )
+      .slice(0, refineTopN)
+      .map((item) => item.moveNumber)
+    : []
+
+  if (refineMoveNumbers.length === 0) {
+    return evaluations
+  }
+
+  const refineQueries: AnalysisQuery[] = []
+  for (const moveNumber of refineMoveNumbers) {
+    const currentMove = moves[moveNumber - 1]
+    const beforeMoves = moves.slice(0, moveNumber - 1)
+    const afterMoves = moves.slice(0, moveNumber)
+    refineQueries.push({
+      id: `${gameId}-quick-refine-before-${moveNumber}`,
+      moves: moveHistory(beforeMoves),
+      boardSize: record.boardSize,
+      komi: normalizedKomi,
+      maxVisits: refineVisits,
+      overrideSettings: quickOverrideSettings
+    })
+    refineQueries.push({
+      id: `${gameId}-quick-refine-after-${moveNumber}`,
+      moves: moveHistory(afterMoves),
+      boardSize: record.boardSize,
+      komi: normalizedKomi,
+      maxVisits: Math.max(quickVisits, Math.floor(refineVisits * 0.6)),
+      overrideSettings: quickOverrideSettings
+    })
+    const actualQuery = forcePlayedMoveQuery(
+      `${gameId}-quick-refine-actual-${moveNumber}`,
+      beforeMoves,
+      currentMove,
+      record.boardSize,
+      normalizedKomi,
+      refineVisits,
+      undefined,
+      quickOverrideSettings
+    )
+    if (actualQuery) {
+      refineQueries.push(actualQuery)
+    }
+  }
+
+  const refinedResponses = await queryKataGoBatch(refineQueries)
+  const byMove = new Map(evaluations.map((item) => [item.moveNumber, item]))
+  let refinedCount = 0
+  for (const moveNumber of refineMoveNumbers) {
+    const beforeResponse = refinedResponses.get(`${gameId}-quick-refine-before-${moveNumber}`)
+    const afterResponse = refinedResponses.get(`${gameId}-quick-refine-after-${moveNumber}`)
+    if (!beforeResponse || !afterResponse) {
+      continue
+    }
+    const refined = buildMoveAnalysis(
+      gameId,
+      moveNumber,
+      record.boardSize,
+      moves[moveNumber - 1],
+      beforeResponse,
+      afterResponse,
+      refinedResponses.get(`${gameId}-quick-refine-actual-${moveNumber}`)
+    )
+    byMove.set(moveNumber, refined)
+    refinedCount += 1
+    onProgress?.({
+      evaluation: refined,
+      analyzedPositions: rootPositionCount + refinedCount,
+      totalPositions: rootPositionCount + refineMoveNumbers.length
+    })
+  }
+
+  return [...byMove.values()].sort((left, right) => left.moveNumber - right.moveNumber)
 }

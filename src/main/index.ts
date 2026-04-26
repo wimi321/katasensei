@@ -295,12 +295,15 @@ app.whenReady().then(() => {
     )
   )
   ipcMain.handle('katago:analyze-game-quick', async (event, payload: AnalyzeGameQuickRequest) =>
-    analyzeGameQuick(payload.gameId, payload.maxVisits ?? 12, (progress) => {
+    analyzeGameQuick(payload.gameId, payload.maxVisits, (progress) => {
       safeSendToRenderer(event, 'katago:analyze-game-quick-progress', {
         ...progress,
         runId: payload.runId,
         gameId: payload.gameId
       })
+    }, {
+      refineVisits: payload.refineVisits,
+      refineTopN: payload.refineTopN
     })
   )
   ipcMain.handle('katago:benchmark', async (_event, payload: KataGoBenchmarkRequest | undefined) => benchmarkKataGo(payload ?? {}))
