@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible KataSensei problem.
+description: Report a reproducible GoMentor problem.
 title: "[Bug]: "
 labels: ["bug"]
 body:
@@ -23,8 +23,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: KataSensei version
-      placeholder: "0.1.0"
+      label: GoMentor version
+      placeholder: "0.2.0-beta.1"
   - type: dropdown
     id: os
     attributes:

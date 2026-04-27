@@ -1,4 +1,4 @@
-import type { FormEvent, PointerEvent, ReactElement } from 'react'
+import type { FormEvent, KeyboardEvent, PointerEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AnalyzeGameQuickProgress,
@@ -6,16 +6,38 @@ import type {
   GameMove,
   GameRecord,
   KataGoCandidate,
+  KataGoAssetInstallProgress,
+  KataGoAssetStatus,
+  KataGoBenchmarkResult,
   KataGoMoveAnalysis,
   KataGoModelPresetId,
   LibraryGame,
   StoneColor,
+  StudentBindingSuggestion,
+  StudentProfile,
+  ReleaseReadinessResult,
+  TeacherRunRequest,
+  TeacherRunProgress,
   TeacherRunResult
 } from '@main/lib/types'
 import lizzieBlackStoneUrl from './assets/lizzie/black.png'
 import lizzieBoardUrl from './assets/lizzie/board.png'
 import lizzieWhiteStoneUrl from './assets/lizzie/white.png'
 import logoUrl from '../../../assets/logo.svg'
+import { GoBoardV2 } from './features/board/GoBoardV2'
+import type { KeyMoveSummary } from './features/board/KeyMoveNavigator'
+import { WinrateTimelineV2 } from './features/board/WinrateTimelineV2'
+import { parseBoardPoint, type RenderKeyMove } from './features/board/boardGeometry'
+import { DiagnosticsGate } from './features/diagnostics/DiagnosticsGate'
+import { UiGallery } from './features/gallery/UiGallery'
+import { BetaAcceptancePanel, type BetaAcceptanceItem } from './features/release/BetaAcceptancePanel'
+import { StudentBindingDialog } from './features/student/StudentBindingDialog'
+import { StudentRailCard } from './features/student/StudentRailCard'
+import { KataGoAssetsPanel } from './features/settings/KataGoAssetsPanel'
+import { TeacherComposerPro } from './features/teacher/TeacherComposerPro'
+import './features/diagnostics/diagnostics.css'
+import './features/student/student.css'
+import './features/teacher/teacher-run-card.css'
 
 const emptyDashboard: DashboardData = {
   settings: {
@@ -23,6 +45,13 @@ const emptyDashboard: DashboardData = {
     katagoConfig: '',
     katagoModel: '',
     katagoModelPreset: 'official-b18-recommended',
+    katagoAnalysisThreads: 0,
+    katagoSearchThreadsPerAnalysisThread: 1,
+    katagoMaxBatchSize: 32,
+    katagoCacheSizePowerOfTwo: 20,
+    katagoBenchmarkThreads: 0,
+    katagoBenchmarkVisitsPerSecond: 0,
+    katagoBenchmarkUpdatedAt: '',
     pythonBin: 'python3',
     llmBaseUrl: 'https://api.openai.com/v1',
     llmApiKey: '',
@@ -51,18 +80,66 @@ type ChatMessage = {
   id: string
   role: 'student' | 'teacher'
   content: string
+  status?: 'running' | 'completed' | 'error'
   result?: TeacherRunResult
+  toolLogs?: TeacherRunResult['toolLogs']
 }
 
 type EvaluationByMove = Record<number, KataGoMoveAnalysis>
 type StatusTone = 'good' | 'warn' | 'neutral'
+type TimelineIssueColor = 'B' | 'W'
 
 interface StatusPill {
   label: string
   tone: StatusTone
 }
 
+interface StudentBindingState {
+  game: LibraryGame
+  suggestions: StudentBindingSuggestion[]
+}
+
+interface LiveAnalysisState {
+  running: boolean
+  status: string
+  visits: number
+  bestVisits: number
+  visitsPerSecond: number
+  targetMoveNumber: number | null
+  round: number
+}
+
+interface TimelineIssueItem {
+  moveNumber: number
+  color: TimelineIssueColor
+  playedMove: string
+  bestMove: string
+  loss: number
+  severity: 'quiet' | 'inaccuracy' | 'mistake' | 'blunder'
+}
+
+type DesktopCommand =
+  | 'open-command-palette'
+  | 'open-settings'
+  | 'import-sgf'
+  | 'analyze-current'
+  | 'analyze-game'
+  | 'analyze-recent'
+  | 'toggle-library'
+  | 'open-ui-gallery'
+
 const letters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'
+const LIVE_ANALYSIS_VISIT_STEPS = [24, 48, 80, 120, 180, 260, 380, 560, 820, 1200, 1800, 2600, 3800, 5200]
+const LIVE_ANALYSIS_TOTAL_VISIT_LIMIT = 5200
+const LIVE_ANALYSIS_BEST_VISIT_LIMIT = 1800
+const LIVE_ANALYSIS_TIME_LIMIT_MS = 150_000
+const LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS = 0.2
+const QUICK_GRAPH_FAST_VISITS = 25
+const QUICK_GRAPH_FAST_VISITS_STRONG = 40
+const QUICK_GRAPH_REFINE_VISITS = 120
+const QUICK_GRAPH_REFINE_TOP_N = 18
+const LIBRARY_PAGE_SIZE = 10
+const TIMELINE_ISSUE_MIN_LOSS = 1
 
 function safePlayerName(name: string | undefined, fallback: string): string {
   const value = (name ?? '').trim()
@@ -75,51 +152,231 @@ function gameDisplayName(game: LibraryGame): string {
   return `${black} vs ${white}`
 }
 
+function boardGameTitle(game: LibraryGame): string {
+  const black = safePlayerName(game.black, '黑方')
+  const white = safePlayerName(game.white, '白方')
+  return `黑棋 ${black} vs 白棋 ${white}`
+}
+
 function boardCandidateMoves(analysis: KataGoMoveAnalysis | null): KataGoCandidate[] {
   if (!analysis) {
     return []
   }
-  return analysis.after.topMoves.length > 0 ? analysis.after.topMoves : analysis.before.topMoves
+  return analysis.before.topMoves.length > 0 ? analysis.before.topMoves : analysis.after.topMoves
 }
 
 function analysisHasCandidates(analysis: KataGoMoveAnalysis | undefined | null): boolean {
   return Boolean(analysis && (analysis.before.topMoves.length > 0 || analysis.after.topMoves.length > 0))
 }
 
+function candidateVisitsTotal(analysis: KataGoMoveAnalysis | null | undefined): number {
+  if (!analysis) {
+    return 0
+  }
+  const before = analysis.before.topMoves.reduce((total, candidate) => total + Math.max(0, Number(candidate.visits) || 0), 0)
+  const after = analysis.after.topMoves.reduce((total, candidate) => total + Math.max(0, Number(candidate.visits) || 0), 0)
+  return Math.max(before, after)
+}
+
+function candidateBestVisits(analysis: KataGoMoveAnalysis | null | undefined): number {
+  return Math.max(0, Number(analysis?.before.topMoves[0]?.visits ?? analysis?.after.topMoves[0]?.visits) || 0)
+}
+
+function normalizeLossPercent(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0
+  }
+  return Math.max(0, Math.abs(value))
+}
+
+function quickGraphFastVisits(visitsPerSecond: number): number {
+  if (!Number.isFinite(visitsPerSecond) || visitsPerSecond <= 0) {
+    return QUICK_GRAPH_FAST_VISITS
+  }
+  return visitsPerSecond >= 450 ? QUICK_GRAPH_FAST_VISITS_STRONG : QUICK_GRAPH_FAST_VISITS
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function keyMoveSummariesFromEvaluations(evaluations: EvaluationByMove): KeyMoveSummary[] {
+  return Object.values(evaluations)
+    .flatMap((item) => {
+      const severity = evaluationSeverity(item)
+      if (severity === 'quiet') {
+        return []
+      }
+      const best = item.before.topMoves[0] ?? item.after.topMoves[0]
+      const playedMove = item.playedMove?.move ?? item.currentMove?.gtp
+      const loss = item.playedMove?.winrateLoss ?? 0
+      const scoreLoss = item.playedMove?.scoreLoss ?? 0
+      return [{
+        moveNumber: item.moveNumber,
+        color: item.currentMove?.color,
+        label: best && playedMove ? `${playedMove} -> ${best.move}` : playedMove ?? `第 ${item.moveNumber} 手`,
+        gtp: playedMove,
+        reason: `胜率损失 ${loss.toFixed(1)}%，目差损失 ${scoreLoss.toFixed(1)}。`,
+        winrateDrop: loss / 100,
+        scoreLoss,
+        severity
+      } satisfies KeyMoveSummary]
+    })
+    .sort((left, right) => {
+      const leftLoss = Math.abs(left.winrateDrop ?? 0)
+      const rightLoss = Math.abs(right.winrateDrop ?? 0)
+      return rightLoss - leftLoss || left.moveNumber - right.moveNumber
+    })
+    .slice(0, 8)
+}
+
+function timelineIssuesFromEvaluations(
+  evaluations: EvaluationByMove,
+  record: GameRecord | null,
+  color: TimelineIssueColor
+): TimelineIssueItem[] {
+  return Object.values(evaluations)
+    .flatMap((item) => {
+      const moveColor = item.currentMove?.color ?? record?.moves[item.moveNumber - 1]?.color
+      if (moveColor !== color) {
+        return []
+      }
+      const loss = normalizeLossPercent(item.playedMove?.winrateLoss)
+      if (loss < TIMELINE_ISSUE_MIN_LOSS) {
+        return []
+      }
+      const playedMove = item.playedMove?.move ?? item.currentMove?.gtp ?? record?.moves[item.moveNumber - 1]?.gtp ?? ''
+      const bestMove = item.before.topMoves[0]?.move ?? item.after.topMoves[0]?.move ?? ''
+      return [{
+        moveNumber: item.moveNumber,
+        color: moveColor,
+        playedMove,
+        bestMove,
+        loss,
+        severity: evaluationSeverity(item)
+      } satisfies TimelineIssueItem]
+    })
+    .sort((left, right) => right.loss - left.loss || left.moveNumber - right.moveNumber)
+}
+
+function keyMoveMarksFromSummaries(
+  summaries: KeyMoveSummary[],
+  evaluations: EvaluationByMove,
+  boardSize: number
+): RenderKeyMove[] {
+  return summaries.flatMap((summary) => {
+    const item = evaluations[summary.moveNumber]
+    const point = parseBoardPoint(item?.currentMove ?? item?.playedMove?.move ?? summary.gtp, boardSize)
+    if (!point) {
+      return []
+    }
+    const severity = !summary.severity || summary.severity === 'quiet' ? 'turning-point' : summary.severity
+    return [{
+      ...point,
+      moveNumber: summary.moveNumber,
+      severity,
+      label: String(summary.moveNumber)
+    } satisfies RenderKeyMove]
+  })
+}
+
+function shouldOpenUiGallery(): boolean {
+  const search = new URLSearchParams(window.location.search)
+  return search.has('ui-gallery') || window.location.hash === '#/ui-gallery'
+}
+
 export function App(): ReactElement {
+  if (shouldOpenUiGallery()) {
+    return <UiGallery />
+  }
+
   const [dashboard, setDashboard] = useState<DashboardData>(emptyDashboard)
   const [selectedId, setSelectedId] = useState('')
   const [record, setRecord] = useState<GameRecord | null>(null)
   const [moveNumber, setMoveNumber] = useState(0)
   const [analysis, setAnalysis] = useState<KataGoMoveAnalysis | null>(null)
   const [evaluations, setEvaluations] = useState<EvaluationByMove>({})
+  const [timelineIssueColor, setTimelineIssueColor] = useState<TimelineIssueColor>('B')
   const [foxKeyword, setFoxKeyword] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState('')
   const [graphBusy, setGraphBusy] = useState(false)
   const [graphProgress, setGraphProgress] = useState('')
+  const [liveAnalysis, setLiveAnalysis] = useState<LiveAnalysisState>({
+    running: false,
+    status: '已暂停',
+    visits: 0,
+    bestVisits: 0,
+    visitsPerSecond: 0,
+    targetMoveNumber: null,
+    round: 0
+  })
   const [error, setError] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [libraryCollapsed, setLibraryCollapsed] = useState(false)
   const [llmTestMessage, setLlmTestMessage] = useState('')
+  const [katagoBenchmark, setKataGoBenchmark] = useState<KataGoBenchmarkResult | null>(null)
+  const [katagoBenchmarkMessage, setKataGoBenchmarkMessage] = useState('')
+  const [katagoInstallMessage, setKataGoInstallMessage] = useState('')
+  const [katagoInstallProgress, setKataGoInstallProgress] = useState<KataGoAssetInstallProgress | null>(null)
+  const [currentStudent, setCurrentStudent] = useState<StudentProfile | null>(null)
+  const [studentBinding, setStudentBinding] = useState<StudentBindingState | null>(null)
+  const [katagoAssets, setKatagoAssets] = useState<KataGoAssetStatus | null>(null)
   const graphRunId = useRef('')
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'hello',
-      role: 'teacher',
-      content: '我会像围棋老师智能体一样工作：看棋盘、读 KataGo、查知识库、记住学生画像。'
-    }
-  ])
+  const liveAnalysisRunId = useRef('')
+  const autoAnalysisRequestId = useRef('')
+  const userPausedLiveAnalysisRef = useRef(false)
+  const moveNumberRef = useRef(moveNumber)
+  const selectedGameIdRef = useRef('')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
 
   useEffect(() => {
     void refresh()
+    void refreshKataGoAssets()
+  }, [])
+
+  useEffect(() => {
+    return window.gomentor.onKataGoAssetInstallProgress((progress) => {
+      setKataGoInstallProgress(progress)
+      setKataGoInstallMessage(progress.message)
+    })
   }, [])
 
   const selectedGame = useMemo(
-    () => dashboard.games.find((game) => game.id === selectedId) ?? dashboard.games[0],
+    () => {
+      const exact = dashboard.games.find((game) => game.id === selectedId)
+      if (exact) {
+        return exact
+      }
+      if (!selectedId) {
+        return dashboard.games.find((game) => game.source !== 'fox' || game.downloadStatus === 'downloaded')
+      }
+      return dashboard.games[0]
+    },
     [dashboard.games, selectedId]
   )
+  const keyMoveSummaries = useMemo(() => keyMoveSummariesFromEvaluations(evaluations), [evaluations])
+  const timelineIssues = useMemo(
+    () => timelineIssuesFromEvaluations(evaluations, record, timelineIssueColor),
+    [evaluations, record, timelineIssueColor]
+  )
+  const boardKeyMoveMarks = useMemo(
+    () => keyMoveMarksFromSummaries(keyMoveSummaries, evaluations, record?.boardSize ?? 19),
+    [keyMoveSummaries, evaluations, record?.boardSize]
+  )
+  const currentBoardKeyMoveMarks = useMemo(
+    () => boardKeyMoveMarks.filter((mark) => mark.moveNumber === moveNumber),
+    [boardKeyMoveMarks, moveNumber]
+  )
+  const currentAnalysis = useMemo(() => {
+    const cached = evaluations[moveNumber] ?? null
+    if (analysis?.moveNumber === moveNumber && (analysisHasCandidates(analysis) || !analysisHasCandidates(cached))) {
+      return analysis
+    }
+    return cached
+  }, [analysis, evaluations, moveNumber])
 
   useEffect(() => {
     if (selectedGame && !selectedId) {
@@ -128,16 +385,48 @@ export function App(): ReactElement {
   }, [selectedGame, selectedId])
 
   useEffect(() => {
+    moveNumberRef.current = moveNumber
+  }, [moveNumber])
+
+  useEffect(() => {
+    selectedGameIdRef.current = selectedGame?.id ?? ''
+  }, [selectedGame?.id])
+
+  useEffect(() => {
     if (!selectedGame) {
       setRecord(null)
+      setCurrentStudent(null)
       return
     }
+    pauseLiveAnalysis('切换棋谱，准备精读')
+    void loadBoundPlayer(selectedGame.id)
     void loadRecord(selectedGame.id)
   }, [selectedGame?.id])
 
+  useEffect(() => {
+    const dispose = window.gomentor.onDesktopCommand?.((command) => runDesktopCommand(command))
+    return () => dispose?.()
+  }, [selectedGame?.id, moveNumber, busy, record, dashboard.games.length])
+
+  useEffect(() => {
+    function handleKeyDown(event: globalThis.KeyboardEvent): void {
+      const key = event.key.toLowerCase()
+      if ((event.metaKey || event.ctrlKey) && key === 'k') {
+        event.preventDefault()
+        setCommandPaletteOpen(true)
+      }
+      if (event.key === 'Escape') {
+        setCommandPaletteOpen(false)
+        setSettingsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   async function refresh(): Promise<void> {
     try {
-      const next = await window.katasensei.getDashboard()
+      const next = await window.gomentor.getDashboard()
       setDashboard(next)
       if (!playerName && next.settings.defaultPlayerName) {
         setPlayerName(next.settings.defaultPlayerName)
@@ -147,16 +436,44 @@ export function App(): ReactElement {
     }
   }
 
+  async function refreshKataGoAssets(): Promise<void> {
+    try {
+      setKatagoAssets(await window.gomentor.inspectKataGoAssets())
+    } catch (cause) {
+      setError(`KataGo 资源检查失败: ${String(cause)}`)
+    }
+  }
+
   async function loadRecord(gameId: string): Promise<void> {
     try {
-      const next = await window.katasensei.getGameRecord(gameId)
+      const next = await window.gomentor.getGameRecord(gameId)
+      setDashboard((current) => ({
+        ...current,
+        games: current.games.map((game) => (game.id === next.game.id ? next.game : game))
+      }))
+      userPausedLiveAnalysisRef.current = false
       setRecord(next)
       setMoveNumber(next.moves.length)
       setAnalysis(null)
       setEvaluations({})
       void warmupEvaluationGraph(gameId, next.moves.length)
+      queueAutoLiveAnalysis(gameId, next, next.moves.length, 120)
     } catch (cause) {
       setError(String(cause))
+    }
+  }
+
+  async function loadBoundPlayer(gameId: string): Promise<void> {
+    try {
+      const student = await window.gomentor.getStudentForGame(gameId)
+      if (selectedGameIdRef.current === gameId) {
+        setCurrentStudent(student)
+      }
+    } catch (cause) {
+      if (selectedGameIdRef.current === gameId) {
+        setCurrentStudent(null)
+      }
+      setError(`棋手绑定读取失败: ${String(cause)}`)
     }
   }
 
@@ -165,7 +482,7 @@ export function App(): ReactElement {
     graphRunId.current = runId
     setGraphBusy(true)
     setGraphProgress('启动快速胜率图')
-    const disposeProgress = window.katasensei.onAnalyzeGameQuickProgress((progress: AnalyzeGameQuickProgress) => {
+    const disposeProgress = window.gomentor.onAnalyzeGameQuickProgress((progress: AnalyzeGameQuickProgress) => {
       if (graphRunId.current !== runId || progress.runId !== runId || progress.gameId !== gameId) {
         return
       }
@@ -177,9 +494,12 @@ export function App(): ReactElement {
       }
     })
     try {
-      const quickEvaluations = await window.katasensei.analyzeGameQuick({
+      const fastVisits = quickGraphFastVisits(dashboard.settings.katagoBenchmarkVisitsPerSecond)
+      const quickEvaluations = await window.gomentor.analyzeGameQuick({
         gameId,
-        maxVisits: 12,
+        maxVisits: fastVisits,
+        refineVisits: Math.max(QUICK_GRAPH_REFINE_VISITS, fastVisits * 3),
+        refineTopN: QUICK_GRAPH_REFINE_TOP_N,
         runId
       })
       if (graphRunId.current !== runId) {
@@ -214,9 +534,12 @@ export function App(): ReactElement {
     setBusy('import')
     setError('')
     try {
-      const next = await window.katasensei.importLibrary()
+      const { dashboard: next, imported } = await window.gomentor.importLibrary()
       setDashboard(next)
-      if (next.games[0]) {
+      if (imported[0]) {
+        setSelectedId(imported[0].id)
+        void openStudentBinding(imported[0])
+      } else if (next.games[0]) {
         setSelectedId(next.games[0].id)
       }
     } catch (cause) {
@@ -230,15 +553,14 @@ export function App(): ReactElement {
     setBusy('fox')
     setError('')
     try {
-      const { dashboard: next, result } = await window.katasensei.syncFox({
+      const { dashboard: next, result, student } = await window.gomentor.syncFox({
         keyword: foxKeyword
       })
       setDashboard(next)
+      setCurrentStudent(student ?? null)
       setFoxKeyword(result.nickname)
-      if (result.saved[0]) {
-        setSelectedId(result.saved[0].id)
-      } else if (next.games[0]) {
-        setSelectedId(next.games[0].id)
+      if (selectedId && !next.games.some((game) => game.id === selectedId)) {
+        setSelectedId('')
       }
     } catch (cause) {
       setError(String(cause))
@@ -247,12 +569,66 @@ export function App(): ReactElement {
     }
   }
 
+  async function openStudentBinding(game: LibraryGame): Promise<void> {
+    try {
+      const suggestions = await window.gomentor.suggestStudentBindings({
+        blackName: game.black,
+        whiteName: game.white,
+        source: game.source,
+        foxNickname: game.source === 'fox' ? (foxKeyword || game.sourceLabel.replace(/^Fox\s*/i, '')) : undefined
+      })
+      setStudentBinding({ game, suggestions })
+    } catch (cause) {
+      setError(`棋手绑定建议生成失败: ${String(cause)}`)
+    }
+  }
+
+  async function bindImportedGameToExisting(input: { studentId: string; aliasFromPlayerName?: string }): Promise<void> {
+    if (!studentBinding) {
+      return
+    }
+    try {
+      const student = await window.gomentor.bindSgfGameToStudent({
+        gameId: studentBinding.game.id,
+        studentId: input.studentId,
+        aliasFromPlayerName: input.aliasFromPlayerName
+      })
+      setCurrentStudent(student)
+      setStudentBinding(null)
+    } catch (cause) {
+      setError(`绑定棋手失败: ${String(cause)}`)
+    }
+  }
+
+  async function createStudentAndBind(input: { displayName: string; foxNickname?: string; aliasFromPlayerName?: string }): Promise<void> {
+    if (!studentBinding) {
+      return
+    }
+    try {
+      const student = input.foxNickname
+        ? await window.gomentor.bindFoxGamesToStudent({
+            foxNickname: input.foxNickname,
+            gameIds: [studentBinding.game.id],
+            aliases: [input.displayName, input.aliasFromPlayerName ?? ''].filter(Boolean)
+          })
+        : await window.gomentor.bindSgfGameToStudent({
+            gameId: studentBinding.game.id,
+            createDisplayName: input.displayName,
+            aliasFromPlayerName: input.aliasFromPlayerName
+          })
+      setCurrentStudent(student)
+      setStudentBinding(null)
+    } catch (cause) {
+      setError(`创建棋手画像失败: ${String(cause)}`)
+    }
+  }
+
   async function saveSettings(form: HTMLFormElement): Promise<void> {
     setBusy('settings')
     setError('')
     try {
       const formData = new FormData(form)
-      const next = await window.katasensei.updateSettings({
+      const next = await window.gomentor.updateSettings({
         katagoModelPreset: String(formData.get('katagoModelPreset') ?? dashboard.settings.katagoModelPreset) as KataGoModelPresetId,
         llmBaseUrl: String(formData.get('llmBaseUrl') ?? ''),
         llmApiKey: String(formData.get('llmApiKey') ?? ''),
@@ -260,6 +636,7 @@ export function App(): ReactElement {
       })
       setDashboard(next)
       setLlmTestMessage('配置已保存')
+      void refreshKataGoAssets()
       if (selectedGame && record) {
         setAnalysis(null)
         setEvaluations({})
@@ -277,7 +654,7 @@ export function App(): ReactElement {
     setLlmTestMessage('')
     try {
       const formData = new FormData(form)
-      const result = await window.katasensei.testLlmSettings({
+      const result = await window.gomentor.testLlmSettings({
         llmBaseUrl: String(formData.get('llmBaseUrl') ?? ''),
         llmApiKey: String(formData.get('llmApiKey') ?? ''),
         llmModel: String(formData.get('llmModel') ?? '')
@@ -290,8 +667,145 @@ export function App(): ReactElement {
     }
   }
 
-  function appendMessage(message: Omit<ChatMessage, 'id'>): void {
-    setMessages((current) => [...current, { ...message, id: crypto.randomUUID() }])
+  async function runKataGoBenchmark(): Promise<void> {
+    setBusy('katago-benchmark')
+    setKataGoBenchmarkMessage('正在调用 KataGo 官方 benchmark，通常需要几十秒。')
+    setError('')
+    try {
+      if (typeof window.gomentor.benchmarkKataGo !== 'function') {
+        throw new Error('测速服务尚未加载，请重启应用后再试。')
+      }
+      const result = await window.gomentor.benchmarkKataGo()
+      setKataGoBenchmark(result)
+      setKataGoBenchmarkMessage(`已优化：推荐 ${result.recommendedThreads} 线程，${formatSearchSpeed(result.visitsPerSecond)}。`)
+      setDashboard(await window.gomentor.getDashboard())
+      void refreshKataGoAssets()
+      if (selectedGame && record) {
+        pauseLiveAnalysis('测速完成，准备使用新配置')
+        setAnalysis(null)
+        setEvaluations({})
+        void warmupEvaluationGraph(selectedGame.id, moveNumber)
+        if (!userPausedLiveAnalysisRef.current) {
+          void startLiveAnalysis()
+        }
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      setKataGoBenchmarkMessage(`KataGo 测速失败：${message}`)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function installOfficialKataGoModel(presetId: KataGoModelPresetId): Promise<void> {
+    setBusy('katago-install')
+    setError('')
+    setKataGoInstallProgress({ stage: 'discovering', message: '正在准备 KataGo 官方权重安装。' })
+    setKataGoInstallMessage('正在准备 KataGo 官方权重安装。')
+    try {
+      const result = await window.gomentor.installKataGoOfficialModel({ presetId })
+      setKataGoInstallMessage(result.detail)
+      const next = await window.gomentor.updateSettings({ katagoModelPreset: presetId })
+      setDashboard(next)
+      await refreshKataGoAssets()
+      if (selectedGame && record) {
+        pauseLiveAnalysis('KataGo 权重已更新，准备重新分析')
+        setAnalysis(null)
+        setEvaluations({})
+        void warmupEvaluationGraph(selectedGame.id, moveNumber)
+        if (!userPausedLiveAnalysisRef.current) {
+          void startLiveAnalysis()
+        }
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      setKataGoInstallMessage(`KataGo 官方权重安装失败：${message}`)
+      setKataGoInstallProgress({ stage: 'error', message })
+    } finally {
+      setBusy('')
+    }
+  }
+
+  function appendMessage(message: Omit<ChatMessage, 'id'>): string {
+    const id = crypto.randomUUID()
+    setMessages((current) => [...current, { ...message, id }])
+    return id
+  }
+
+  function updateMessage(messageId: string, updater: (message: ChatMessage) => ChatMessage): void {
+    setMessages((current) => current.map((message) => (message.id === messageId ? updater(message) : message)))
+  }
+
+  function mergeTeacherProgress(messageId: string, progress: TeacherRunProgress): void {
+    updateMessage(messageId, (message) => {
+      if (message.role !== 'teacher') {
+        return message
+      }
+      if (progress.stage === 'assistant-delta') {
+        return {
+          ...message,
+          status: 'running',
+          content: `${message.content}${progress.markdownDelta ?? ''}`
+        }
+      }
+      if (progress.stage === 'done' && progress.result) {
+        return {
+          ...message,
+          status: 'completed',
+          content: progress.result.markdown,
+          result: progress.result,
+          toolLogs: progress.result.toolLogs
+        }
+      }
+      if (progress.stage === 'error') {
+        return {
+          ...message,
+          status: 'error',
+          content: message.content || `任务失败：${progress.error ?? '未知错误'}`,
+          toolLogs: progress.toolLogs ?? message.toolLogs
+        }
+      }
+      return {
+        ...message,
+        status: message.status ?? 'running',
+        toolLogs: progress.toolLogs ?? message.toolLogs
+      }
+    })
+  }
+
+  async function runTeacherTaskWithStream(
+    request: Omit<TeacherRunRequest, 'runId'>,
+    assistantMessageId: string
+  ): Promise<TeacherRunResult> {
+    const runId = crypto.randomUUID()
+    const dispose = window.gomentor.onTeacherRunProgress((progress) => {
+      if (progress.runId === runId) {
+        mergeTeacherProgress(assistantMessageId, progress)
+      }
+    })
+    try {
+      const result = await window.gomentor.runTeacherTask({
+        ...request,
+        runId
+      })
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        status: 'completed',
+        content: result.markdown,
+        result,
+        toolLogs: result.toolLogs
+      }))
+      return result
+    } catch (cause) {
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        status: 'error',
+        content: message.content || `任务失败：${String(cause)}`
+      }))
+      throw cause
+    } finally {
+      dispose()
+    }
   }
 
   function rememberEvaluation(nextAnalysis: KataGoMoveAnalysis): void {
@@ -303,46 +817,373 @@ export function App(): ReactElement {
     }))
   }
 
-  function jumpToMove(next: number): void {
-    setMoveNumber(next)
-    setAnalysis(evaluations[next] ?? null)
+  function analysisForMove(targetMove: number): KataGoMoveAnalysis | null {
+    const cached = evaluations[targetMove] ?? null
+    if (analysis?.moveNumber === targetMove && (analysisHasCandidates(analysis) || !analysisHasCandidates(cached))) {
+      return analysis
+    }
+    return cached
   }
 
-  async function runCurrentMoveAnalysis(): Promise<void> {
-    if (!record || !selectedGame) {
+  function queueAutoLiveAnalysis(gameId: string, targetRecord: GameRecord, targetMove: number, delay = 80): void {
+    if (userPausedLiveAnalysisRef.current) {
       return
     }
+    const requestId = crypto.randomUUID()
+    autoAnalysisRequestId.current = requestId
+    window.setTimeout(() => {
+      if (
+        autoAnalysisRequestId.current !== requestId ||
+        selectedGameIdRef.current !== gameId ||
+        userPausedLiveAnalysisRef.current
+      ) {
+        return
+      }
+      void startLiveAnalysis({
+        gameId,
+        record: targetRecord,
+        moveNumber: targetMove,
+        manual: false
+      })
+    }, delay)
+  }
+
+  function jumpToMove(next: number): void {
+    const targetMove = record ? Math.max(0, Math.min(record.moves.length, Math.round(next))) : next
+    if (liveAnalysis.running) {
+      pauseLiveAnalysis('切换手数，准备继续分析')
+    }
+    setMoveNumber(targetMove)
+    setAnalysis(analysisForMove(targetMove))
+    if (record && selectedGame && !userPausedLiveAnalysisRef.current) {
+      queueAutoLiveAnalysis(selectedGame.id, record, targetMove)
+    }
+  }
+
+  function pauseLiveAnalysis(message = '已暂停精读', manual = false): void {
+    if (manual) {
+      userPausedLiveAnalysisRef.current = true
+    }
+    autoAnalysisRequestId.current = crypto.randomUUID()
+    liveAnalysisRunId.current = crypto.randomUUID()
+    setLiveAnalysis((current) => ({
+      ...current,
+      running: false,
+      status: message,
+      visitsPerSecond: 0
+    }))
+  }
+
+  async function startLiveAnalysis(options: {
+    gameId?: string
+    record?: GameRecord
+    moveNumber?: number
+    manual?: boolean
+  } = {}): Promise<void> {
+    const targetRecord = options.record ?? record
+    const gameId = options.gameId ?? selectedGame?.id
+    if (!targetRecord || !gameId) {
+      return
+    }
+    if (options.manual !== false) {
+      userPausedLiveAnalysisRef.current = false
+    }
+    const targetMove = Math.max(0, Math.min(targetRecord.moves.length, Math.round(options.moveNumber ?? moveNumber)))
+    if (
+      liveAnalysis.running &&
+      liveAnalysis.targetMoveNumber === targetMove &&
+      selectedGameIdRef.current === gameId
+    ) {
+      return
+    }
+    const runId = crypto.randomUUID()
+    const startedAt = Date.now()
+    let lastSampleAt = performance.now()
+    const cachedAnalysis = options.record ? null : analysisForMove(targetMove)
+    let lastVisitSample = candidateVisitsTotal(cachedAnalysis)
+    let lastEffectiveVisitSample = lastVisitSample
+    const benchmarkSpeed = dashboard.settings.katagoBenchmarkVisitsPerSecond
+    let lastSpeedSample = benchmarkSpeed
+    liveAnalysisRunId.current = runId
+    setError('')
+    setMoveNumber(targetMove)
+    setAnalysis(cachedAnalysis)
+    setLiveAnalysis({
+      running: true,
+      status: `精读第 ${targetMove} 手`,
+      visits: lastVisitSample,
+      bestVisits: candidateBestVisits(cachedAnalysis),
+      visitsPerSecond: benchmarkSpeed,
+      targetMoveNumber: targetMove,
+      round: 0
+    })
+
+    if (typeof window.gomentor.analyzePositionStream === 'function') {
+      const disposeProgress = window.gomentor.onAnalyzePositionProgress((progress) => {
+        if (
+          liveAnalysisRunId.current !== runId ||
+          progress.runId !== runId ||
+          progress.gameId !== gameId ||
+          progress.moveNumber !== targetMove ||
+          selectedGameIdRef.current !== gameId
+        ) {
+          return
+        }
+        const nextAnalysis = progress.analysis
+        const totalVisits = candidateVisitsTotal(nextAnalysis)
+        const bestVisits = candidateBestVisits(nextAnalysis)
+        const sampledAt = performance.now()
+        const sampleSeconds = Math.max(0.1, (sampledAt - lastSampleAt) / 1000)
+        const visitsDelta = Math.max(0, totalVisits - lastVisitSample)
+        const measuredSpeed = visitsDelta > 0 ? visitsDelta / sampleSeconds : lastSpeedSample
+        lastSpeedSample = measuredSpeed > 0 ? Math.max(lastSpeedSample, measuredSpeed) : lastSpeedSample
+        const visitsPerSecond = lastSpeedSample || measuredSpeed
+        lastVisitSample = Math.max(lastVisitSample, totalVisits)
+        lastSampleAt = sampledAt
+        rememberEvaluation(nextAnalysis)
+        if (moveNumberRef.current === targetMove) {
+          setAnalysis(nextAnalysis)
+        }
+        setLiveAnalysis({
+          running: !progress.isFinal,
+          status: progress.isFinal
+            ? `已完成 ${formatVisits(totalVisits)}`
+            : `实时搜索 ${formatVisits(totalVisits)} · 一选 ${formatVisits(bestVisits)}`,
+          visits: totalVisits,
+          bestVisits,
+          visitsPerSecond,
+          targetMoveNumber: targetMove,
+          round: 1
+        })
+      })
+      try {
+        const finalAnalysis = await window.gomentor.analyzePositionStream({
+          gameId,
+          moveNumber: targetMove,
+          maxVisits: LIVE_ANALYSIS_TOTAL_VISIT_LIMIT,
+          runId,
+          reportDuringSearchEvery: LIVE_ANALYSIS_REPORT_INTERVAL_SECONDS
+        })
+        if (liveAnalysisRunId.current !== runId || selectedGameIdRef.current !== gameId) {
+          return
+        }
+        const totalVisits = candidateVisitsTotal(finalAnalysis)
+        const bestVisits = candidateBestVisits(finalAnalysis)
+        rememberEvaluation(finalAnalysis)
+        if (moveNumberRef.current === targetMove) {
+          setAnalysis(finalAnalysis)
+        }
+        setLiveAnalysis((current) => ({
+          ...current,
+          running: false,
+          status: `已完成 ${formatVisits(totalVisits)}`,
+          visits: totalVisits,
+          bestVisits,
+          targetMoveNumber: targetMove
+        }))
+      } catch (cause) {
+        if (liveAnalysisRunId.current === runId) {
+          const message = String(cause)
+          const hasUsablePartial = lastVisitSample > 0 || analysisHasCandidates(cachedAnalysis)
+          if (message.includes('KataGo 分析超时') && hasUsablePartial) {
+            setLiveAnalysis((current) => ({
+              ...current,
+              running: false,
+              status: `已保留 ${formatVisits(current.visits || lastVisitSample)}`
+            }))
+          } else if (message.includes('KataGo 分析超时')) {
+            try {
+              const quickAnalysis = await window.gomentor.analyzePosition({
+                gameId,
+                moveNumber: targetMove,
+                maxVisits: 120
+              })
+              if (liveAnalysisRunId.current !== runId || selectedGameIdRef.current !== gameId) {
+                return
+              }
+              const totalVisits = candidateVisitsTotal(quickAnalysis)
+              const bestVisits = candidateBestVisits(quickAnalysis)
+              rememberEvaluation(quickAnalysis)
+              if (moveNumberRef.current === targetMove) {
+                setAnalysis(quickAnalysis)
+              }
+              setLiveAnalysis((current) => ({
+                ...current,
+                running: false,
+                status: `快速分析 ${formatVisits(totalVisits)}`,
+                visits: totalVisits,
+                bestVisits,
+                targetMoveNumber: targetMove
+              }))
+            } catch (fallbackCause) {
+              setError(`KataGo 暂时没有返回分析，请稍后重试或先运行一键测速。${String(fallbackCause)}`)
+              setLiveAnalysis((current) => ({
+                ...current,
+                running: false,
+                status: '等待重试'
+              }))
+            }
+          } else {
+            setError(`KataGo 实时分析失败: ${message}`)
+            setLiveAnalysis((current) => ({
+              ...current,
+              running: false,
+              status: '实时分析失败'
+            }))
+          }
+        }
+      } finally {
+        disposeProgress()
+      }
+      return
+    }
+
+    for (const [index, maxVisits] of LIVE_ANALYSIS_VISIT_STEPS.entries()) {
+      if (liveAnalysisRunId.current !== runId) {
+        return
+      }
+      setLiveAnalysis((current) => ({
+        ...current,
+        running: true,
+        status: `KataGo 精读中 · 上限 ${formatVisits(maxVisits)} visits`,
+        round: index + 1,
+        targetMoveNumber: targetMove
+      }))
+      try {
+        const nextAnalysis = await window.gomentor.analyzePosition({
+          gameId,
+          moveNumber: targetMove,
+          maxVisits
+        })
+        if (liveAnalysisRunId.current !== runId || selectedGameIdRef.current !== gameId) {
+          return
+        }
+        const totalVisits = candidateVisitsTotal(nextAnalysis)
+        const bestVisits = candidateBestVisits(nextAnalysis)
+        const sampledAt = performance.now()
+        const sampleSeconds = Math.max(0.1, (sampledAt - lastSampleAt) / 1000)
+        const effectiveVisits = Math.max(totalVisits, maxVisits)
+        const visitsDelta = Math.max(0, effectiveVisits - lastEffectiveVisitSample)
+        const visitsPerSecond = visitsDelta > 0
+          ? visitsDelta / sampleSeconds
+          : (benchmarkSpeed || totalVisits / Math.max(0.1, (Date.now() - startedAt) / 1000))
+        lastVisitSample = totalVisits
+        lastEffectiveVisitSample = effectiveVisits
+        lastSampleAt = sampledAt
+        rememberEvaluation(nextAnalysis)
+        if (moveNumberRef.current === targetMove) {
+          setAnalysis(nextAnalysis)
+        }
+        setLiveAnalysis({
+          running: true,
+          status: `已搜索 ${formatVisits(totalVisits)} · 一选 ${formatVisits(bestVisits)}`,
+          visits: totalVisits,
+          bestVisits,
+          visitsPerSecond,
+          targetMoveNumber: targetMove,
+          round: index + 1
+        })
+        const elapsed = Date.now() - startedAt
+        const reachedTotal = totalVisits >= LIVE_ANALYSIS_TOTAL_VISIT_LIMIT
+        const reachedBest = bestVisits >= LIVE_ANALYSIS_BEST_VISIT_LIMIT
+        const reachedTime = elapsed >= LIVE_ANALYSIS_TIME_LIMIT_MS
+        if (reachedTotal || reachedBest || reachedTime) {
+          setLiveAnalysis({
+            running: false,
+            status: reachedBest
+              ? `已达到一选 ${formatVisits(bestVisits)}`
+              : reachedTotal
+                ? `已达到总搜索 ${formatVisits(totalVisits)}`
+                : `已运行 ${Math.round(elapsed / 1000)} 秒`,
+            visits: totalVisits,
+            bestVisits,
+            visitsPerSecond,
+            targetMoveNumber: targetMove,
+            round: index + 1
+          })
+          return
+        }
+      } catch (cause) {
+        if (liveAnalysisRunId.current === runId) {
+          setError(`KataGo 精读失败: ${String(cause)}`)
+          setLiveAnalysis((current) => ({
+            ...current,
+            running: false,
+            status: '精读失败'
+          }))
+        }
+        return
+      }
+      await sleep(40)
+    }
+
+    if (liveAnalysisRunId.current === runId) {
+      setLiveAnalysis((current) => ({
+        ...current,
+        running: false,
+        status: `已完成 ${formatVisits(current.visits)}`
+      }))
+    }
+  }
+
+  async function runMoveAnalysisAt(targetMoveNumber: number): Promise<void> {
+    if (!record || !selectedGame || busy !== '') {
+      return
+    }
+    const targetMove = Math.max(0, Math.min(record.moves.length, Math.round(targetMoveNumber)))
+    if (liveAnalysis.running) {
+      pauseLiveAnalysis('老师讲解中，暂停精读')
+    }
+    setMoveNumber(targetMove)
+    setAnalysis(evaluations[targetMove] ?? null)
     setBusy('teacher')
     setError('')
-    const ask = `分析第 ${moveNumber} 手`
+    const ask = `分析第 ${targetMove} 手`
     appendMessage({ role: 'student', content: ask })
+    const assistantMessageId = appendMessage({ role: 'teacher', content: '', status: 'running', toolLogs: [] })
     try {
-      const nextAnalysis = await window.katasensei.analyzePosition({
+      const nextAnalysis = await window.gomentor.analyzePosition({
         gameId: selectedGame.id,
-        moveNumber,
+        moveNumber: targetMove,
         maxVisits: 520
       })
       setAnalysis(nextAnalysis)
       rememberEvaluation(nextAnalysis)
-      const boardImageDataUrl = await renderBoardPng(record, moveNumber, nextAnalysis)
-      const result = await window.katasensei.runTeacherTask({
+      const boardImageDataUrl = await renderBoardPng(record, targetMove, nextAnalysis)
+      const result = await runTeacherTaskWithStream({
         mode: 'current-move',
         prompt: ask,
         gameId: selectedGame.id,
-        moveNumber,
+        moveNumber: targetMove,
         playerName,
         boardImageDataUrl,
         prefetchedAnalysis: nextAnalysis
-      })
+      }, assistantMessageId)
       const finalAnalysis = result.analysis ?? nextAnalysis
       setAnalysis(finalAnalysis)
       rememberEvaluation(finalAnalysis)
-      appendMessage({ role: 'teacher', content: result.markdown, result })
     } catch (cause) {
-      appendMessage({ role: 'teacher', content: `任务失败：${String(cause)}` })
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        status: 'error',
+        content: message.content || `任务失败：${String(cause)}`
+      }))
     } finally {
+      setLiveAnalysis((current) => current.status === '老师讲解中，暂停精读'
+        ? {
+            ...current,
+            running: false,
+            status: '讲解完成，已暂停精读',
+            visitsPerSecond: 0
+          }
+        : current
+      )
       setBusy('')
     }
+  }
+
+  async function runCurrentMoveAnalysis(): Promise<void> {
+    await runMoveAnalysisAt(moveNumber)
   }
 
   async function runTeacherQuickTask(text: string): Promise<void> {
@@ -352,23 +1193,58 @@ export function App(): ReactElement {
     setBusy('teacher')
     setError('')
     appendMessage({ role: 'student', content: text })
+    const assistantMessageId = appendMessage({ role: 'teacher', content: '', status: 'running', toolLogs: [] })
     try {
-      const result = await window.katasensei.runTeacherTask({
+      const result = await runTeacherTaskWithStream({
         mode: 'freeform',
         prompt: text,
         gameId: selectedGame?.id,
         moveNumber,
         playerName
-      })
+      }, assistantMessageId)
       if (result.analysis) {
         setAnalysis(result.analysis)
         rememberEvaluation(result.analysis)
       }
-      appendMessage({ role: 'teacher', content: result.markdown, result })
     } catch (cause) {
-      appendMessage({ role: 'teacher', content: `任务失败：${String(cause)}` })
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        status: 'error',
+        content: message.content || `任务失败：${String(cause)}`
+      }))
     } finally {
       setBusy('')
+    }
+  }
+
+  function runDesktopCommand(command: DesktopCommand): void {
+    setCommandPaletteOpen(false)
+    switch (command) {
+      case 'open-command-palette':
+        setCommandPaletteOpen(true)
+        break
+      case 'open-settings':
+        setSettingsOpen(true)
+        break
+      case 'import-sgf':
+        void importSgf()
+        break
+      case 'analyze-current':
+        void runCurrentMoveAnalysis()
+        break
+      case 'analyze-game':
+        void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')
+        break
+      case 'analyze-recent':
+        void runTeacherQuickTask('分析当前棋手最近10局围棋，找出常见问题、薄弱环节，并更新棋手画像。')
+        break
+      case 'toggle-library':
+        setLibraryCollapsed((value) => !value)
+        break
+      case 'open-ui-gallery':
+        window.location.hash = '#/ui-gallery'
+        window.location.reload()
+        break
     }
   }
 
@@ -380,11 +1256,12 @@ export function App(): ReactElement {
     }
     setPrompt('')
     appendMessage({ role: 'student', content: text })
+    const assistantMessageId = appendMessage({ role: 'teacher', content: '', status: 'running', toolLogs: [] })
     setBusy('teacher')
     try {
       const wantsCurrentMove = /当前手|这手|这一手|本手/.test(text)
       if (wantsCurrentMove && record && selectedGame) {
-        const nextAnalysis = await window.katasensei.analyzePosition({
+        const nextAnalysis = await window.gomentor.analyzePosition({
           gameId: selectedGame.id,
           moveNumber,
           maxVisits: 520
@@ -392,7 +1269,7 @@ export function App(): ReactElement {
         setAnalysis(nextAnalysis)
         rememberEvaluation(nextAnalysis)
         const boardImageDataUrl = await renderBoardPng(record, moveNumber, nextAnalysis)
-        const result = await window.katasensei.runTeacherTask({
+        const result = await runTeacherTaskWithStream({
           mode: 'current-move',
           prompt: text,
           gameId: selectedGame.id,
@@ -400,24 +1277,26 @@ export function App(): ReactElement {
           playerName,
           boardImageDataUrl,
           prefetchedAnalysis: nextAnalysis
-        })
+        }, assistantMessageId)
         if (result.analysis) {
           setAnalysis(result.analysis)
           rememberEvaluation(result.analysis)
         }
-        appendMessage({ role: 'teacher', content: result.markdown, result })
       } else {
-        const result = await window.katasensei.runTeacherTask({
+        await runTeacherTaskWithStream({
           mode: 'freeform',
           prompt: text,
           gameId: selectedGame?.id,
           moveNumber,
           playerName
-        })
-        appendMessage({ role: 'teacher', content: result.markdown, result })
+        }, assistantMessageId)
       }
     } catch (cause) {
-      appendMessage({ role: 'teacher', content: `任务失败：${String(cause)}` })
+      updateMessage(assistantMessageId, (message) => ({
+        ...message,
+        status: 'error',
+        content: message.content || `任务失败：${String(cause)}`
+      }))
     } finally {
       setBusy('')
     }
@@ -431,102 +1310,178 @@ export function App(): ReactElement {
     {
       label: dashboard.systemProfile.hasLlmApiKey ? 'LLM 就绪' : 'LLM 未配置',
       tone: dashboard.systemProfile.hasLlmApiKey ? 'good' : 'warn'
-    },
-    {
-      label: `${dashboard.games.length} 棋谱`,
-      tone: 'neutral'
     }
   ]
 
   return (
-    <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
-      <aside className="library-rail">
-        <div className="rail-head">
-          <button className="icon-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏">
-            {libraryCollapsed ? '>' : '<'}
-          </button>
+    <DiagnosticsGate>
+      <div className="desktop-shell">
+        <DesktopTitleBar statusItems={statusItems} onCommand={runDesktopCommand} />
+        <div className={`studio ${libraryCollapsed ? 'studio--collapsed' : ''}`}>
+        <aside className="library-rail">
+          <div className={`rail-head library-rail-head ${libraryCollapsed ? 'is-collapsed' : ''}`}>
+            {!libraryCollapsed ? (
+              <div className="library-rail-heading">
+                <strong>棋谱库</strong>
+                <span>Fox & SGF</span>
+              </div>
+            ) : null}
+            <button className="icon-button library-collapse-button" onClick={() => setLibraryCollapsed((value) => !value)} title="切换棋谱栏" aria-label="切换棋谱栏">
+              {libraryCollapsed ? '›' : '‹'}
+            </button>
+          </div>
           {!libraryCollapsed ? (
-            <div className="brand-mark">
-              <img src={logoUrl} alt="" aria-hidden="true" />
-              <strong>KataSensei</strong>
-            </div>
+            <LibraryPanel
+              dashboard={dashboard}
+              selectedGame={selectedGame}
+              foxKeyword={foxKeyword}
+              busy={busy}
+              currentStudent={currentStudent}
+              onSelect={setSelectedId}
+              onSync={() => void syncFox()}
+              onImport={() => void importSgf()}
+              onFoxKeyword={setFoxKeyword}
+              onChangePlayerBinding={() => selectedGame && void openStudentBinding(selectedGame)}
+            />
           ) : null}
-        </div>
-        {!libraryCollapsed ? (
-          <LibraryPanel
-            dashboard={dashboard}
-            selectedGame={selectedGame}
-            foxKeyword={foxKeyword}
+        </aside>
+
+        <main className="board-workspace">
+          <header className="topbar">
+            {record ? (
+              <BoardContextBar
+                title={selectedGame ? boardGameTitle(selectedGame) : '未选择棋谱'}
+                record={record}
+                moveNumber={moveNumber}
+                analysis={currentAnalysis}
+                liveAnalysis={liveAnalysis}
+                disabled={busy !== ''}
+                onStart={() => void startLiveAnalysis()}
+                onPause={() => pauseLiveAnalysis('已暂停精读', true)}
+              />
+            ) : (
+              <div className="board-contextbar board-contextbar--empty">
+                <div className="board-contextbar__identity">
+                  <h1>未选择棋谱</h1>
+                  <span>选择左侧棋谱，或导入新的 SGF</span>
+                </div>
+              </div>
+            )}
+          </header>
+
+          <section className="board-stage">
+            {record ? (
+              <div className="board-table board-table--v2">
+                {record.boardSize >= 2 ? (
+                  <GoBoardV2 record={record} moveNumber={moveNumber} analysis={currentAnalysis} keyMoves={currentBoardKeyMoveMarks} />
+                ) : (
+                  <GoBoard record={record} moveNumber={moveNumber} analysis={currentAnalysis} />
+                )}
+              </div>
+            ) : (
+              <div className="empty-board">选择左侧棋谱开始复盘</div>
+            )}
+          </section>
+
+          <section className={`timeline-panel ${record ? 'timeline-panel--with-issues' : 'timeline-panel--empty'}`}>
+            {record ? (
+              <>
+                <TimelineIssueList
+                  color={timelineIssueColor}
+                  issues={timelineIssues}
+                  currentMoveNumber={moveNumber}
+                  loading={graphBusy}
+                  onColorChange={setTimelineIssueColor}
+                  onJump={jumpToMove}
+                />
+                <WinrateTimelineV2
+                  evaluations={Object.values(evaluations)}
+                  currentMoveNumber={moveNumber}
+                  totalMoves={record.moves.length}
+                  loading={graphBusy}
+                  loadingLabel={graphProgress}
+                  onMove={jumpToMove}
+                />
+              </>
+            ) : (
+              <EvaluationGraph
+                analysis={currentAnalysis}
+                evaluations={Object.values(evaluations)}
+                moveNumber={moveNumber}
+                totalMoves={0}
+                loading={graphBusy}
+                loadingLabel={graphProgress}
+                onMove={jumpToMove}
+              />
+            )}
+          </section>
+        </main>
+
+        <aside className="teacher-column">
+          <TeacherPanel
+            messages={messages}
+            prompt={prompt}
             busy={busy}
-            onSelect={setSelectedId}
-            onImport={() => void importSgf()}
-            onSync={() => void syncFox()}
-            onFoxKeyword={setFoxKeyword}
+            dashboard={dashboard}
+            katagoAssets={katagoAssets}
+            error={error}
+            onPrompt={setPrompt}
+            onSubmit={(event) => void sendTeacherPrompt(event)}
+            onAnalyze={() => void runCurrentMoveAnalysis()}
+            onAnalyzeGame={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')}
+            onAnalyzeRecent={() => void runTeacherQuickTask('分析当前棋手最近10局围棋，找出常见问题、薄弱环节，并更新棋手画像。')}
+            onJumpToMove={jumpToMove}
+            onAnalyzeMove={(targetMove) => void runMoveAnalysisAt(targetMove)}
           />
-        ) : null}
-      </aside>
-
-      <main className="board-workspace">
-        <header className="topbar">
-          <div>
-            <h1>{selectedGame ? gameDisplayName(selectedGame) : '未选择棋谱'}</h1>
-            <StatusPills items={statusItems} />
-          </div>
-          <div className="topbar-actions">
-            <button className="primary-button" onClick={() => void runCurrentMoveAnalysis()} disabled={!record || busy !== ''}>
-              {busy === 'teacher' ? '老师分析中' : '分析当前手'}
-            </button>
-            <button className="ghost-button" onClick={() => void runTeacherQuickTask('分析这盘整盘围棋，找出关键问题手、胜负转折点和复盘重点。')} disabled={!record || busy !== ''}>
-              分析整盘围棋
-            </button>
-            <button className="ghost-button" onClick={() => void runTeacherQuickTask('分析当前学生最近10局围棋，找出常见问题、薄弱环节，并更新学生画像。')} disabled={dashboard.games.length === 0 || busy !== ''}>
-              分析近10局围棋
-            </button>
-          </div>
-        </header>
-
-        <section className="board-stage">
-          {record ? (
-            <div className="board-table">
-              <BoardMatchBar record={record} moveNumber={moveNumber} analysis={analysis} />
-              <GoBoard record={record} moveNumber={moveNumber} analysis={analysis} />
-            </div>
-          ) : (
-            <div className="empty-board">导入 SGF 后开始复盘</div>
-          )}
-        </section>
-
-        <section className="timeline-panel">
-          <EvaluationGraph
-            analysis={analysis}
-            evaluations={Object.values(evaluations)}
-            moveNumber={moveNumber}
-            totalMoves={record?.moves.length ?? 0}
-            loading={graphBusy}
-            loadingLabel={graphProgress}
-            onMove={jumpToMove}
-          />
-        </section>
-      </main>
-
-      <aside className="teacher-column">
-        <TeacherPanel
-          messages={messages}
-          prompt={prompt}
+        </aside>
+      </div>
+        <DesktopStatusBar
+          graphBusy={graphBusy}
+          graphProgress={graphProgress}
+          katagoReady={katagoAssets?.ready || dashboard.systemProfile.katagoReady}
+          llmReady={dashboard.systemProfile.hasLlmApiKey}
           busy={busy}
-          settingsOpen={settingsOpen}
-          dashboard={dashboard}
-          llmTestMessage={llmTestMessage}
-          error={error}
-          onPrompt={setPrompt}
-          onSubmit={(event) => void sendTeacherPrompt(event)}
-          onAnalyze={() => void runCurrentMoveAnalysis()}
-          onSettingsOpen={() => setSettingsOpen((value) => !value)}
-          onSaveSettings={(form) => void saveSettings(form)}
-          onTestLlm={(form) => void testLlmSettings(form)}
         />
-      </aside>
-    </div>
+        <CommandPalette
+          open={commandPaletteOpen}
+          busy={busy}
+          hasRecord={Boolean(record)}
+          hasGames={dashboard.games.length > 0}
+          onClose={() => setCommandPaletteOpen(false)}
+          onRun={runDesktopCommand}
+        />
+        <DesktopPreferencesModal
+          open={settingsOpen}
+          dashboard={dashboard}
+          katagoAssets={katagoAssets}
+          busy={busy}
+          llmTestMessage={llmTestMessage}
+          katagoBenchmark={katagoBenchmark}
+          katagoBenchmarkMessage={katagoBenchmarkMessage}
+          katagoInstallMessage={katagoInstallMessage}
+          katagoInstallProgress={katagoInstallProgress}
+          onClose={() => setSettingsOpen(false)}
+          onSave={(form) => void saveSettings(form)}
+          onTest={(form) => void testLlmSettings(form)}
+          onBenchmark={() => void runKataGoBenchmark()}
+          onInstallOfficialModel={(presetId) => void installOfficialKataGoModel(presetId)}
+          onRefreshKataGoAssets={() => void refreshKataGoAssets()}
+        />
+      </div>
+      <StudentBindingDialog
+        open={Boolean(studentBinding)}
+        blackName={studentBinding?.game.black}
+        whiteName={studentBinding?.game.white}
+        suggestions={studentBinding?.suggestions.map((suggestion) => ({
+          ...suggestion.student,
+          ...(suggestion.color ? { suggestedColor: suggestion.color } : {})
+        }))}
+        onClose={() => setStudentBinding(null)}
+        onSkip={() => setStudentBinding(null)}
+        onBindExisting={(input) => void bindImportedGameToExisting(input)}
+        onCreateStudent={(input) => void createStudentAndBind(input)}
+      />
+    </DiagnosticsGate>
   )
 }
 
@@ -535,22 +1490,25 @@ function LibraryPanel({
   selectedGame,
   foxKeyword,
   busy,
+  currentStudent,
   onSelect,
-  onImport,
   onSync,
-  onFoxKeyword
+  onImport,
+  onFoxKeyword,
+  onChangePlayerBinding
 }: {
   dashboard: DashboardData
   selectedGame?: LibraryGame
   foxKeyword: string
   busy: string
+  currentStudent: StudentProfile | null
   onSelect: (id: string) => void
-  onImport: () => void
   onSync: () => void
+  onImport: () => void
   onFoxKeyword: (value: string) => void
+  onChangePlayerBinding: () => void
 }): ReactElement {
   const [page, setPage] = useState(1)
-  const pageSize = 10
   const keyword = foxKeyword.trim().toLowerCase()
   const visibleGames = useMemo(() => {
     if (!keyword) {
@@ -568,9 +1526,11 @@ function LibraryPanel({
       return haystack.includes(keyword)
     })
   }, [dashboard.games, keyword])
-  const pageCount = Math.max(1, Math.ceil(visibleGames.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(visibleGames.length / LIBRARY_PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const pageGames = visibleGames.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const pageGames = visibleGames.slice((safePage - 1) * LIBRARY_PAGE_SIZE, safePage * LIBRARY_PAGE_SIZE)
+  const pageStart = visibleGames.length === 0 ? 0 : (safePage - 1) * LIBRARY_PAGE_SIZE + 1
+  const pageEnd = Math.min(visibleGames.length, safePage * LIBRARY_PAGE_SIZE)
 
   useEffect(() => {
     setPage(1)
@@ -585,34 +1545,51 @@ function LibraryPanel({
           onSync()
         }}
       >
-        <input value={foxKeyword} onChange={(event) => onFoxKeyword(event.target.value)} placeholder="输入野狐昵称 / UID" />
-        <button className="primary-button" type="submit" disabled={!foxKeyword.trim() || busy !== ''}>
-          {busy === 'fox' ? '同步中' : '同步'}
+        <input value={foxKeyword} onChange={(event) => onFoxKeyword(event.target.value)} placeholder="输入野狐昵称" />
+        <button className="primary-button fox-search-button" type="submit" disabled={!foxKeyword.trim() || busy !== ''}>
+          {busy === 'fox' ? '搜索中' : '搜索野狐棋谱'}
         </button>
       </form>
-      <button className="ghost-button library-upload-button" onClick={onImport} disabled={busy !== ''}>
-        {busy === 'import' ? '导入中' : '上传 SGF'}
+      <button className="ghost-button library-import-button" type="button" onClick={onImport} disabled={busy !== ''}>
+        {busy === 'import' ? '正在导入棋谱...' : '导入棋谱 SGF 文件'}
       </button>
+      <StudentRailCard
+        displayName={currentStudent?.displayName}
+        primaryFoxNickname={currentStudent?.primaryFoxNickname}
+        disabled={!selectedGame}
+        onChangeBinding={onChangePlayerBinding}
+      />
       <div className="library-list-head">
         <span>{keyword ? '野狐棋谱' : '棋谱库'}</span>
-        <small>{visibleGames.length} 盘</small>
+        <small>{visibleGames.length} 盘 · {pageStart}-{pageEnd}</small>
       </div>
       <div className="game-list">
         {pageGames.map((game) => (
           <button key={game.id} className={`game-row ${selectedGame?.id === game.id ? 'is-active' : ''}`} onClick={() => onSelect(game.id)}>
-            <span>{gameDisplayName(game)}</span>
-            <small>{game.date || '未知日期'} · {game.result || '未知结果'}</small>
+            <div className="game-row__title">
+              <span>{gameDisplayName(game)}</span>
+              {game.source === 'fox' ? (
+                <em className={`game-row__badge ${game.downloadStatus === 'downloaded' ? 'game-row__badge--downloaded' : 'game-row__badge--remote'}`}>
+                  {game.downloadStatus === 'downloaded' ? '已缓存' : '仅列表'}
+                </em>
+              ) : (
+                <em className="game-row__badge">本地</em>
+              )}
+            </div>
+            <small className="game-row__meta">
+              {game.date || '未知日期'} · {game.moveCount ? `${game.moveCount}手 · ` : ''}{game.result || '未知结果'}
+            </small>
           </button>
         ))}
         {pageGames.length === 0 ? <div className="empty-list">没有匹配的棋谱</div> : null}
       </div>
-      <div className="pagination-row">
-        <button className="ghost-button" onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1}>
-          上一页
+      <div className="pagination-row library-pagination" aria-label="棋谱分页">
+        <button className="ghost-button" onClick={() => setPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="上一页棋谱">
+          ‹
         </button>
         <span>{safePage} / {pageCount}</span>
-        <button className="ghost-button" onClick={() => setPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount}>
-          下一页
+        <button className="ghost-button" onClick={() => setPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount} aria-label="下一页棋谱">
+          ›
         </button>
       </div>
     </div>
@@ -631,108 +1608,567 @@ function StatusPills({ items }: { items: StatusPill[] }): ReactElement {
   )
 }
 
+function DesktopTitleBar({
+  statusItems,
+  onCommand
+}: {
+  statusItems: StatusPill[]
+  onCommand: (command: DesktopCommand) => void
+}): ReactElement {
+  return (
+    <header className="desktop-titlebar">
+      <div className="desktop-titlebar__brand">
+        <img src={logoUrl} alt="" aria-hidden="true" />
+        <div>
+          <strong>GoMentor</strong>
+        </div>
+      </div>
+      <div className="desktop-titlebar__center">
+        <StatusPills items={statusItems} />
+      </div>
+      <div className="desktop-titlebar__actions">
+        <button type="button" onClick={() => onCommand('open-settings')}>设置</button>
+      </div>
+    </header>
+  )
+}
+
+function DesktopStatusBar({
+  graphBusy,
+  graphProgress,
+  katagoReady,
+  llmReady,
+  busy
+}: {
+  graphBusy: boolean
+  graphProgress: string
+  katagoReady: boolean
+  llmReady: boolean
+  busy: string
+}): ReactElement {
+  return (
+    <footer className="desktop-statusbar">
+      <span>{graphBusy ? `Winrate ${graphProgress || 'analyzing'}` : 'Winrate ready'}</span>
+      <span data-ready={katagoReady}>KataGo</span>
+      <span data-ready={llmReady}>Vision LLM</span>
+      <em>{busy ? `Task: ${busy}` : 'Ready'}</em>
+    </footer>
+  )
+}
+
+function CommandPalette({
+  open,
+  busy,
+  hasRecord,
+  hasGames,
+  onClose,
+  onRun
+}: {
+  open: boolean
+  busy: string
+  hasRecord: boolean
+  hasGames: boolean
+  onClose: () => void
+  onRun: (command: DesktopCommand) => void
+}): ReactElement | null {
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    if (open) {
+      setQuery('')
+    }
+  }, [open])
+  const commands = useMemo(() => [
+    { id: 'analyze-current' as const, title: '分析当前手', detail: '截图棋盘，调用 KataGo，再让老师讲解', shortcut: 'Ctrl/Cmd 1', disabled: !hasRecord || busy !== '' },
+    { id: 'analyze-game' as const, title: '分析整盘围棋', detail: '扫描关键问题手和胜负转折点', shortcut: 'Ctrl/Cmd 2', disabled: !hasRecord || busy !== '' },
+    { id: 'analyze-recent' as const, title: '分析近 10 局', detail: '聚合棋手稳定问题并更新画像', shortcut: 'Ctrl/Cmd 3', disabled: !hasGames || busy !== '' },
+    { id: 'import-sgf' as const, title: '导入棋谱 SGF 文件', detail: '从本机文件系统添加棋谱', shortcut: 'Ctrl/Cmd O', disabled: busy !== '' },
+    { id: 'open-settings' as const, title: '打开设置', detail: '配置模型、KataGo 资源和发布 readiness', shortcut: 'Ctrl/Cmd ,', disabled: false },
+    { id: 'toggle-library' as const, title: '切换棋谱栏', detail: '收起或展开左侧棋手棋谱栏', shortcut: 'Ctrl/Cmd B', disabled: false },
+    { id: 'open-ui-gallery' as const, title: '打开 UI Gallery', detail: '进入内部视觉 QA 样例页', shortcut: 'Ctrl/Cmd Shift G', disabled: false }
+  ], [busy, hasGames, hasRecord])
+  const filtered = commands.filter((command) => {
+    const haystack = `${command.title} ${command.detail}`.toLowerCase()
+    return haystack.includes(query.trim().toLowerCase())
+  })
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Escape') {
+      onClose()
+    }
+    if (event.key === 'Enter') {
+      const first = filtered.find((command) => !command.disabled)
+      if (first) {
+        onRun(first.id)
+      }
+    }
+  }
+  if (!open) {
+    return null
+  }
+  return (
+    <div className="desktop-command-palette" role="dialog" aria-modal="true" aria-label="GoMentor command palette" onMouseDown={onClose}>
+      <section className="desktop-command-palette__panel" onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <span>Command Palette</span>
+          <button type="button" onClick={onClose}>Esc</button>
+        </header>
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="输入任务或命令，例如：分析当前手、导入棋谱、打开设置"
+        />
+        <div className="desktop-command-palette__list">
+          {filtered.map((command) => (
+            <button key={command.id} type="button" disabled={command.disabled} onClick={() => onRun(command.id)}>
+              <strong>{command.title}</strong>
+              <small>{command.detail}</small>
+              <em>{command.shortcut}</em>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function DesktopPreferencesModal({
+  open,
+  dashboard,
+  katagoAssets,
+  busy,
+  llmTestMessage,
+  katagoBenchmark,
+  katagoBenchmarkMessage,
+  katagoInstallMessage,
+  katagoInstallProgress,
+  onClose,
+  onSave,
+  onTest,
+  onBenchmark,
+  onInstallOfficialModel,
+  onRefreshKataGoAssets
+}: {
+  open: boolean
+  dashboard: DashboardData
+  katagoAssets: KataGoAssetStatus | null
+  busy: string
+  llmTestMessage: string
+  katagoBenchmark: KataGoBenchmarkResult | null
+  katagoBenchmarkMessage: string
+  katagoInstallMessage: string
+  katagoInstallProgress: KataGoAssetInstallProgress | null
+  onClose: () => void
+  onSave: (form: HTMLFormElement) => void
+  onTest: (form: HTMLFormElement) => void
+  onBenchmark: () => void
+  onInstallOfficialModel: (presetId: KataGoModelPresetId) => void
+  onRefreshKataGoAssets: () => void
+}): ReactElement | null {
+  if (!open) {
+    return null
+  }
+  return (
+    <div className="desktop-preferences" role="dialog" aria-modal="true" aria-label="GoMentor 设置" onMouseDown={onClose}>
+      <section className="desktop-preferences__window" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="desktop-preferences__titlebar">
+          <div>
+            <span>设置</span>
+            <strong>桌面运行设置</strong>
+          </div>
+          <button type="button" onClick={onClose}>关闭</button>
+        </header>
+        <SettingsDrawer
+          dashboard={dashboard}
+          katagoAssets={katagoAssets}
+          busy={busy}
+          llmTestMessage={llmTestMessage}
+          katagoBenchmark={katagoBenchmark}
+          katagoBenchmarkMessage={katagoBenchmarkMessage}
+          katagoInstallMessage={katagoInstallMessage}
+          katagoInstallProgress={katagoInstallProgress}
+          onSave={onSave}
+          onTest={onTest}
+          onBenchmark={onBenchmark}
+          onInstallOfficialModel={onInstallOfficialModel}
+          onRefreshKataGoAssets={onRefreshKataGoAssets}
+        />
+      </section>
+    </div>
+  )
+}
+
+function teacherResultKeyMoves(result?: TeacherRunResult): Array<{ moveNumber: number; title: string; summary: string; severity: string }> {
+  const structured = result?.structuredResult ?? result?.structured
+  return (structured?.keyMistakes ?? []).flatMap((move, index) => {
+    if (typeof move.moveNumber !== 'number') {
+      return []
+    }
+    const title = `第 ${move.moveNumber} 手${move.played ? ` ${move.played}` : ''}`
+    const summary = move.explanation || move.evidence || '这手值得回到棋盘上单独看。'
+    return [{
+      moveNumber: move.moveNumber,
+      title: title || `关键手 ${index + 1}`,
+      summary,
+      severity: move.errorType || move.severity || '重点'
+    }]
+  }).slice(0, 4)
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>
+    }
+    return part
+  })
+}
+
+function ChatMarkdown({ text }: { text: string }): ReactElement {
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+  const nodes: ReactElement[] = []
+  let list: ReactElement[] = []
+  function flushList(): void {
+    if (list.length > 0) {
+      nodes.push(<ol key={`ol-${nodes.length}`}>{list}</ol>)
+      list = []
+    }
+  }
+  for (const line of lines) {
+    const numbered = line.match(/^(\d+)[.、]\s*(.+)$/)
+    if (numbered) {
+      list.push(<li key={`${nodes.length}-${list.length}`}>{renderInlineMarkdown(numbered[2])}</li>)
+      continue
+    }
+    flushList()
+    nodes.push(<p key={`p-${nodes.length}`}>{renderInlineMarkdown(line)}</p>)
+  }
+  flushList()
+  return <div className="chat-markdown">{nodes}</div>
+}
+
+function TeacherInlineResponse({
+  message,
+  onJumpToMove,
+  onAnalyzeMove
+}: {
+  message: ChatMessage
+  onJumpToMove: (moveNumber: number) => void
+  onAnalyzeMove: (moveNumber: number) => void
+}): ReactElement {
+  const keyMoves = teacherResultKeyMoves(message.result)
+  const toolLogs = message.toolLogs ?? message.result?.toolLogs ?? []
+  const isRunning = message.status === 'running'
+  const isTeacher = message.role === 'teacher'
+  return (
+    <>
+      {isTeacher && toolLogs.length > 0 ? (
+        <details className="codex-tool-trace" open={isRunning || undefined}>
+          <summary>工具调用 · {toolLogs.length}</summary>
+          <div>
+            {toolLogs.map((log) => (
+              <p key={log.id} className={`codex-tool-trace__row codex-tool-trace__row--${log.status}`}>
+                <strong>{log.label || log.name}</strong>
+                <span>{log.detail || log.status}</span>
+              </p>
+            ))}
+          </div>
+        </details>
+      ) : null}
+      <div className={`message-copy ${message.role === 'teacher' ? 'message-copy--assistant' : 'message-copy--user'}`}>
+        {isTeacher && !message.content && isRunning ? (
+          <div className="codex-working">
+            <span />
+            <p>正在读取棋盘、KataGo 候选点和你的问题。</p>
+          </div>
+        ) : isTeacher ? (
+          <>
+            <ChatMarkdown text={message.content} />
+            {isRunning ? <span className="streaming-cursor" aria-label="正在输出" /> : null}
+          </>
+        ) : message.content}
+      </div>
+      {keyMoves.length > 0 ? (
+        <div className="codex-keymove-strip" aria-label="关键手跳转">
+          {keyMoves.map((move) => (
+            <button key={`${move.moveNumber}-${move.title}`} type="button" onClick={() => onJumpToMove(move.moveNumber)}>
+              <span>{move.title}</span>
+              <em>{move.severity}</em>
+              <small>{move.summary}</small>
+            </button>
+          ))}
+          <button type="button" className="codex-keymove-strip__analyze" onClick={() => onAnalyzeMove(keyMoves[0].moveNumber)}>
+            展开这一手
+          </button>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 function TeacherPanel({
   messages,
   prompt,
   busy,
-  settingsOpen,
   dashboard,
-  llmTestMessage,
+  katagoAssets,
   error,
   onPrompt,
   onSubmit,
   onAnalyze,
-  onSettingsOpen,
-  onSaveSettings,
-  onTestLlm
+  onAnalyzeGame,
+  onAnalyzeRecent,
+  onJumpToMove,
+  onAnalyzeMove
 }: {
   messages: ChatMessage[]
   prompt: string
   busy: string
-  settingsOpen: boolean
   dashboard: DashboardData
-  llmTestMessage: string
+  katagoAssets: KataGoAssetStatus | null
   error: string
   onPrompt: (value: string) => void
   onSubmit: (event: FormEvent) => void
   onAnalyze: () => void
-  onSettingsOpen: () => void
-  onSaveSettings: (form: HTMLFormElement) => void
-  onTestLlm: (form: HTMLFormElement) => void
+  onAnalyzeGame: () => void
+  onAnalyzeRecent: () => void
+  onJumpToMove: (moveNumber: number) => void
+  onAnalyzeMove: (moveNumber: number) => void
 }): ReactElement {
+  const modelName = dashboard.settings.llmModel || '未选择模型'
+  const katagoLabel = katagoAssets?.ready || dashboard.systemProfile.katagoReady ? 'KataGo ready' : 'KataGo missing'
+  const llmLabel = dashboard.systemProfile.hasLlmApiKey ? 'Vision LLM ready' : 'LLM setup needed'
+  const hasRunningTask = busy === 'teacher'
+  const hasRunningMessage = messages.some((message) => message.role === 'teacher' && message.status === 'running')
+  const threadBottomRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    threadBottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages, busy, error])
   return (
-    <div className="teacher-panel">
-      <div className="teacher-head">
-        <div className="teacher-title">
-          <strong>AI 围棋老师</strong>
-          <span className={`teacher-status ${busy === 'teacher' ? 'is-running' : ''}`}>{busy === 'teacher' ? '执行中' : '待命'}</span>
+    <div className="teacher-panel teacher-agent-editor">
+      <header className="teacher-editor-head">
+        <div className="teacher-editor-title">
+          <span>Agent thread</span>
+          <strong>GoMentor</strong>
+          <div className="teacher-editor-meta">
+            <em>{modelName}</em>
+            <em>{katagoLabel}</em>
+            <em>{llmLabel}</em>
+          </div>
         </div>
-        <div className="head-actions">
-          <button className="ghost-button" onClick={onAnalyze} disabled={busy !== ''}>
-            当前手
-          </button>
-          <button className="icon-button" onClick={onSettingsOpen} title="LLM 配置">
-            ⚙
-          </button>
+        <div className="teacher-editor-actions">
+          <span className={`teacher-status ${hasRunningTask ? 'is-running' : ''}`}>{hasRunningTask ? 'Running' : 'Ready'}</span>
         </div>
-      </div>
+      </header>
 
-      {settingsOpen ? (
-        <SettingsDrawer
-          dashboard={dashboard}
-          busy={busy}
-          llmTestMessage={llmTestMessage}
-          onSave={onSaveSettings}
-          onTest={onTestLlm}
-        />
-      ) : null}
-
-      <div className="message-list">
+      <div className="message-list agent-thread">
         {messages.map((message) => (
-          <article key={message.id} className={`message message--${message.role}`}>
-            <div className="message-meta">{message.role === 'teacher' ? '老师' : '学生'}</div>
-            <div className="message-copy">{message.content}</div>
-            {message.result ? <ToolLogList result={message.result} /> : null}
+          <article key={message.id} className={`message message--${message.role} agent-turn agent-turn--${message.role}`}>
+            <div className="agent-turn__body">
+              <header className="agent-turn__head">
+                <strong>{message.role === 'teacher' ? 'GoMentor' : 'User'}</strong>
+                <small>{message.status ?? (message.result ? 'completed' : message.role === 'teacher' ? 'assistant' : 'prompt')}</small>
+              </header>
+              <TeacherInlineResponse
+                message={message}
+                onJumpToMove={onJumpToMove}
+                onAnalyzeMove={onAnalyzeMove}
+              />
+            </div>
           </article>
         ))}
-        {busy === 'teacher' ? (
-          <div className="message message--teacher message--running">
-            <div className="message-meta">老师</div>
-            <div className="message-copy">正在规划任务、调用工具和整理讲解...</div>
+        {hasRunningTask && !hasRunningMessage ? (
+          <div className="message message--teacher message--running agent-turn agent-turn--teacher agent-turn--running">
+            <div className="agent-turn__body">
+              <header className="agent-turn__head">
+                <strong>GoMentor</strong>
+                <small>running</small>
+              </header>
+              <div className="codex-working">
+                <span />
+                <p>正在看棋盘、KataGo 候选点和你的问题，然后组织成一段能下次用上的讲解。</p>
+              </div>
+            </div>
           </div>
         ) : null}
+        <div ref={threadBottomRef} className="agent-thread__bottom" />
       </div>
 
       {error ? <div className="error-line">{error}</div> : null}
-      <form className="composer" onSubmit={onSubmit}>
-        <textarea
-          value={prompt}
-          onChange={(event) => onPrompt(event.target.value)}
-          placeholder="让老师分析最近10盘棋、找常见问题、做训练计划..."
-        />
-        <button className="primary-button" type="submit" disabled={busy !== '' || !prompt.trim()}>
-          发送
-        </button>
-      </form>
+      <TeacherComposerPro
+        value={prompt}
+        busy={busy !== ''}
+        actions={[
+          { label: '分析当前手', onClick: onAnalyze, primary: true },
+          { label: '分析整盘', onClick: onAnalyzeGame },
+          { label: '分析近 10 局', onClick: onAnalyzeRecent }
+        ]}
+        onChange={onPrompt}
+        onSubmit={onSubmit}
+        onQuickPrompt={(text) => {
+          onPrompt(text)
+        }}
+      />
     </div>
   )
 }
 
 function SettingsDrawer({
   dashboard,
+  katagoAssets,
   busy,
   llmTestMessage,
+  katagoBenchmark,
+  katagoBenchmarkMessage,
+  katagoInstallMessage,
+  katagoInstallProgress,
   onSave,
-  onTest
+  onTest,
+  onBenchmark,
+  onInstallOfficialModel,
+  onRefreshKataGoAssets
 }: {
   dashboard: DashboardData
+  katagoAssets: KataGoAssetStatus | null
   busy: string
   llmTestMessage: string
+  katagoBenchmark: KataGoBenchmarkResult | null
+  katagoBenchmarkMessage: string
+  katagoInstallMessage: string
+  katagoInstallProgress: KataGoAssetInstallProgress | null
   onSave: (form: HTMLFormElement) => void
   onTest: (form: HTMLFormElement) => void
+  onBenchmark: () => void
+  onInstallOfficialModel: (presetId: KataGoModelPresetId) => void
+  onRefreshKataGoAssets: () => void
 }): ReactElement {
+  const [releaseReadiness, setReleaseReadiness] = useState<ReleaseReadinessResult | null>(null)
+  const [releaseReadinessError, setReleaseReadinessError] = useState('')
+  const [refreshedLlmModels, setRefreshedLlmModels] = useState<string[]>([])
+  const [llmModelsRefreshing, setLlmModelsRefreshing] = useState(false)
+  const [llmModelRefreshMessage, setLlmModelRefreshMessage] = useState('')
+  const [selectedLlmModel, setSelectedLlmModel] = useState(dashboard.settings.llmModel)
   const modelPresets = dashboard.systemProfile.katagoModelPresets
-  const selectedPreset = modelPresets.find((preset) => preset.id === dashboard.settings.katagoModelPreset) ?? modelPresets[0]
+  const [selectedPresetId, setSelectedPresetId] = useState<KataGoModelPresetId>(dashboard.settings.katagoModelPreset)
+  const selectedPreset = modelPresets.find((preset) => preset.id === selectedPresetId) ?? modelPresets[0]
+  const llmModelOptions = Array.from(new Set([
+    selectedLlmModel,
+    dashboard.settings.llmModel,
+    ...dashboard.systemProfile.proxyModels,
+    ...refreshedLlmModels,
+    'gpt-5.5',
+    'gpt-5.4-mini',
+    'gpt-5-codex-mini',
+    'gpt-5',
+    'gpt-4.1',
+    'claude-3-5-sonnet-latest'
+  ].map((model) => model.trim()).filter(Boolean)))
+  const groupedModelPresets = useMemo(() => {
+    const groups = new Map<string, typeof modelPresets>()
+    for (const preset of modelPresets) {
+      const group = preset.group || '官方权重'
+      groups.set(group, [...(groups.get(group) ?? []), preset])
+    }
+    const groupOrder = [
+      '官网推荐 zhizi 模型',
+      '18b 官方推荐 / 日常教学',
+      '20b 快速分析 / 旧机友好',
+      '28b 高强度精读',
+      '40b 旗舰 / 高配机器'
+    ]
+    return [...groups.entries()].sort(([left], [right]) => {
+      const leftIndex = groupOrder.indexOf(left)
+      const rightIndex = groupOrder.indexOf(right)
+      return (leftIndex === -1 ? 99 : leftIndex) - (rightIndex === -1 ? 99 : rightIndex)
+    })
+  }, [modelPresets])
+  const betaItems = useMemo<BetaAcceptanceItem[]>(() => {
+    if (releaseReadiness) {
+      return releaseReadiness.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        status: item.status,
+        detail: item.detail
+      }))
+    }
+    return [
+      {
+        id: 'katago-assets',
+        label: 'KataGo 内置资源',
+        status: katagoAssets?.ready ? 'pass' : katagoAssets?.manifestFound ? 'warn' : 'fail',
+        detail: katagoAssets?.detail ?? dashboard.systemProfile.katagoStatus
+      },
+      {
+        id: 'llm-provider',
+        label: 'Claude 兼容代理',
+        status: dashboard.systemProfile.hasLlmApiKey ? 'pass' : 'warn',
+        detail: dashboard.systemProfile.hasLlmApiKey ? `模型 ${dashboard.settings.llmModel}` : '未配置 API Key，老师多模态讲解不可用'
+      },
+      {
+        id: 'knowledge',
+        label: '本地围棋知识库',
+        status: 'pass',
+        detail: 'P0 教学卡随应用打包'
+      },
+      {
+        id: 'teacher-ui',
+        label: '老师智能体 UI',
+        status: 'pass',
+        detail: '关键手、工具日志、结构化结果卡已接入'
+      }
+    ]
+  }, [dashboard.settings.llmModel, dashboard.systemProfile.hasLlmApiKey, dashboard.systemProfile.katagoStatus, katagoAssets, releaseReadiness])
+
+  async function refreshReleaseReadiness(): Promise<void> {
+    try {
+      setReleaseReadinessError('')
+      if (!window.gomentor.getReleaseReadiness) {
+        return
+      }
+      setReleaseReadiness(await window.gomentor.getReleaseReadiness())
+    } catch (cause) {
+      setReleaseReadinessError(`Beta 验收状态读取失败: ${String(cause)}`)
+    }
+  }
+
+  async function refreshLlmModels(form: HTMLFormElement | null): Promise<void> {
+    setLlmModelsRefreshing(true)
+    setLlmModelRefreshMessage('')
+    try {
+      const formData = new FormData(form ?? undefined)
+      const result = await window.gomentor.listLlmModels({
+        llmBaseUrl: String(formData.get('llmBaseUrl') ?? dashboard.settings.llmBaseUrl),
+        llmApiKey: String(formData.get('llmApiKey') ?? '')
+      })
+      if (result.ok) {
+        setRefreshedLlmModels(result.models)
+        if (
+          result.models.includes('gpt-5.5') &&
+          (!selectedLlmModel || selectedLlmModel === 'gpt-5-mini' || selectedLlmModel === 'gpt-5.4' || !result.models.includes(selectedLlmModel))
+        ) {
+          setSelectedLlmModel('gpt-5.5')
+        }
+      }
+      setLlmModelRefreshMessage(result.message)
+    } catch (cause) {
+      setLlmModelRefreshMessage(`模型刷新失败: ${String(cause)}`)
+    } finally {
+      setLlmModelsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshReleaseReadiness()
+  }, [])
+
+  useEffect(() => {
+    setSelectedPresetId(dashboard.settings.katagoModelPreset)
+  }, [dashboard.settings.katagoModelPreset])
+
+  useEffect(() => {
+    setSelectedLlmModel(dashboard.settings.llmModel)
+  }, [dashboard.settings.llmModel])
+
   return (
     <form
       key={`${dashboard.settings.katagoModelPreset}|${dashboard.settings.llmBaseUrl}|${dashboard.settings.llmModel}`}
@@ -742,18 +2178,50 @@ function SettingsDrawer({
         onSave(event.currentTarget)
       }}
     >
-      <label>
-        KataGo 权重
-        <select name="katagoModelPreset" defaultValue={dashboard.settings.katagoModelPreset}>
-          {modelPresets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label} · {preset.badge}
-            </option>
+      <label className="katago-preset-select">
+        KataGo 官方权重
+        <select
+          name="katagoModelPreset"
+          value={selectedPresetId}
+          onChange={(event) => setSelectedPresetId(event.target.value as KataGoModelPresetId)}
+        >
+          {groupedModelPresets.map(([group, presets]) => (
+            <optgroup key={group} label={group}>
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label} · {preset.badge} · {preset.sizeHint}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         {selectedPreset ? <small>{selectedPreset.description}</small> : null}
-        <small>{dashboard.systemProfile.katagoStatus}</small>
       </label>
+      <KataGoAssetsPanel
+        status={katagoAssets}
+        selectedPreset={selectedPreset}
+        busy={busy === 'katago-install'}
+        installProgress={katagoInstallProgress}
+        installMessage={katagoInstallMessage}
+        onInstall={() => onInstallOfficialModel(selectedPreset?.id ?? dashboard.settings.katagoModelPreset)}
+        onRefresh={onRefreshKataGoAssets}
+      />
+      <KataGoBenchmarkPanel
+        settings={dashboard.settings}
+        result={katagoBenchmark}
+        message={katagoBenchmarkMessage}
+        busy={busy === 'katago-benchmark'}
+        onRun={onBenchmark}
+      />
+      <BetaAcceptancePanel
+        items={betaItems}
+        flags={releaseReadiness?.flags}
+        onRunChecks={() => {
+          void refreshReleaseReadiness()
+          onRefreshKataGoAssets()
+        }}
+      />
+      {releaseReadinessError ? <div className="test-message">{releaseReadinessError}</div> : null}
       <label>
         LLM Base URL
         <input name="llmBaseUrl" defaultValue={dashboard.settings.llmBaseUrl} />
@@ -768,17 +2236,31 @@ function SettingsDrawer({
       </label>
       <label>
         多模态模型
-        {dashboard.systemProfile.proxyModels.length > 0 ? (
-          <select name="llmModel" defaultValue={dashboard.settings.llmModel}>
-            {dashboard.systemProfile.proxyModels.map((model) => (
+        <div className="llm-model-picker">
+          <select
+            className="llm-model-select"
+            name="llmModel"
+            value={selectedLlmModel}
+            onChange={(event) => setSelectedLlmModel(event.target.value)}
+            aria-label="选择多模态模型"
+          >
+            {llmModelOptions.map((model) => (
               <option key={model} value={model}>
                 {model}
               </option>
             ))}
           </select>
-        ) : (
-          <input name="llmModel" defaultValue={dashboard.settings.llmModel} />
-        )}
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={(event) => void refreshLlmModels(event.currentTarget.form)}
+            disabled={busy !== '' || llmModelsRefreshing}
+          >
+            {llmModelsRefreshing ? '刷新中' : '刷新模型'}
+          </button>
+        </div>
+        <small>从代理返回的模型中选择；如果没有看到新模型，请先刷新模型。</small>
+        {llmModelRefreshMessage ? <small>{llmModelRefreshMessage}</small> : null}
       </label>
       <div className="settings-actions">
         <button className="ghost-button" type="button" onClick={(event) => onTest(event.currentTarget.form!)} disabled={busy !== ''}>
@@ -793,6 +2275,53 @@ function SettingsDrawer({
   )
 }
 
+function KataGoBenchmarkPanel({
+  settings,
+  result,
+  message,
+  busy,
+  onRun
+}: {
+  settings: DashboardData['settings']
+  result: KataGoBenchmarkResult | null
+  message: string
+  busy: boolean
+  onRun: () => void
+}): ReactElement {
+  const bestThreads = result?.recommendedThreads || settings.katagoBenchmarkThreads
+  const bestSpeed = result?.visitsPerSecond || settings.katagoBenchmarkVisitsPerSecond
+  const tunedAt = result?.updatedAt || settings.katagoBenchmarkUpdatedAt
+  return (
+    <section className="runtime-card katago-benchmark-card">
+      <header>
+        <strong>KataGo 一键测速</strong>
+        <span className={bestThreads ? 'runtime-pill runtime-pill--ready' : 'runtime-pill runtime-pill--warn'}>
+          {bestThreads ? `${bestThreads} threads` : '未测速'}
+        </span>
+      </header>
+      <p>使用 KataGo 官方 benchmark 命令测试本机搜索线程，自动写入分析配置。</p>
+      <div className="runtime-list">
+        <div><span>推荐线程</span><strong>{bestThreads || '待测速'}</strong></div>
+        <div><span>测速速度</span><strong>{bestSpeed ? formatSearchSpeed(bestSpeed) : '待测速'}</strong></div>
+        <div><span>分析配置</span><strong>{settings.katagoAnalysisThreads || 'auto'} × {settings.katagoSearchThreadsPerAnalysisThread || 1}</strong></div>
+        <div><span>批量</span><strong>{settings.katagoMaxBatchSize || 32}</strong></div>
+        {tunedAt ? <div><span>更新时间</span><strong>{new Date(tunedAt).toLocaleString()}</strong></div> : null}
+      </div>
+      <button className="primary-button" type="button" onClick={onRun} disabled={busy}>
+        {busy ? '测速中' : '一键测速并优化'}
+      </button>
+      {message ? <p className="test-message">{message}</p> : null}
+      {result?.tested.length ? (
+        <div className="benchmark-results">
+          {result.tested.map((item) => (
+            <span key={item.threads}>{item.threads}T · {formatSearchSpeed(item.visitsPerSecond)}</span>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 function ToolLogList({ result }: { result: TeacherRunResult }): ReactElement {
   const statusLabel: Record<string, string> = {
     running: '运行中',
@@ -801,7 +2330,8 @@ function ToolLogList({ result }: { result: TeacherRunResult }): ReactElement {
     skipped: '跳过'
   }
   return (
-    <div className="tool-log">
+    <details className="tool-log">
+      <summary>工具执行日志 · {result.toolLogs.length} 步</summary>
       {result.toolLogs.map((log) => (
         <div key={log.id} className={`tool-log-row tool-log-row--${log.status}`}>
           <span>
@@ -812,7 +2342,7 @@ function ToolLogList({ result }: { result: TeacherRunResult }): ReactElement {
         </div>
       ))}
       {result.reportPath ? <small className="report-path">报告: {result.reportPath}</small> : null}
-    </div>
+    </details>
   )
 }
 
@@ -850,30 +2380,72 @@ function MoveControls({ record, moveNumber, onMove }: { record: GameRecord | nul
   )
 }
 
-function BoardMatchBar({ record, moveNumber, analysis }: { record: GameRecord; moveNumber: number; analysis: KataGoMoveAnalysis | null }): ReactElement {
-  const black = safePlayerName(record.game.black, '黑方')
-  const white = safePlayerName(record.game.white, '白方')
+function BoardContextBar({
+  title,
+  record,
+  moveNumber,
+  analysis,
+  liveAnalysis,
+  disabled,
+  onStart,
+  onPause
+}: {
+  title: string
+  record: GameRecord
+  moveNumber: number
+  analysis: KataGoMoveAnalysis | null
+  liveAnalysis: LiveAnalysisState
+  disabled: boolean
+  onStart: () => void
+  onPause: () => void
+}): ReactElement {
   const current = moveNumber > 0 ? record.moves[moveNumber - 1] : undefined
   const scoreLead = analysis?.after.scoreLead
-  const bestCandidate = boardCandidateMoves(analysis)[0]
-  const nextColor = sideToPlay(record, moveNumber) === 'B' ? '黑' : '白'
+  const winrate = analysis?.after.winrate
+  const isCurrentLiveTarget = liveAnalysis.targetMoveNumber === moveNumber
+  const totalVisits = isCurrentLiveTarget ? liveAnalysis.visits : candidateVisitsTotal(analysis)
+  const bestVisits = isCurrentLiveTarget ? liveAnalysis.bestVisits : candidateBestVisits(analysis)
+  const status = isCurrentLiveTarget
+    ? liveAnalysis.status
+    : (analysis ? `已搜索 ${formatVisits(totalVisits)}` : '等待精读')
+  const speedLabel = isCurrentLiveTarget && liveAnalysis.visitsPerSecond > 0
+    ? formatSearchSpeed(liveAnalysis.visitsPerSecond)
+    : '—'
   return (
-    <div className="board-matchbar">
-      <div className="player-chip player-chip--black">
-        <span className="player-stone" aria-hidden="true" />
-        <small>黑棋</small>
-        <strong>{black}</strong>
+    <div className="board-contextbar">
+      <div className="board-contextbar__identity">
+        <h1>{title}</h1>
+        <span>{moveNumber}/{record.moves.length}</span>
+        <em>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</em>
       </div>
-      <div className="match-state">
-        <strong>{moveNumber}</strong>
-        <span>/ {record.moves.length}</span>
-        <span>{current ? `${current.color === 'B' ? '黑' : '白'} ${current.gtp}` : '开局'}</span>
-        <small>{bestCandidate ? `${nextColor}先 · 1选 ${formatCandidate(bestCandidate)}` : formatScoreLead(scoreLead)}</small>
+      <div className="board-contextbar__metrics" aria-label="当前局面数据">
+        <div className="board-contextbar__metric">
+          <span>黑胜率</span>
+          <strong>{typeof winrate === 'number' ? `${winrate.toFixed(1)}%` : '待分析'}</strong>
+        </div>
+        <div className="board-contextbar__metric">
+          <span>目差</span>
+          <strong>{formatScoreLead(scoreLead)}</strong>
+        </div>
+        <div className="board-contextbar__metric board-contextbar__metric--search">
+          <span>{status}</span>
+          <strong>总 {formatVisits(totalVisits)} · 一选 {formatVisits(bestVisits)}</strong>
+        </div>
+        <div className="board-contextbar__metric board-contextbar__metric--speed">
+          <span>速度</span>
+          <strong>{speedLabel}</strong>
+        </div>
       </div>
-      <div className="player-chip player-chip--white">
-        <span className="player-stone" aria-hidden="true" />
-        <small>白棋</small>
-        <strong>{white}</strong>
+      <div className="analysis-control-strip" aria-label="KataGo 持续分析控制">
+        <button
+          type="button"
+          className={`analysis-toggle-button ${liveAnalysis.running ? 'is-running' : ''}`}
+          onClick={liveAnalysis.running ? onPause : onStart}
+          disabled={!liveAnalysis.running && disabled}
+        >
+          <span className="analysis-toggle-button__dot" />
+          {liveAnalysis.running ? '暂停分析' : '开始分析'}
+        </button>
       </div>
     </div>
   )
@@ -910,32 +2482,97 @@ function formatVisits(visits: number): string {
   return String(Math.round(visits))
 }
 
-function sideToPlay(record: GameRecord, moveNumber: number): StoneColor {
-  if (moveNumber <= 0) {
-    return 'B'
+function formatSearchSpeed(visitsPerSecond: number): string {
+  if (!Number.isFinite(visitsPerSecond) || visitsPerSecond <= 0) {
+    return '0/s'
   }
-  const lastMove = record.moves[Math.min(moveNumber, record.moves.length) - 1]
-  return lastMove?.color === 'B' ? 'W' : 'B'
-}
-
-function formatCandidate(candidate: KataGoCandidate | undefined): string {
-  if (!candidate) {
-    return '候选点待分析'
+  if (visitsPerSecond >= 1000) {
+    return `${(visitsPerSecond / 1000).toFixed(visitsPerSecond >= 10000 ? 0 : 1)}k/s`
   }
-  return `${candidate.move} · ${candidate.winrate.toFixed(1)}% · ${candidate.scoreLead >= 0 ? '黑' : '白'}+${Math.abs(candidate.scoreLead).toFixed(1)} · ${formatVisits(candidate.visits)}搜`
+  return `${Math.round(visitsPerSecond)}/s`
 }
 
 function evaluationSeverity(item: KataGoMoveAnalysis): 'quiet' | 'inaccuracy' | 'mistake' | 'blunder' {
-  if (item.judgement === 'blunder' || (item.playedMove?.scoreLoss ?? 0) >= 8 || (item.playedMove?.winrateLoss ?? 0) >= 18) {
+  const winrateLoss = normalizeLossPercent(item.playedMove?.winrateLoss)
+  if (item.judgement === 'blunder' || winrateLoss >= 18) {
     return 'blunder'
   }
-  if (item.judgement === 'mistake' || (item.playedMove?.scoreLoss ?? 0) >= 4 || (item.playedMove?.winrateLoss ?? 0) >= 10) {
+  if (item.judgement === 'mistake' || winrateLoss >= 10) {
     return 'mistake'
   }
-  if (item.judgement === 'inaccuracy' || (item.playedMove?.scoreLoss ?? 0) >= 1.5 || (item.playedMove?.winrateLoss ?? 0) >= 4) {
+  if (item.judgement === 'inaccuracy' || winrateLoss >= 4) {
     return 'inaccuracy'
   }
   return 'quiet'
+}
+
+function formatIssueLoss(loss: number): string {
+  return `${loss.toFixed(loss >= 10 ? 0 : 1)}%`
+}
+
+function timelineIssueColorLabel(color: TimelineIssueColor): string {
+  return color === 'B' ? '黑棋' : '白棋'
+}
+
+function TimelineIssueList({
+  color,
+  issues,
+  currentMoveNumber,
+  loading,
+  onColorChange,
+  onJump
+}: {
+  color: TimelineIssueColor
+  issues: TimelineIssueItem[]
+  currentMoveNumber: number
+  loading: boolean
+  onColorChange: (color: TimelineIssueColor) => void
+  onJump: (moveNumber: number) => void
+}): ReactElement {
+  return (
+    <aside className="timeline-issues" aria-label="问题手列表">
+      <div className="timeline-issues__head">
+        <div className="timeline-issues__title">
+          <span>问题手</span>
+          <strong>{issues.length}</strong>
+        </div>
+        <div className="timeline-issues__switch" role="group" aria-label="选择棋手颜色">
+          {(['B', 'W'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={item === color ? 'is-active' : ''}
+              aria-pressed={item === color}
+              onClick={() => onColorChange(item)}
+            >
+              {timelineIssueColorLabel(item)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="timeline-issues__list">
+        {issues.length > 0 ? issues.map((issue) => (
+          <button
+            key={`${issue.color}-${issue.moveNumber}`}
+            type="button"
+            className={`timeline-issue timeline-issue--${issue.severity} ${issue.moveNumber === currentMoveNumber ? 'is-current' : ''}`}
+            onClick={() => onJump(issue.moveNumber)}
+            title={`第 ${issue.moveNumber} 手，胜率差 ${formatIssueLoss(issue.loss)}`}
+          >
+            <span className="timeline-issue__move">第 {issue.moveNumber} 手</span>
+            <span className="timeline-issue__line">
+              {issue.playedMove || '实战'}{issue.bestMove ? ` → ${issue.bestMove}` : ''}
+            </span>
+            <strong>{formatIssueLoss(issue.loss)}</strong>
+          </button>
+        )) : (
+          <div className="timeline-issues__empty">
+            {loading ? '正在生成问题手…' : `${timelineIssueColorLabel(color)}暂无明显问题手`}
+          </div>
+        )}
+      </div>
+    </aside>
+  )
 }
 
 function EvaluationGraph({
@@ -976,7 +2613,7 @@ function EvaluationGraph({
   const currentBadgeHeight = 16
   const domainMoves = Math.max(totalMoves, 1)
   const xForMove = (move: number): number => plotLeft + (clamp(move, 0, domainMoves) / domainMoves) * plotWidth
-  const lossScale = roundedScale(Math.max(...sortedEvaluations.map((item) => Math.max(0, item.playedMove?.scoreLoss ?? 0)), 0), 5, 5)
+  const lossScale = roundedScale(Math.max(...sortedEvaluations.map((item) => normalizeLossPercent(item.playedMove?.winrateLoss)), 0), 10, 10)
   const yForWinrate = (winrate: number): number => clamp(plotTop + ((100 - winrate) / 100) * plotHeight, plotTop, plotBottom)
   const winrateTicks = [
     { label: '黑100', value: 100 },
@@ -1129,8 +2766,8 @@ function EvaluationGraph({
             <path className="evaluation-area" d={areaPath} />
             <path className="evaluation-line evaluation-line--winrate" d={winratePath} />
             {sortedEvaluations.map((item) => {
-              const loss = Math.max(0, item.playedMove?.scoreLoss ?? 0)
-              if (loss <= 0.2) {
+              const loss = normalizeLossPercent(item.playedMove?.winrateLoss)
+              if (loss <= 0.5) {
                 return null
               }
               const barHeight = clamp((loss / lossScale) * (barBottom - barTop), 1, barBottom - barTop)

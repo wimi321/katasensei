@@ -5,6 +5,13 @@ export interface AppSettings {
   katagoConfig: string
   katagoModel: string
   katagoModelPreset: KataGoModelPresetId
+  katagoAnalysisThreads: number
+  katagoSearchThreadsPerAnalysisThread: number
+  katagoMaxBatchSize: number
+  katagoCacheSizePowerOfTwo: number
+  katagoBenchmarkThreads: number
+  katagoBenchmarkVisitsPerSecond: number
+  katagoBenchmarkUpdatedAt: string
   pythonBin: string
   llmBaseUrl: string
   llmApiKey: string
@@ -13,16 +20,21 @@ export interface AppSettings {
   defaultPlayerName: string
 }
 
-export type KataGoModelPresetId = 'official-b18-recommended' | 'official-b28-strong'
+export type KataGoModelPresetId = string
 
 export interface KataGoModelPreset {
   id: KataGoModelPresetId
   label: string
   badge: string
+  group: string
+  blockSize: string
+  speedTier: 'fast' | 'balanced' | 'strong' | 'maximum'
+  sizeHint: string
   description: string
   networkName: string
   fileName: string
   sourceUrl: string
+  downloadUrl?: string
   recommended: boolean
 }
 
@@ -53,6 +65,10 @@ export interface LibraryGame {
   sourceLabel: string
   filePath: string
   createdAt: string
+  downloadStatus?: 'remote' | 'downloaded'
+  remoteId?: string
+  remoteUid?: string
+  moveCount?: number
 }
 
 export type StoneColor = 'B' | 'W'
@@ -100,6 +116,104 @@ export interface FoxSyncResult {
   saved: LibraryGame[]
 }
 
+export interface LibraryImportResult {
+  dashboard: DashboardData
+  imported: LibraryGame[]
+}
+
+export interface FoxSyncResponse {
+  dashboard: DashboardData
+  result: FoxSyncResult
+  student?: StudentProfile
+}
+
+export interface KataGoAssetStatus {
+  platformKey: string
+  manifestFound: boolean
+  binaryPath: string
+  binaryFound: boolean
+  binaryExecutable: boolean
+  modelPath: string
+  modelFound: boolean
+  modelDisplayName: string
+  ready: boolean
+  detail: string
+}
+
+export interface KataGoBenchmarkRequest {
+  visits?: number
+  numPositions?: number
+  secondsPerMove?: number
+  threads?: number[]
+}
+
+export interface KataGoBenchmarkThreadResult {
+  threads: number
+  visitsPerSecond: number
+}
+
+export interface KataGoBenchmarkResult {
+  recommendedThreads: number
+  visitsPerSecond: number
+  tested: KataGoBenchmarkThreadResult[]
+  analysisThreads: number
+  searchThreadsPerAnalysisThread: number
+  maxBatchSize: number
+  cacheSizePowerOfTwo: number
+  command: string
+  outputTail: string
+  updatedAt: string
+}
+
+export interface KataGoAssetInstallRequest {
+  presetId?: KataGoModelPresetId
+}
+
+export type KataGoAssetInstallStage = 'discovering' | 'downloading-model' | 'copying-binary' | 'writing-manifest' | 'done' | 'error'
+
+export interface KataGoAssetInstallProgress {
+  stage: KataGoAssetInstallStage
+  message: string
+  receivedBytes?: number
+  totalBytes?: number
+  percent?: number
+}
+
+export interface KataGoAssetInstallResult {
+  ok: boolean
+  presetId: KataGoModelPresetId
+  modelPath: string
+  binaryPath: string
+  downloadedModel: boolean
+  copiedBinary: boolean
+  detail: string
+}
+
+export type ReleaseReadinessStatus = 'pass' | 'warn' | 'fail' | 'unknown'
+
+export interface ReleaseReadinessItem {
+  id: string
+  label: string
+  status: ReleaseReadinessStatus
+  detail?: string
+}
+
+export interface ReleaseReadinessFlags {
+  automationReady: boolean
+  assetsReady: boolean
+  installersReady: boolean
+  signingReady: boolean
+  windowsSmokeReady: boolean
+  visualQaReady: boolean
+  publicBetaReady: boolean
+}
+
+export interface ReleaseReadinessResult {
+  status: ReleaseReadinessStatus
+  items: ReleaseReadinessItem[]
+  flags: ReleaseReadinessFlags
+}
+
 export interface ReviewRequest {
   gameId: string
   playerName: string
@@ -133,6 +247,43 @@ export interface KnowledgePacket {
   score: number
 }
 
+export type KnowledgeMatchType = 'joseki' | 'life_death' | 'tesuji' | 'shape' | 'concept'
+export type KnowledgeMatchConfidence = 'exact' | 'strong' | 'partial' | 'weak'
+export type KnowledgeSourceKind = 'original' | 'common-pattern' | 'licensed-source'
+
+export interface RecommendedProblem {
+  id: string
+  title: string
+  problemType: 'life_death' | 'tesuji'
+  difficulty: string
+  objective: string
+  firstHint: string
+  answerSummary: string
+  tags: string[]
+}
+
+export interface KnowledgeMatch {
+  id: string
+  matchType: KnowledgeMatchType
+  title: string
+  confidence: KnowledgeMatchConfidence
+  score: number
+  reason: string[]
+  applicability: string
+  teachingPayload: {
+    summary: string
+    recognition: string
+    correctIdea: string
+    keyVariations: string[]
+    memoryCue: string
+    commonMistakes: string[]
+    drills: string[]
+    boundary: string
+    sourceKind: KnowledgeSourceKind
+  }
+  relatedProblems: RecommendedProblem[]
+}
+
 export interface KataGoCandidate {
   move: string
   winrate: number
@@ -162,6 +313,11 @@ export interface KataGoMoveAnalysis {
     move: string
     winrate: number
     scoreLead: number
+    playerWinrate?: number
+    playerScoreLead?: number
+    visits?: number
+    rank?: number
+    source?: 'candidate' | 'forced' | 'after-root'
     winrateLoss: number
     scoreLoss: number
   }
@@ -170,11 +326,23 @@ export interface KataGoMoveAnalysis {
 
 export interface StudentProfile {
   id: string
+  studentId: string
   name: string
+  displayName: string
+  primaryFoxNickname?: string
+  aliases: string[]
+  createdFrom: 'fox' | 'sgf' | 'manual' | 'legacy'
   userLevel: CoachUserLevel
   gamesReviewed: number
+  weaknessStats: Record<string, number>
+  recentPatterns: string[]
+  trainingFocus: string[]
+  recentGameIds: string[]
   commonMistakes: Array<{ tag: string; count: number }>
   trainingThemes: string[]
+  josekiWeaknesses?: string[]
+  lifeDeathWeaknesses?: string[]
+  tesujiWeaknesses?: string[]
   typicalMoves: Array<{
     gameId: string
     moveNumber: number
@@ -183,9 +351,49 @@ export interface StudentProfile {
     lossScore: number
   }>
   updatedAt: string
+  createdAt: string
+  lastAnalyzedAt?: string
+}
+
+export interface StudentBindingSuggestion {
+  student: StudentProfile
+  confidence: 'high' | 'medium' | 'low'
+  reason: string
+  color?: StoneColor
+}
+
+export interface TeacherKeyMistake {
+  moveNumber?: number
+  color?: StoneColor
+  played?: string
+  recommended?: string
+  errorType: string
+  severity: 'inaccuracy' | 'mistake' | 'blunder'
+  evidence: string
+  explanation: string
+}
+
+export interface StructuredTeacherResult {
+  taskType: 'current-move' | 'full-game' | 'recent-games' | 'freeform'
+  headline: string
+  summary: string
+  keyMistakes: TeacherKeyMistake[]
+  correctThinking: string[]
+  drills: string[]
+  followupQuestions: string[]
+  markdown: string
+  knowledgeCardIds: string[]
+  knowledgeMatches?: KnowledgeMatch[]
+  recommendedProblems?: RecommendedProblem[]
+  profileUpdates: {
+    errorTypes: string[]
+    patterns: string[]
+    trainingFocus: string[]
+  }
 }
 
 export interface TeacherRunRequest {
+  runId?: string
   mode?: TeacherRunMode
   prompt: string
   gameId?: string
@@ -195,15 +403,40 @@ export interface TeacherRunRequest {
   prefetchedAnalysis?: KataGoMoveAnalysis
 }
 
+export type TeacherRunProgressStage = 'queued' | 'tool' | 'assistant-start' | 'assistant-delta' | 'done' | 'error'
+
+export interface TeacherRunProgress {
+  runId: string
+  stage: TeacherRunProgressStage
+  message?: string
+  markdownDelta?: string
+  markdown?: string
+  toolLogs?: TeacherToolLog[]
+  result?: TeacherRunResult
+  error?: string
+}
+
 export interface AnalyzePositionRequest {
   gameId: string
   moveNumber: number
   maxVisits?: number
+  runId?: string
+  reportDuringSearchEvery?: number
+}
+
+export interface AnalyzePositionProgress {
+  runId?: string
+  gameId: string
+  moveNumber: number
+  analysis: KataGoMoveAnalysis
+  isFinal: boolean
 }
 
 export interface AnalyzeGameQuickRequest {
   gameId: string
   maxVisits?: number
+  refineVisits?: number
+  refineTopN?: number
   runId?: string
 }
 
@@ -223,7 +456,11 @@ export interface TeacherRunResult {
   toolLogs: TeacherToolLog[]
   analysis?: KataGoMoveAnalysis
   knowledge: KnowledgePacket[]
+  knowledgeMatches?: KnowledgeMatch[]
+  recommendedProblems?: RecommendedProblem[]
   studentProfile?: StudentProfile
+  structured?: StructuredTeacherResult
+  structuredResult?: StructuredTeacherResult
   reportPath?: string
 }
 
@@ -235,6 +472,17 @@ export interface LlmSettingsTestRequest {
 
 export interface LlmSettingsTestResult {
   ok: boolean
+  message: string
+}
+
+export interface LlmModelsListRequest {
+  llmBaseUrl: string
+  llmApiKey: string
+}
+
+export interface LlmModelsListResult {
+  ok: boolean
+  models: string[]
   message: string
 }
 

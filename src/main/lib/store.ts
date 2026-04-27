@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AppSettings, LibraryGame } from './types'
 
-export const appHome = join(app.getPath('home'), '.katasensei')
+export const appHome = process.env.GOMENTOR_APP_HOME || join(app.getPath('home'), '.gomentor')
 export const libraryDir = join(appHome, 'library')
 export const reviewsDir = join(appHome, 'reviews')
 export const cacheDir = join(appHome, 'cache')
@@ -19,6 +19,13 @@ const defaults: AppSettings = {
   katagoConfig: '',
   katagoModel: '',
   katagoModelPreset: 'official-b18-recommended',
+  katagoAnalysisThreads: 0,
+  katagoSearchThreadsPerAnalysisThread: 1,
+  katagoMaxBatchSize: 32,
+  katagoCacheSizePowerOfTwo: 20,
+  katagoBenchmarkThreads: 0,
+  katagoBenchmarkVisitsPerSecond: 0,
+  katagoBenchmarkUpdatedAt: '',
   pythonBin: 'python3',
   llmBaseUrl: 'https://api.openai.com/v1',
   llmApiKey: '',

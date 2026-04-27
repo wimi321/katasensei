@@ -1,6 +1,6 @@
 # KataGo Runtime Layout
 
-KataSensei looks for a bundled KataGo runtime here when packaging the app:
+GoMentor looks for a bundled KataGo runtime here when packaging the app:
 
 - `bin/<platform>-<arch>/katago`
 - `models/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz`

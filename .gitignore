@@ -4,10 +4,12 @@ dist
 release
 .DS_Store
 *.log
-.katasensei
+.gomentor
 __pycache__
 *.pyc
 coverage
+release-evidence
+.playwright-cli
 
 *.tsbuildinfo
 

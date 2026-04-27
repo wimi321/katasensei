@@ -1,18 +1,18 @@
 {
-  "name": "katasensei",
-  "version": "0.1.0",
+  "name": "gomentor",
+  "version": "0.2.0-beta.1",
   "description": "KataGo + multimodal LLM desktop workbench for Go students and teachers.",
   "main": "out/main/index.js",
   "type": "module",
   "author": "haoc",
   "license": "MIT",
-  "homepage": "https://github.com/wimi321/katasensei#readme",
+  "homepage": "https://github.com/wimi321/GoMentor#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wimi321/katasensei.git"
+    "url": "git+https://github.com/wimi321/GoMentor.git"
   },
   "bugs": {
-    "url": "https://github.com/wimi321/katasensei/issues"
+    "url": "https://github.com/wimi321/GoMentor/issues"
   },
   "packageManager": "pnpm@10.30.3",
   "scripts": {
@@ -29,7 +29,17 @@
     "dist:win": "pnpm build && electron-builder --win --publish never",
     "dist:linux": "pnpm build && electron-builder --linux --publish never",
     "postinstall": "electron-builder install-app-deps",
-    "prepare:python": "python3 -m pip install -r scripts/requirements.txt"
+    "prepare:python": "python3 -m pip install -r scripts/requirements.txt",
+    "prepare:katago-assets": "node scripts/prepare_katago_assets.mjs",
+    "check:katago-assets": "node scripts/check_katago_assets.mjs --mode=dev",
+    "check:katago-assets:release": "node scripts/check_katago_assets.mjs --mode=release",
+    "check:p0-beta": "node scripts/p0_beta_acceptance.mjs",
+    "check:artifacts": "node scripts/package_artifact_smoke.mjs --mode=dev",
+    "smoke:teacher-llm": "pnpm build && node scripts/teacher_llm_smoke.mjs",
+    "smoke:teacher-llm:real": "pnpm build && node scripts/teacher_llm_real_smoke.mjs",
+    "rc:check": "node scripts/p0_release_candidate_check.mjs --mode=dev",
+    "rc:artifacts": "node scripts/verify_release_artifacts.mjs --mode=dev",
+    "rc:evidence": "node scripts/collect_release_evidence.mjs --mode=dev"
   },
   "dependencies": {
     "electron-store": "^10.0.1",
@@ -53,8 +63,8 @@
     "vite": "^7.1.5"
   },
   "build": {
-    "appId": "com.katasensei.desktop",
-    "productName": "KataSensei",
+    "appId": "com.gomentor.desktop",
+    "productName": "GoMentor",
     "icon": "assets/icon",
     "directories": {
       "output": "release/${version}"
@@ -83,6 +93,11 @@
     "mac": {
       "category": "public.app-category.education",
       "icon": "assets/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true,
       "target": [
         {
           "target": "dmg",
@@ -102,21 +117,24 @@
     },
     "win": {
       "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${os}-${arch}-portable.${ext}",
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "arm64"
+            "x64"
           ]
         },
         {
-          "target": "portable",
+          "target": "zip",
           "arch": [
             "x64"
           ]
         }
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
     },
     "linux": {
       "icon": "assets/icon.png",
@@ -130,7 +148,7 @@
     "publish": {
       "provider": "github",
       "owner": "wimi321",
-      "repo": "katasensei"
+      "repo": "GoMentor"
     }
   }
 }

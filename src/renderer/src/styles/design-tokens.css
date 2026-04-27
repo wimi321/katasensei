@@ -1,0 +1,85 @@
+:root {
+  /* App surfaces: warm paper and porcelain panels for the approved light theme. */
+  --ks-bg-app: #eee7d8;
+  --ks-bg-app-2: #f6f0e6;
+  --ks-bg-panel: #fbf7ef;
+  --ks-bg-panel-2: #f3ecdf;
+  --ks-bg-elevated: #fffdf7;
+  --ks-bg-glass: rgb(255 252 245 / 0.82);
+
+  /* Lines and borders: graphite ink at low opacity, stronger only for focus/selection. */
+  --ks-border-hairline: rgba(55, 49, 39, 0.075);
+  --ks-border-soft: rgba(55, 49, 39, 0.12);
+  --ks-border-strong: rgba(55, 49, 39, 0.2);
+
+  /* Text hierarchy: graphite primary text with warm muted secondary copy. */
+  --ks-text-main: #29251f;
+  --ks-text-muted: #756d60;
+  --ks-text-faint: #9c9384;
+  --ks-text-inverse: #fffaf0;
+
+  /* Intent colors: restrained accents for teaching, analysis, and risk. */
+  --ks-gold: #b99651;
+  --ks-gold-strong: #c9a45b;
+  --ks-green: #4f936a;
+  --ks-teal: #4f9b91;
+  --ks-blue: #557f9d;
+  --ks-red: #c9655f;
+  --ks-orange: #b97545;
+  --ks-purple: #8975aa;
+
+  /* Board palette: natural kaya-inspired wood, not saturated orange. */
+  --ks-board-light: #d8ad6b;
+  --ks-board-mid: #bf8747;
+  --ks-board-dark: #7c5229;
+  --ks-board-line: rgba(38, 22, 11, 0.74);
+
+  /* Layout rhythm. */
+  --ks-space-1: 4px;
+  --ks-space-2: 8px;
+  --ks-space-3: 12px;
+  --ks-space-4: 16px;
+  --ks-space-5: 20px;
+  --ks-space-6: 24px;
+
+  /* Radius scale: compact tools stay crisp, panels are gently rounded. */
+  --ks-radius-xs: 6px;
+  --ks-radius-sm: 8px;
+  --ks-radius-md: 12px;
+  --ks-radius-lg: 18px;
+  --ks-radius-xl: 24px;
+
+  /* Elevation: paper-like depth, never glossy or web-card heavy. */
+  --ks-shadow-soft: 0 18px 48px rgba(75, 57, 31, 0.12);
+  --ks-shadow-hard: 0 28px 80px rgba(70, 49, 25, 0.2);
+  --ks-shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+
+  /* Motion: short enough for analysis tools, visible enough for polish. */
+  --ks-motion-fast: 120ms ease;
+  --ks-motion-med: 180ms ease;
+
+  /* Layering. */
+  --ks-z-tooltip: 30;
+  --ks-z-modal: 60;
+
+  --ks-font-ui: 'Avenir Next', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+.ks-surface-card {
+  border: 1px solid var(--ks-border-soft);
+  border-radius: var(--ks-radius-md);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.96), rgba(246, 240, 229, 0.96));
+  box-shadow: var(--ks-shadow-inner), var(--ks-shadow-soft);
+}
+
+.ks-mini-label {
+  color: var(--ks-text-faint);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ks-value-strong {
+  color: var(--ks-text-main);
+  font-weight: 900;
+}

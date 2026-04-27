@@ -1,7 +1,15 @@
 import { app } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { CoachUserLevel, GameMove, KnowledgePacket } from '@main/lib/types'
+import type { CoachUserLevel, GameMove, KnowledgeMatch, KnowledgePacket } from '@main/lib/types'
+import {
+  formatPatternForPrompt,
+  loadKnowledgePatternCards,
+  searchKnowledgePatterns,
+  type PatternRegion,
+  type PatternSearchMatch
+} from './knowledge/patterns'
+import { formatKnowledgeMatchForPrompt, searchKnowledgeMatchEngine, type BoardSnapshotStone, type LocalWindow } from './knowledge/matchEngine'
 
 interface KnowledgeEntry {
   id: string
@@ -14,20 +22,44 @@ interface KnowledgeEntry {
   content?: string
 }
 
+interface P0KnowledgeCard {
+  id: string
+  title: string
+  kind: string
+  phase: Array<'opening' | 'middlegame' | 'endgame'>
+  errorTypes: string[]
+  tags: string[]
+  katagoSignals: string[]
+  boardSignals: string[]
+  summary: string
+  coachShort: string
+  coachLong: string
+  drill: string
+}
+
 export interface KnowledgeQuery {
+  text?: string
   moveNumber: number
   totalMoves: number
   boardSize: number
   recentMoves: GameMove[]
   userLevel: CoachUserLevel
+  studentLevel?: CoachUserLevel
+  playerColor?: 'B' | 'W'
+  boardSnapshot?: BoardSnapshotStone[]
+  localWindows?: LocalWindow[]
   lossScore?: number
   judgement?: string
   contextTags?: string[]
+  playedMove?: string
+  candidateMoves?: string[]
+  principalVariation?: string[]
   maxResults?: number
 }
 
 let cachedDataRoot = ''
 let cachedEntries: KnowledgeEntry[] | null = null
+let cachedP0Cards: P0KnowledgeCard[] | null = null
 
 function dataRoot(): string {
   if (app.isPackaged) {
@@ -67,6 +99,23 @@ function loadEntries(): KnowledgeEntry[] {
   }
 }
 
+function loadP0Cards(root: string): P0KnowledgeCard[] {
+  if (cachedP0Cards) {
+    return cachedP0Cards
+  }
+  const cardsPath = join(root, 'knowledge', 'p0-cards.json')
+  if (!existsSync(cardsPath)) {
+    cachedP0Cards = []
+    return cachedP0Cards
+  }
+  try {
+    cachedP0Cards = JSON.parse(readFileSync(cardsPath, 'utf8')) as P0KnowledgeCard[]
+  } catch {
+    cachedP0Cards = []
+  }
+  return cachedP0Cards
+}
+
 export function detectGamePhase(moveNumber: number, totalMoves: number): 'opening' | 'middle' | 'endgame' {
   const ratio = totalMoves > 0 ? moveNumber / totalMoves : 0
   if (moveNumber <= 40 || ratio <= 0.2) {
@@ -76,6 +125,14 @@ export function detectGamePhase(moveNumber: number, totalMoves: number): 'openin
     return 'middle'
   }
   return 'endgame'
+}
+
+function p0Phase(phase: ReturnType<typeof detectGamePhase>): 'opening' | 'middlegame' | 'endgame' {
+  return phase === 'middle' ? 'middlegame' : phase
+}
+
+function patternRegion(region: ReturnType<typeof detectBoardRegion>): PatternRegion {
+  return region
 }
 
 function detectBoardRegion(recentMoves: GameMove[], boardSize: number): 'corner' | 'side' | 'center' {
@@ -136,10 +193,31 @@ function selectedBody(content: string, maxChars: number): string {
 }
 
 export function searchKnowledge(query: KnowledgeQuery): KnowledgePacket[] {
+  const root = dataRoot()
   const entries = loadEntries()
   const phase = detectGamePhase(query.moveNumber, query.totalMoves)
   const region = detectBoardRegion(query.recentMoves, query.boardSize)
   const scored: Array<{ entry: KnowledgeEntry; score: number }> = []
+  const p0Scored: Array<{ card: P0KnowledgeCard; score: number }> = []
+  const patternScored: PatternSearchMatch[] = searchKnowledgePatterns(loadKnowledgePatternCards(root), {
+    userLevel: query.userLevel,
+    phase: p0Phase(phase),
+    region: patternRegion(region),
+    boardSize: query.boardSize,
+    moveNumber: query.moveNumber,
+    recentMoves: query.recentMoves,
+    contextTags: query.contextTags,
+    text: query.text,
+    playedMove: query.playedMove,
+    candidateMoves: query.candidateMoves,
+    principalVariation: query.principalVariation,
+    lossScore: query.lossScore,
+    judgement: query.judgement
+  })
+  const knowledgeMatches = searchKnowledgeMatches({
+    ...query,
+    maxResults: 6
+  })
 
   for (const entry of entries) {
     if (!entry.content || !entry.levels.includes(query.userLevel)) {
@@ -188,8 +266,35 @@ export function searchKnowledge(query: KnowledgeQuery): KnowledgePacket[] {
     }
   }
 
-  scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, query.maxResults ?? 5).map(({ entry, score }) => ({
+  const contextTags = new Set((query.contextTags ?? []).map((tag) => tag.toLowerCase()))
+  const p0WantedPhase = p0Phase(phase)
+  for (const card of loadP0Cards(root)) {
+    let score = 0
+    if (card.phase.includes(p0WantedPhase)) {
+      score += 4
+    }
+    for (const tag of card.tags) {
+      if (contextTags.has(tag.toLowerCase())) {
+        score += 3
+      }
+    }
+    for (const errorType of card.errorTypes) {
+      if ([...contextTags].some((tag) => tag.includes(errorType.toLowerCase()) || errorType.toLowerCase().includes(tag))) {
+        score += 3
+      }
+    }
+    if ((query.lossScore ?? 0) >= 3 && ['mistake', 'blunder'].includes(String(query.judgement))) {
+      score += card.kind === 'error_type' || card.kind === 'review_method' ? 2 : 1
+    }
+    if (region !== 'center' && card.boardSignals.some((signal) => signal.includes(region))) {
+      score += 1
+    }
+    if (score > 0) {
+      p0Scored.push({ card, score })
+    }
+  }
+
+  const markdownPackets = scored.map(({ entry, score }) => ({
     id: entry.id,
     title: extractTitle(entry.content!) || entry.id,
     category: entry.category,
@@ -199,4 +304,46 @@ export function searchKnowledge(query: KnowledgeQuery): KnowledgePacket[] {
     selectedBody: selectedBody(entry.content!, 900),
     score
   }))
+
+  const p0Packets = p0Scored.map(({ card, score }) => ({
+    id: card.id,
+    title: card.title,
+    category: card.kind,
+    phase: card.phase.join(','),
+    tags: [...new Set([...card.tags, ...card.errorTypes])],
+    summary: card.summary,
+    selectedBody: [card.coachShort, card.coachLong, `训练: ${card.drill}`].join('\n'),
+    score
+  }))
+
+  const patternPackets = patternScored.map((match) => ({
+    id: match.card.id,
+    title: match.card.title,
+    category: match.card.category,
+    phase: match.card.phase.join(','),
+    tags: [...new Set([...match.card.tags, match.card.patternType, match.confidence])],
+    summary: match.card.teaching.recognition,
+    selectedBody: formatPatternForPrompt(match),
+    score: match.score
+  }))
+  const matchPackets = knowledgeMatches
+    .filter((match) => match.confidence !== 'weak')
+    .map((match) => ({
+      id: match.id,
+      title: match.title,
+      category: match.matchType,
+      phase: phase,
+      tags: [...new Set([match.matchType, match.confidence, ...match.teachingPayload.keyVariations.slice(0, 2)])],
+      summary: match.teachingPayload.recognition,
+      selectedBody: formatKnowledgeMatchForPrompt(match),
+      score: match.score + 5
+    }))
+
+  return [...markdownPackets, ...p0Packets, ...patternPackets, ...matchPackets]
+    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+    .slice(0, query.maxResults ?? 4)
+}
+
+export function searchKnowledgeMatches(query: KnowledgeQuery): KnowledgeMatch[] {
+  return searchKnowledgeMatchEngine(dataRoot(), query)
 }

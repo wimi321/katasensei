@@ -1,0 +1,66 @@
+.teacher-result-card {
+  padding: 14px;
+  border: 1px solid #2d353c;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1d242a, #161c21);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.teacher-result-card h3,
+.teacher-result-card h4 {
+  margin: 4px 0 8px;
+}
+
+.teacher-result-card p,
+.teacher-result-card li,
+.teacher-result-card small {
+  color: #b9c2ca;
+  line-height: 1.6;
+}
+
+.mistake-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mistake-card {
+  padding: 10px;
+  border-left: 3px solid #d1ad62;
+  border-radius: 8px;
+  background: #10151a;
+}
+
+.mistake-card--blunder {
+  border-left-color: #da6158;
+}
+
+.mistake-card--mistake {
+  border-left-color: #d18b62;
+}
+
+.mistake-card--inaccuracy {
+  border-left-color: #d1ad62;
+}
+
+.teacher-two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.followup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.followup-chips span {
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid #34404a;
+  border-radius: 999px;
+  color: #d8dee3;
+  background: #141a20;
+  font-size: 12px;
+  font-weight: 800;
+}
