@@ -14,8 +14,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-preflight:
+    name: Release preflight
+    runs-on: ubuntu-latest
+    outputs:
+      can-package: ${{ steps.katago-assets.outputs.can-package }}
+
+    steps:
+      - name: Check KataGo asset sources
+        id: katago-assets
+        shell: bash
+        env:
+          GOMENTOR_KATAGO_ASSET_DIR: ${{ secrets.GOMENTOR_KATAGO_ASSET_DIR }}
+          GOMENTOR_KATAGO_BINARY: ${{ secrets.GOMENTOR_KATAGO_BINARY }}
+          GOMENTOR_KATAGO_MODEL: ${{ secrets.GOMENTOR_KATAGO_MODEL }}
+        run: |
+          if [[ -n "${GOMENTOR_KATAGO_ASSET_DIR}" || ( -n "${GOMENTOR_KATAGO_BINARY}" && -n "${GOMENTOR_KATAGO_MODEL}" ) ]]; then
+            echo "can-package=true" >> "${GITHUB_OUTPUT}"
+            echo "KataGo release asset source is configured."
+          else
+            echo "can-package=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice title=Release packaging skipped::KataGo release assets are not configured. Set GOMENTOR_KATAGO_ASSET_DIR or both GOMENTOR_KATAGO_BINARY and GOMENTOR_KATAGO_MODEL to enable automated packaging."
+          fi
+
   package:
     name: Package ${{ matrix.name }}
+    needs: release-preflight
+    if: needs.release-preflight.outputs.can-package == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,9 +52,6 @@ jobs:
           - name: Windows
             os: windows-latest
             command: pnpm dist:win
-          - name: Linux
-            os: ubuntu-latest
-            command: pnpm dist:linux
 
     steps:
       - name: Checkout
@@ -100,9 +122,11 @@ jobs:
 
   github-release:
     name: Publish GitHub Release
-    needs: package
+    needs:
+      - release-preflight
+      - package
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: needs.release-preflight.outputs.can-package == 'true' && startsWith(github.ref, 'refs/tags/')
 
     steps:
       - name: Download artifacts
