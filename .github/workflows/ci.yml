@@ -50,8 +50,17 @@ jobs:
       - name: Validate Codex App Server manifest
         run: pnpm check:codex-runtime
 
+      - name: Test
+        run: pnpm test
+
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Build app
         run: pnpm build
+
+      - name: Package directory with embedded Codex runtime
+        run: pnpm package:dir
+
+      - name: Initialize packaged Codex App Server
+        run: pnpm smoke:codex-runtime

@@ -216,6 +216,17 @@ function contentItemsFromToolResult(result: Awaited<ReturnType<AgentToolExecutor
   return contentItems
 }
 
+function restrictedReadOnlySandbox(tempRoot: string): Record<string, unknown> {
+  return {
+    type: 'readOnly',
+    access: {
+      type: 'restricted',
+      includePlatformDefaults: false,
+      readableRoots: [tempRoot]
+    },
+    networkAccess: false
+  }
+}
 function writeDataUrlImage(url: string, directory: string, index: number): string | null {
   const match = /^data:(image\/(?:png|jpeg));base64,(.+)$/i.exec(url)
   if (!match) return null
@@ -689,7 +700,7 @@ export class CodexAppServerClient {
         ...(model ? { model } : {}),
         cwd: tempRoot,
         approvalPolicy: 'never',
-        sandboxPolicy: { type: 'readOnly', networkAccess: false }
+        sandboxPolicy: restrictedReadOnlySandbox(tempRoot)
       }))
       const turn = record(turnResult.turn)
       turnId = stringValue(turn.id)

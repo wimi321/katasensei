@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
-import { spawnSync } from 'node:child_process'
-import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { createReadStream, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 
 const root = resolve(process.cwd(), process.argv.find((arg) => arg.startsWith('--root='))?.slice('--root='.length) ?? 'release')
 const expectedTargets = process.argv
@@ -43,6 +44,53 @@ function startsAsExpectedRuntime(executable, target, version) {
   return result.status === 0 && `${result.stdout ?? ''}${result.stderr ?? ''}`.includes(version)
 }
 
+async function initializePackagedAppServer(executable, target) {
+  if (target !== `${process.platform}-${process.arch}`) return
+  const codexHome = mkdtempSync(join(tmpdir(), 'goagent-packaged-codex-home-'))
+  let child
+  try {
+    await new Promise((resolve, reject) => {
+      let buffer = ''
+      let settled = false
+      const finish = (error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        error ? reject(error) : resolve()
+      }
+      const timeout = setTimeout(() => finish(new Error('Packaged Codex App Server initialization timed out.')), 20_000)
+      child = spawn(executable, ['app-server', '--listen', 'stdio://'], {
+        env: { ...process.env, CODEX_HOME: codexHome, CODEX_DISABLE_AUTO_UPDATE: '1' },
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+      child.once('error', finish)
+      child.once('exit', (code) => finish(new Error(`Packaged Codex App Server exited before initialization (${code ?? 'unknown'}).`)))
+      child.stdout.on('data', (chunk) => {
+        buffer += chunk.toString()
+        const lines = buffer.split(/\r?\n/)
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          try {
+            const message = JSON.parse(line)
+            if (message.id === 1 && message.result) finish()
+          } catch {
+            // Ignore non-JSON diagnostics emitted by the runtime.
+          }
+        }
+      })
+      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'goagent-packaging-smoke', version: '0' }, capabilities: { experimentalApi: true } } })}\n`)
+      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'initialized', params: {} })}\n`)
+    })
+    console.log(`[codex-package-smoke] App Server initialized from ${executable}`)
+  } finally {
+    if (child?.exitCode === null && !child.killed) {
+      const exited = new Promise((resolve) => child.once('exit', resolve))
+      child.kill()
+      await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5_000))])
+    }
+    rmSync(codexHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  }
+}
 function validSignedMacRuntime(executable, target) {
   if (!target.startsWith('darwin-') || process.platform !== 'darwin') return false
   const signature = spawnSync('codesign', ['--verify', '--strict', '--verbose=2', executable], { encoding: 'utf8' })
@@ -76,6 +124,9 @@ for (const manifestPath of manifestPaths) {
     const exactSourceMatch = size === asset.bytes && digest === asset.sha256
     const startsCorrectly = startsAsExpectedRuntime(executable, target, manifest.version)
     const signedMacRuntime = validSignedMacRuntime(executable, target)
+    if (target === `${process.platform}-${process.arch}` && startsCorrectly) {
+      await initializePackagedAppServer(executable, target)
+    }
     if (!exactSourceMatch && !signedMacRuntime && !(target.startsWith('win32-') && startsCorrectly)) {
       failures.push(`${manifestPath}: ${target} differs from the verified source and has no valid packaged signature/runtime evidence (${size}, ${digest})`)
     } else if (!exactSourceMatch) {
