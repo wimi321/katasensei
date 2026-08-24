@@ -333,7 +333,13 @@ jobs:
             fi
           fi
       - name: Bundle official KataGo Transformer model
-        run: pnpm prepare:katago-transformer
+        run: |
+          pnpm prepare:katago-transformer
+          node scripts/select_default_katago_model.mjs \
+            --model=data/katago/models/b10c512h8nbt3tflrs-fson-silu-rsnh.bin.gz \
+            --id=official-transformer-balanced \
+            "--display-name=KataGo Transformer 10B Balanced" \
+            --prune
 
       - name: Verify embedded KataGo release assets
         shell: bash
@@ -593,7 +599,13 @@ jobs:
             --source-label="${GOAGENT_NVIDIA_KATAGO_ASSET_REPO}@${GOAGENT_NVIDIA_KATAGO_ASSET_RELEASE_TAG}:${GOAGENT_NVIDIA_KATAGO_ASSET_PATTERN}"
 
       - name: Bundle official KataGo Transformer model (NVIDIA)
-        run: pnpm prepare:katago-transformer
+        run: |
+          pnpm prepare:katago-transformer
+          node scripts/select_default_katago_model.mjs \
+            --model=data/katago/models/b10c512h8nbt3tflrs-fson-silu-rsnh.bin.gz \
+            --id=official-transformer-balanced \
+            "--display-name=KataGo Transformer 10B Balanced" \
+            --prune
 
       - name: Verify embedded NVIDIA KataGo release assets
         run: node scripts/check_katago_assets.mjs --mode=release --platform=win32-x64

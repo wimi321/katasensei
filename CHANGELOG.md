@@ -4,6 +4,26 @@ All notable changes to GoAgent will be documented here.
 
 This project follows semantic versioning once public releases begin.
 
+## 0.4.21 - Optional ChatGPT Sign-In
+
+### Added
+
+- Added ChatGPT sign-in through a bundled Codex App Server adapter while keeping GoAgent's Go-specific teacher runtime in control of KataGo, board images, knowledge retrieval, student profiles, and teaching evidence.
+- Added real text, randomized-image, and dynamic Go-tool capability probes before the ChatGPT connection is marked ready.
+- Added checksummed Codex 0.149.0 native runtimes for macOS, Windows, and Linux packaging without committing the platform binaries to source Git.
+
+### Changed
+
+- Kept the OpenAI-compatible API connection fully supported and preserved existing user settings; providers never silently fall back to one another.
+- Isolated GoAgent's ChatGPT credentials from Codex CLI and Codex Desktop, disabled Codex built-in tools, and limited turns to a read-only, network-disabled temporary runtime workspace.
+- Strengthened packaged-runtime smoke checks to initialize App Server and create a real ephemeral thread from the embedded executable.
+
+### Verified
+
+- 262 contract and behavior tests, TypeScript, production build, and all teacher-quality gates.
+- macOS arm64 packaged runtime startup, real App Server thread creation, and strict app/runtime signature verification.
+- macOS, Windows, and Linux CI plus macOS and Windows P0 release-candidate checks.
+
 ## 0.4.20 - KataGo 1.17.1 and Official Transformer
 
 ### Added

@@ -27,6 +27,8 @@ test('macOS release notarizes and verifies apps and final DMGs before upload', a
 })
 
 test('current download documentation does not claim macOS is unnotarized', async () => {
+  const packageJson = JSON.parse(await read('package.json'))
+  const currentVersion = packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const readmes = await Promise.all([
     'README.md',
     'README_EN.md',
@@ -37,9 +39,12 @@ test('current download documentation does not claim macOS is unnotarized', async
   ].map(read))
 
   for (const readme of readmes) {
-    assert.match(readme, /v0\.4\.20/)
+    assert.match(readme, new RegExp(`v${currentVersion}`))
     assert.match(readme, /notari/i)
-    assert.doesNotMatch(readme, /v0\.4\.(?:1|8)\//)
+    const publishedVersions = [...readme.matchAll(/releases\/(?:tag|download)\/v(\d+\.\d+\.\d+)/g)]
+      .map((match) => match[1])
+    assert.ok(publishedVersions.length > 0)
+    assert.deepEqual([...new Set(publishedVersions)], [packageJson.version])
   }
 
   assert.doesNotMatch(readmes[0], /暂未完成 notarization/)
