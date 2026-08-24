@@ -51,7 +51,9 @@ async function initializePackagedAppServer(executable, target) {
   try {
     await new Promise((resolve, reject) => {
       let buffer = ''
+      let stderr = ''
       let settled = false
+      let threadRequested = false
       const finish = (error) => {
         if (settled) return
         settled = true
@@ -64,7 +66,13 @@ async function initializePackagedAppServer(executable, target) {
         stdio: ['pipe', 'pipe', 'pipe']
       })
       child.once('error', finish)
-      child.once('exit', (code) => finish(new Error(`Packaged Codex App Server exited before initialization (${code ?? 'unknown'}).`)))
+      child.once('exit', (code) => finish(new Error(
+        `Packaged Codex App Server exited before initialization (${code ?? 'unknown'}).${stderr ? ` ${stderr}` : ''}`
+      )))
+      child.stdin.once('error', finish)
+      child.stderr.on('data', (chunk) => {
+        stderr = `${stderr}${chunk}`.trim().slice(-2000)
+      })
       child.stdout.on('data', (chunk) => {
         buffer += chunk.toString()
         const lines = buffer.split(/\r?\n/)
@@ -72,16 +80,47 @@ async function initializePackagedAppServer(executable, target) {
         for (const line of lines) {
           try {
             const message = JSON.parse(line)
-            if (message.id === 1 && message.result) finish()
+            if (message.id === 1 && message.error) {
+              finish(new Error(`Packaged Codex App Server rejected initialize: ${message.error.message || 'unknown error'}`))
+              continue
+            }
+            if (message.id === 1 && message.result && !threadRequested) {
+              threadRequested = true
+              child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'initialized', params: {} })}\n`)
+              child.stdin.write(`${JSON.stringify({
+                jsonrpc: '2.0',
+                id: 2,
+                method: 'thread/start',
+                params: {
+                  cwd: codexHome,
+                  runtimeWorkspaceRoots: [codexHome],
+                  approvalPolicy: 'never',
+                  sandbox: 'read-only',
+                  ephemeral: true,
+                  baseInstructions: 'GoAgent packaged runtime smoke.',
+                  dynamicTools: []
+                }
+              })}\n`, (error) => { if (error) finish(error) })
+              continue
+            }
+            if (message.id === 2 && message.error) {
+              finish(new Error(`Packaged Codex App Server rejected thread/start: ${message.error.message || 'unknown error'}`))
+              continue
+            }
+            if (message.id === 2 && message.result?.thread?.id) {
+              finish()
+            }
           } catch {
             // Ignore non-JSON diagnostics emitted by the runtime.
           }
         }
       })
-      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'goagent-packaging-smoke', version: '0' }, capabilities: { experimentalApi: true } } })}\n`)
-      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'initialized', params: {} })}\n`)
+      child.stdin.write(
+        `${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'goagent-packaging-smoke', version: '0' }, capabilities: { experimentalApi: true } } })}\n`,
+        (error) => { if (error) finish(error) }
+      )
     })
-    console.log(`[codex-package-smoke] App Server initialized from ${executable}`)
+    console.log(`[codex-package-smoke] App Server thread initialized from ${executable}`)
   } finally {
     if (child?.exitCode === null && !child.killed) {
       const exited = new Promise((resolve) => child.once('exit', resolve))

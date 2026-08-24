@@ -216,14 +216,9 @@ function contentItemsFromToolResult(result: Awaited<ReturnType<AgentToolExecutor
   return contentItems
 }
 
-function restrictedReadOnlySandbox(tempRoot: string): Record<string, unknown> {
+function readOnlySandbox(): Record<string, unknown> {
   return {
     type: 'readOnly',
-    access: {
-      type: 'restricted',
-      includePlatformDefaults: false,
-      readableRoots: [tempRoot]
-    },
     networkAccess: false
   }
 }
@@ -655,6 +650,7 @@ export class CodexAppServerClient {
       const threadResult = record(await this.request('thread/start', {
         ...(model ? { model } : {}),
         cwd: tempRoot,
+        runtimeWorkspaceRoots: [tempRoot],
         approvalPolicy: 'never',
         sandbox: 'read-only',
         ephemeral: true,
@@ -699,8 +695,9 @@ export class CodexAppServerClient {
         input,
         ...(model ? { model } : {}),
         cwd: tempRoot,
+        runtimeWorkspaceRoots: [tempRoot],
         approvalPolicy: 'never',
-        sandboxPolicy: restrictedReadOnlySandbox(tempRoot)
+        sandboxPolicy: readOnlySandbox()
       }))
       const turn = record(turnResult.turn)
       turnId = stringValue(turn.id)
