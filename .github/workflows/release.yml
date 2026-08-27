@@ -333,6 +333,7 @@ jobs:
             fi
           fi
       - name: Bundle official KataGo Transformer model
+        shell: bash
         run: |
           pnpm prepare:katago-transformer
           node scripts/select_default_katago_model.mjs \
@@ -599,6 +600,7 @@ jobs:
             --source-label="${GOAGENT_NVIDIA_KATAGO_ASSET_REPO}@${GOAGENT_NVIDIA_KATAGO_ASSET_RELEASE_TAG}:${GOAGENT_NVIDIA_KATAGO_ASSET_PATTERN}"
 
       - name: Bundle official KataGo Transformer model (NVIDIA)
+        shell: bash
         run: |
           pnpm prepare:katago-transformer
           node scripts/select_default_katago_model.mjs \
