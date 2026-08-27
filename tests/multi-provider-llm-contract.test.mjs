@@ -159,6 +159,9 @@ test('Codex native runtimes are pinned, checksummed, and copied per package arch
     assert.ok(manifest.targets[target].bytes > 100_000_000)
   }
   assert.match(prepare, /Codex runtime checksum mismatch/)
+  assert.match(prepare, /cwd: temporary/)
+  assert.match(prepare, /\['-xzf', basename\(archive\), '-C', basename\(extracted\)\]/)
+  assert.doesNotMatch(prepare, /\['-xzf', archive, '-C', extracted\]/)
   assert.match(check, /failed to report Codex/)
   assert.match(afterPack, /context\.electronPlatformName/)
   assert.match(afterPack, /Codex runtime validation failed/)
