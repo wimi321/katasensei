@@ -18,6 +18,7 @@ test('release workflow publishes standard Windows as a full OpenCL runtime bundl
   assert.match(workflow, /--flavor=opencl/)
   assert.match(workflow, /GoAgent-\*-win-x64-portable\.zip/)
   assert.match(workflow, /GoAgent-\*-win-x64\.exe/)
+  assert.match(workflow, /- name: Bundle official KataGo Transformer model\r?\n\s+shell: bash\r?\n\s+run:/)
 })
 
 test('release workflow publishes a real Windows NVIDIA edition', () => {
@@ -44,6 +45,7 @@ test('release workflow publishes a real Windows NVIDIA edition', () => {
   assert.match(workflow, /\$nvidiaPortableMax = 2560MB/)
   assert.match(workflow, /NVIDIA portable 7z bytes exceed size budget/)
   assert.match(workflow, /Bundle official KataGo Transformer model \(NVIDIA\)[\s\S]*pnpm prepare:katago-transformer/)
+  assert.match(workflow, /- name: Bundle official KataGo Transformer model \(NVIDIA\)\r?\n\s+shell: bash\r?\n\s+run:/)
   assert.match(transformerDownloader, /official-transformer-balanced/)
   assert.match(transformerDownloader, /b10c512h8nbt3tflrs-fson-silu-rsnh\.bin\.gz/)
   assert.doesNotMatch(workflow, /1\.0\.0-next-2026-05-02\.3/)
