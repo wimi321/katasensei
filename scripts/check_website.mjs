@@ -101,9 +101,9 @@ for (const keyword of [
   'fetchCatalogWithRetry',
   'NVIDIA CUDA',
   'RTX 20 / 30 / 40 / 50',
-  'TensorRT 高性能版',
+  'TensorRT 可选版',
   'tensorrt-optional',
-  'RTX 20 / GTX 16 通常比 CUDA 更快',
+  'RTX 20 / GTX 16 可选',
   '/\\.7z\\.(001|002)$/',
   'usable.length !== requiredAssets',
   'CPU 通用版',
@@ -114,6 +114,7 @@ for (const keyword of [
   if (!downloadChooser.includes(keyword)) fail(`download chooser must contain: ${keyword}`)
 }
 if (downloadChooser.includes('tensorrt-advanced')) fail('download chooser must use the stable TensorRT catalog category')
+if (downloadChooser.includes('RTX 30 系及以下可选')) fail('TensorRT recommendation must not target RTX 30')
 for (const keyword of ['www.goagent.top', 'goagent.top', 'Response.redirect', 'env.ASSETS.fetch']) {
   if (!edgeWorker.includes(keyword)) fail(`edge worker must contain: ${keyword}`)
 }
