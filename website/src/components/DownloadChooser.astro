@@ -15,7 +15,7 @@ const copyByLang = {
     lead: '先选电脑，再下载与你硬件匹配的版本',
     loading: '正在获取最新正式版…',
     release: '当前正式版',
-    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 优先使用 CUDA；AMD、Intel 或旧 NVIDIA 显卡使用 OpenCL',
+    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 优先使用 CUDA；AMD RX 9000 可尝试 ROCm，其他显卡使用 OpenCL',
     macLead: '选择与你 Mac 芯片匹配的版本',
     download: '下载',
     recommended: '推荐',
@@ -31,8 +31,11 @@ const copyByLang = {
     error: '版本列表暂时没有加载出来，请重试。',
     retry: '重新加载',
     openDirect: '打开 GitHub 备用下载',
+    amdMore: 'RX 6000 / RX 7000 / Ryzen AI Max 实验包在 GitHub；不确定型号请使用 OpenCL。',
+    amdMoreAction: '查看其他 AMD 实验包',
     rows: {
       nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 统一版'],
+      amd: ['AMD RX 9000', 'ROCm 实验版 · RX 9060 / 9070 系列'],
       tensorrt: ['TensorRT 可选版', 'RTX 20 / GTX 16 可选 · 通常比 CUDA 更快 · GTX 10 不支持 · 下载两个分卷'],
       opencl: ['OpenCL 兼容版', 'AMD / Intel 显卡'],
       cpu: ['CPU 通用版', '没有独立显卡也能用'],
@@ -43,51 +46,51 @@ const copyByLang = {
   },
   'zh-Hant': {
     title: '選擇你的版本', lead: '先選電腦，再下載與硬體相符的版本', loading: '正在取得最新正式版…', release: '目前正式版',
-    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 優先使用 CUDA；AMD、Intel 或舊 NVIDIA 顯示卡使用 OpenCL', macLead: '選擇與 Mac 晶片相符的版本', download: '下載', recommended: '推薦',
+    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 優先使用 CUDA；AMD RX 9000 可嘗試 ROCm，其他顯示卡使用 OpenCL', macLead: '選擇與 Mac 晶片相符的版本', download: '下載', recommended: '推薦',
     unavailable: '暫不可用', volume1: '分卷 1', volume2: '分卷 2', macTip: '下載後拖到「應用程式」即可安裝', updateTitle: '已經使用免安裝版？',
     updateText: '只更新主程式', updateAction: '下載小更新', help: '安裝說明', history: '歷史版本', error: '版本清單暫時無法載入，請重試。',
-    retry: '重新載入', openDirect: '開啟 GitHub 備用下載',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 統一版'], tensorrt: ['TensorRT 選配版', 'RTX 20 / GTX 16 可選 · 通常比 CUDA 更快 · GTX 10 不支援 · 下載兩個分卷'], opencl: ['OpenCL 相容版', 'AMD / Intel 顯示卡'], cpu: ['CPU 通用版', '沒有獨立顯示卡也能用'], noEngine: ['無引擎版', '已有自己的 KataGo'], apple: ['Apple 晶片', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 晶片', '舊款 Intel Mac'] }
+    retry: '重新載入', openDirect: '開啟 GitHub 備用下載', amdMore: 'RX 6000 / RX 7000 / Ryzen AI Max 實驗版在 GitHub；不確定型號請使用 OpenCL。', amdMoreAction: '查看其他 AMD 實驗版',
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 統一版'], amd: ['AMD RX 9000', 'ROCm 實驗版 · RX 9060 / 9070 系列'], tensorrt: ['TensorRT 選配版', 'RTX 20 / GTX 16 可選 · 通常比 CUDA 更快 · GTX 10 不支援 · 下載兩個分卷'], opencl: ['OpenCL 相容版', 'AMD / Intel 顯示卡'], cpu: ['CPU 通用版', '沒有獨立顯示卡也能用'], noEngine: ['無引擎版', '已有自己的 KataGo'], apple: ['Apple 晶片', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 晶片', '舊款 Intel Mac'] }
   },
   en: {
     title: 'Choose your version', lead: 'Pick your computer, then download the matching build', loading: 'Loading the latest stable release…', release: 'Stable release',
-    windowsLead: 'Use CUDA for NVIDIA RTX 20 / 30 / 40 / 50; use OpenCL for AMD, Intel, or older NVIDIA graphics', macLead: 'Choose the build for your Mac chip', download: 'Download', recommended: 'Recommended',
+    windowsLead: 'Use CUDA for NVIDIA RTX 20 / 30 / 40 / 50; RX 9000 can try ROCm, while other graphics should use OpenCL', macLead: 'Choose the build for your Mac chip', download: 'Download', recommended: 'Recommended',
     unavailable: 'Unavailable', volume1: 'Part 1', volume2: 'Part 2', macTip: 'Drag the app to Applications after downloading', updateTitle: 'Already use the portable edition?',
     updateText: 'Update the app only', updateAction: 'Small update', help: 'Install help', history: 'Older releases', error: 'The version list could not be loaded. Please try again.',
-    retry: 'Reload', openDirect: 'Open GitHub backup',
-    rows: { nvidia: ['NVIDIA CUDA', 'One build for RTX 20 / 30 / 40 / 50'], tensorrt: ['Optional TensorRT', 'For RTX 20 / GTX 16 · often faster than CUDA · GTX 10 unsupported · download both parts'], opencl: ['OpenCL compatible', 'AMD / Intel graphics'], cpu: ['CPU universal', 'Works without dedicated graphics'], noEngine: ['No-engine build', 'For your own KataGo'], apple: ['Apple silicon', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel chip', 'Older Intel Macs'] }
+    retry: 'Reload', openDirect: 'Open GitHub backup', amdMore: 'Find RX 6000 / RX 7000 / Ryzen AI Max experimental builds on GitHub. If unsure, use OpenCL.', amdMoreAction: 'Other AMD experimental builds',
+    rows: { nvidia: ['NVIDIA CUDA', 'One build for RTX 20 / 30 / 40 / 50'], amd: ['AMD RX 9000', 'Experimental ROCm · RX 9060 / 9070 series'], tensorrt: ['Optional TensorRT', 'For RTX 20 / GTX 16 · often faster than CUDA · GTX 10 unsupported · download both parts'], opencl: ['OpenCL compatible', 'AMD / Intel graphics'], cpu: ['CPU universal', 'Works without dedicated graphics'], noEngine: ['No-engine build', 'For your own KataGo'], apple: ['Apple silicon', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel chip', 'Older Intel Macs'] }
   },
   ja: {
     title: 'バージョンを選択', lead: 'パソコンを選び、環境に合う版をダウンロード', loading: '最新の安定版を取得中…', release: '安定版',
-    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 は CUDA、AMD・Intel・旧型 NVIDIA は OpenCL を使用', macLead: 'Mac のチップに合う版を選択', download: 'ダウンロード', recommended: 'おすすめ',
+    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50 は CUDA、AMD RX 9000 は ROCm を試用可能、その他は OpenCL を使用', macLead: 'Mac のチップに合う版を選択', download: 'ダウンロード', recommended: 'おすすめ',
     unavailable: '利用不可', volume1: '分割 1', volume2: '分割 2', macTip: 'ダウンロード後「アプリケーション」へドラッグ', updateTitle: 'ポータブル版を利用中ですか？',
     updateText: '本体だけ更新', updateAction: '小型更新', help: 'インストール案内', history: '過去の版', error: 'バージョン一覧を読み込めませんでした。再試行してください。',
-    retry: '再読み込み', openDirect: 'GitHub の予備ダウンロードを開く',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 共通版'], tensorrt: ['TensorRT オプション版', 'RTX 20 / GTX 16 向け · CUDA より高速な場合あり · GTX 10 非対応 · 両方の分割を取得'], opencl: ['OpenCL 互換版', 'AMD / Intel GPU'], cpu: ['CPU 汎用版', '専用 GPU なしでも利用可能'], noEngine: ['エンジンなし', '自分の KataGo を使用'], apple: ['Apple シリコン', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel チップ', '旧型 Intel Mac'] }
+    retry: '再読み込み', openDirect: 'GitHub の予備ダウンロードを開く', amdMore: 'RX 6000 / RX 7000 / Ryzen AI Max 実験版は GitHub から取得できます。型番が不明なら OpenCL を使用してください。', amdMoreAction: 'その他の AMD 実験版',
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 共通版'], amd: ['AMD RX 9000', 'ROCm 実験版 · RX 9060 / 9070 シリーズ'], tensorrt: ['TensorRT オプション版', 'RTX 20 / GTX 16 向け · CUDA より高速な場合あり · GTX 10 非対応 · 両方の分割を取得'], opencl: ['OpenCL 互換版', 'AMD / Intel GPU'], cpu: ['CPU 汎用版', '専用 GPU なしでも利用可能'], noEngine: ['エンジンなし', '自分の KataGo を使用'], apple: ['Apple シリコン', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel チップ', '旧型 Intel Mac'] }
   },
   ko: {
     title: '버전 선택', lead: '컴퓨터를 고른 뒤 하드웨어에 맞는 버전을 받으세요', loading: '최신 안정판을 불러오는 중…', release: '안정판',
-    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50은 CUDA, AMD·Intel·구형 NVIDIA는 OpenCL을 사용하세요', macLead: 'Mac 칩에 맞는 버전을 선택하세요', download: '다운로드', recommended: '추천',
+    windowsLead: 'NVIDIA RTX 20 / 30 / 40 / 50은 CUDA, AMD RX 9000은 ROCm을 시험할 수 있으며 나머지는 OpenCL을 사용하세요', macLead: 'Mac 칩에 맞는 버전을 선택하세요', download: '다운로드', recommended: '추천',
     unavailable: '사용 불가', volume1: '분할 1', volume2: '분할 2', macTip: '다운로드 후 응용 프로그램으로 드래그하세요', updateTitle: '포터블 버전을 이미 사용 중인가요?',
     updateText: '프로그램만 업데이트', updateAction: '작은 업데이트', help: '설치 도움말', history: '이전 버전', error: '버전 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
-    retry: '다시 불러오기', openDirect: 'GitHub 예비 다운로드 열기',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 통합판'], tensorrt: ['TensorRT 선택형', 'RTX 20 / GTX 16용 · CUDA보다 빠른 경우가 많음 · GTX 10 미지원 · 두 파일 모두 다운로드'], opencl: ['OpenCL 호환', 'AMD / Intel 그래픽'], cpu: ['CPU 범용', '외장 그래픽 없이 사용'], noEngine: ['엔진 없음', '자체 KataGo 사용'], apple: ['Apple 실리콘', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 칩', '구형 Intel Mac'] }
+    retry: '다시 불러오기', openDirect: 'GitHub 예비 다운로드 열기', amdMore: 'RX 6000 / RX 7000 / Ryzen AI Max 실험판은 GitHub에서 받을 수 있습니다. 모델을 모르면 OpenCL을 사용하세요.', amdMoreAction: '다른 AMD 실험판 보기',
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 통합판'], amd: ['AMD RX 9000', 'ROCm 실험판 · RX 9060 / 9070 시리즈'], tensorrt: ['TensorRT 선택형', 'RTX 20 / GTX 16용 · CUDA보다 빠른 경우가 많음 · GTX 10 미지원 · 두 파일 모두 다운로드'], opencl: ['OpenCL 호환', 'AMD / Intel 그래픽'], cpu: ['CPU 범용', '외장 그래픽 없이 사용'], noEngine: ['엔진 없음', '자체 KataGo 사용'], apple: ['Apple 실리콘', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 칩', '구형 Intel Mac'] }
   },
   th: {
     title: 'เลือกเวอร์ชันของคุณ', lead: 'เลือกคอมพิวเตอร์ แล้วดาวน์โหลดรุ่นที่ตรงกับฮาร์ดแวร์', loading: 'กำลังโหลดรุ่นเสถียรล่าสุด…', release: 'รุ่นเสถียร',
-    windowsLead: 'ใช้ CUDA กับ NVIDIA RTX 20 / 30 / 40 / 50 และใช้ OpenCL กับ AMD, Intel หรือ NVIDIA รุ่นเก่า', macLead: 'เลือกรุ่นให้ตรงกับชิป Mac', download: 'ดาวน์โหลด', recommended: 'แนะนำ',
+    windowsLead: 'ใช้ CUDA กับ NVIDIA RTX 20 / 30 / 40 / 50, ทดลอง ROCm ได้กับ AMD RX 9000 และใช้ OpenCL กับรุ่นอื่น', macLead: 'เลือกรุ่นให้ตรงกับชิป Mac', download: 'ดาวน์โหลด', recommended: 'แนะนำ',
     unavailable: 'ยังใช้ไม่ได้', volume1: 'ส่วน 1', volume2: 'ส่วน 2', macTip: 'ดาวน์โหลดแล้วลากไปยัง Applications', updateTitle: 'ใช้รุ่นพกพาอยู่แล้ว?',
     updateText: 'อัปเดตเฉพาะโปรแกรม', updateAction: 'อัปเดตขนาดเล็ก', help: 'วิธีติดตั้ง', history: 'รุ่นก่อนหน้า', error: 'โหลดรายการเวอร์ชันไม่สำเร็จ โปรดลองอีกครั้ง',
-    retry: 'โหลดใหม่', openDirect: 'เปิดดาวน์โหลดสำรองบน GitHub',
-    rows: { nvidia: ['NVIDIA CUDA', 'รุ่นเดียวสำหรับ RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT ทางเลือก', 'สำหรับ RTX 20 / GTX 16 · มักเร็วกว่า CUDA · ไม่รองรับ GTX 10 · ดาวน์โหลดทั้งสองส่วน'], opencl: ['รุ่น OpenCL', 'การ์ดจอ AMD / Intel'], cpu: ['รุ่น CPU', 'ใช้ได้โดยไม่มีการ์ดจอแยก'], noEngine: ['ไม่มีเอนจิน', 'สำหรับ KataGo ของคุณเอง'], apple: ['ชิป Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['ชิป Intel', 'Mac Intel รุ่นเก่า'] }
+    retry: 'โหลดใหม่', openDirect: 'เปิดดาวน์โหลดสำรองบน GitHub', amdMore: 'รุ่นทดลองสำหรับ RX 6000 / RX 7000 / Ryzen AI Max อยู่บน GitHub หากไม่แน่ใจรุ่น ให้ใช้ OpenCL', amdMoreAction: 'รุ่นทดลอง AMD อื่น',
+    rows: { nvidia: ['NVIDIA CUDA', 'รุ่นเดียวสำหรับ RTX 20 / 30 / 40 / 50'], amd: ['AMD RX 9000', 'ROCm รุ่นทดลอง · RX 9060 / 9070'], tensorrt: ['TensorRT ทางเลือก', 'สำหรับ RTX 20 / GTX 16 · มักเร็วกว่า CUDA · ไม่รองรับ GTX 10 · ดาวน์โหลดทั้งสองส่วน'], opencl: ['รุ่น OpenCL', 'การ์ดจอ AMD / Intel'], cpu: ['รุ่น CPU', 'ใช้ได้โดยไม่มีการ์ดจอแยก'], noEngine: ['ไม่มีเอนจิน', 'สำหรับ KataGo ของคุณเอง'], apple: ['ชิป Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['ชิป Intel', 'Mac Intel รุ่นเก่า'] }
   },
   vi: {
     title: 'Chọn phiên bản', lead: 'Chọn máy tính rồi tải bản phù hợp với phần cứng', loading: 'Đang tải bản ổn định mới nhất…', release: 'Bản ổn định',
-    windowsLead: 'Dùng CUDA cho NVIDIA RTX 20 / 30 / 40 / 50; dùng OpenCL cho AMD, Intel hoặc NVIDIA đời cũ', macLead: 'Chọn bản phù hợp với chip Mac', download: 'Tải xuống', recommended: 'Khuyên dùng',
+    windowsLead: 'Dùng CUDA cho NVIDIA RTX 20 / 30 / 40 / 50; RX 9000 có thể thử ROCm, các GPU khác dùng OpenCL', macLead: 'Chọn bản phù hợp với chip Mac', download: 'Tải xuống', recommended: 'Khuyên dùng',
     unavailable: 'Chưa có', volume1: 'Phần 1', volume2: 'Phần 2', macTip: 'Sau khi tải, kéo ứng dụng vào Applications', updateTitle: 'Đã dùng bản portable?',
     updateText: 'Chỉ cập nhật chương trình', updateAction: 'Bản cập nhật nhỏ', help: 'Hướng dẫn cài', history: 'Phiên bản cũ', error: 'Không tải được danh sách phiên bản. Hãy thử lại.',
-    retry: 'Tải lại', openDirect: 'Mở bản tải dự phòng trên GitHub',
-    rows: { nvidia: ['NVIDIA CUDA', 'Một bản cho RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT tùy chọn', 'Dành cho RTX 20 / GTX 16 · thường nhanh hơn CUDA · không hỗ trợ GTX 10 · tải cả hai phần'], opencl: ['Tương thích OpenCL', 'Đồ họa AMD / Intel'], cpu: ['CPU phổ thông', 'Dùng được không cần GPU rời'], noEngine: ['Không kèm engine', 'Dùng KataGo riêng'], apple: ['Chip Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['Chip Intel', 'Mac Intel đời cũ'] }
+    retry: 'Tải lại', openDirect: 'Mở bản tải dự phòng trên GitHub', amdMore: 'Các bản thử nghiệm RX 6000 / RX 7000 / Ryzen AI Max có trên GitHub. Nếu không chắc, hãy dùng OpenCL.', amdMoreAction: 'Các bản AMD thử nghiệm khác',
+    rows: { nvidia: ['NVIDIA CUDA', 'Một bản cho RTX 20 / 30 / 40 / 50'], amd: ['AMD RX 9000', 'ROCm thử nghiệm · dòng RX 9060 / 9070'], tensorrt: ['TensorRT tùy chọn', 'Dành cho RTX 20 / GTX 16 · thường nhanh hơn CUDA · không hỗ trợ GTX 10 · tải cả hai phần'], opencl: ['Tương thích OpenCL', 'Đồ họa AMD / Intel'], cpu: ['CPU phổ thông', 'Dùng được không cần GPU rời'], noEngine: ['Không kèm engine', 'Dùng KataGo riêng'], apple: ['Chip Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['Chip Intel', 'Mac Intel đời cũ'] }
   }
 } as const
 
@@ -96,6 +99,7 @@ const localeSlug = { 'zh-CN': '', 'zh-Hant': 'zh-hant', en: 'en', ja: 'ja', ko: 
 const helpUrl = localeSlug ? `/${localeSlug}/docs` : '/docs'
 const rows = [
   ['nvidia', 'windows-portable', 'nvidia', '', 'gpu-card', true],
+  ['amd', 'amd-rocm-experimental', 'rocm-gfx120x', 'x64', 'gpu-card', false],
   ['opencl', 'windows-portable', 'opencl', '', 'gpu-card', false],
   ['cpu', 'windows-portable', 'with-katago', '', 'cpu', false],
   ['noEngine', 'windows-portable', 'without.engine', '', 'gear', false],
@@ -164,6 +168,10 @@ const macRows = [
             </li>
           ))}
         </ul>
+        <aside class="amd-more" aria-label={copy.amdMore}>
+          <span>{copy.amdMore}</span>
+          <a href={releaseHistory} data-amd-release-link>{copy.amdMoreAction}</a>
+        </aside>
       </section>
 
       <section class="download-platform-panel mac-panel" aria-labelledby="mac-downloads">
@@ -265,6 +273,12 @@ const macRows = [
       }
     }
 
+    function safeGithubReleaseUrl(value) {
+      const url = safeDownloadUrl(value)
+      if (!url) return null
+      return new URL(url).hostname === 'github.com' ? url : null
+    }
+
     function findAssets(catalog, entry) {
       const category = entry.dataset.category || ''
       const flavor = entry.dataset.flavor || ''
@@ -329,6 +343,10 @@ const macRows = [
       try {
         const catalog = await fetchCatalogWithRetry(hub.dataset.catalogUrl)
         hub.querySelectorAll('[data-entry]').forEach((entry) => fillEntry(hub, entry, catalog))
+        const releaseUrl = safeGithubReleaseUrl(catalog.releaseUrl)
+        if (releaseUrl) {
+          hub.querySelectorAll('[data-amd-release-link]').forEach((link) => { link.href = releaseUrl })
+        }
         if (status) status.textContent = `${hub.dataset.releaseLabel} · ${catalog.releaseTag}`
       } catch {
         if (status) status.textContent = hub.dataset.errorLabel
@@ -346,6 +364,8 @@ const macRows = [
 </script>
 
 <style>
+  .download-hub [hidden] { display: none !important; }
+
   .download-hub {
     width: 100vw;
     margin: 0 calc(50% - 50vw);
@@ -518,6 +538,21 @@ const macRows = [
   .option-actions > span { color: #8a8176; font-size: 0.85rem; font-weight: 700; }
   .option-actions > span[hidden] { display: none; }
 
+  .amd-more {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin: -4px 18px 18px;
+    border-radius: 11px;
+    padding: 10px 13px;
+    background: rgba(29, 94, 79, 0.06);
+    color: #596a64;
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+  .amd-more a { flex: 0 0 auto; color: #165c4c; font-weight: 800; text-underline-offset: 3px; }
+
   .mac-panel { display: flex; flex-direction: column; }
   .mac-panel .download-option-list { width: calc(100% - 36px); }
   .mac-install-tip { margin: auto 24px 26px; border-top: 1px solid rgba(82, 75, 61, 0.14); padding: 22px 0 2px; text-align: center; }
@@ -568,6 +603,7 @@ const macRows = [
     .option-size { grid-column: 1; }
     .option-actions { grid-column: 2; grid-row: 1 / span 2; flex-direction: column; }
     .option-actions a { min-width: 72px; min-height: 36px; }
+    .amd-more { align-items: flex-start; flex-direction: column; margin: -2px 10px 12px; }
     .mac-panel .download-option-list { width: calc(100% - 20px); }
     .core-update { grid-template-columns: auto 1fr; padding: 15px; }
     .core-update div > span { display: block; margin: 3px 0 0; }

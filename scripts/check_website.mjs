@@ -101,6 +101,12 @@ for (const keyword of [
   'fetchCatalogWithRetry',
   'NVIDIA CUDA',
   'RTX 20 / 30 / 40 / 50',
+  'AMD RX 9000',
+  'amd-rocm-experimental',
+  'rocm-gfx120x',
+  'RX 6000 / RX 7000 / Ryzen AI Max',
+  'data-amd-release-link',
+  'safeGithubReleaseUrl',
   'TensorRT 可选版',
   'tensorrt-optional',
   'RTX 20 / GTX 16 可选',
@@ -112,6 +118,15 @@ for (const keyword of [
   '下载小更新',
 ]) {
   if (!downloadChooser.includes(keyword)) fail(`download chooser must contain: ${keyword}`)
+}
+const nvidiaRow = downloadChooser.indexOf("['nvidia', 'windows-portable', 'nvidia'")
+const amdRow = downloadChooser.indexOf("['amd', 'amd-rocm-experimental', 'rocm-gfx120x', 'x64'")
+const openclRow = downloadChooser.indexOf("['opencl', 'windows-portable', 'opencl'")
+if (!(nvidiaRow >= 0 && amdRow > nvidiaRow && openclRow > amdRow)) {
+  fail('download chooser must place AMD RX 9000 between NVIDIA CUDA and OpenCL')
+}
+for (const keyword of ['ROCm 實驗版', 'Experimental ROCm', 'ROCm 実験版', 'ROCm 실험판', 'ROCm รุ่นทดลอง', 'ROCm thử nghiệm']) {
+  if (!downloadChooser.includes(keyword)) fail(`download chooser must localize AMD RX 9000: ${keyword}`)
 }
 if (downloadChooser.includes('tensorrt-advanced')) fail('download chooser must use the stable TensorRT catalog category')
 if (downloadChooser.includes('RTX 30 系及以下可选')) fail('TensorRT recommendation must not target RTX 30')

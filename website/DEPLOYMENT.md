@@ -47,9 +47,9 @@ https://www.goagent.top/download/ -> https://goagent.top/download/ (301)
 - Cloudflare Pages 只部署 `goagent.top` 的静态页面，不存放大型安装包。
 - Cloudflare R2 桶 `lizzieyzy-next-downloads` 通过 `download.goagent.top` 提供当前稳定版文件。
 - 用户唯一公开下载入口是 `https://goagent.top/download/`。
-- 官网 `/download/` 从 `https://download.goagent.top/channels/stable/catalog.json` 读取公开目录，并按 Windows 显卡与 Mac 芯片展示下载按钮。
+- 官网 `/download/` 从 `https://download.goagent.top/channels/stable/catalog.json` 读取公开目录，并按 Windows 显卡与 Mac 芯片展示下载按钮。Windows 列表包含 NVIDIA CUDA、AMD RX 9000 ROCm 实验版、OpenCL、CPU、无引擎和 TensorRT 可选版。
 - 发布维护期间目录中的下载地址可暂时指向 GitHub；官网允许 `download.goagent.top` 与 `github.com` 两种经过校验的 HTTPS 地址。目录加载失败时直接提供 GitHub Releases 备用入口，不跳回本页。
-- R2 只保留当前稳定版；历史版本、源码与未镜像资产继续由 GitHub 提供。
+- R2 只保留当前稳定版；历史版本、源码与未镜像资产继续由 GitHub 提供。AMD 仅镜像 `gfx120x` 的 RX 9000 实验包，RX 6000、RX 7000 与 Ryzen AI Max 实验包继续从当前 GitHub Release 下载。
 - GoAgent 作为实验围棋智能体，仍从 `https://github.com/wimi321/GoAgent/releases` 下载。
 
 R2 bucket CORS 只允许官网读取目录：
@@ -164,7 +164,7 @@ curl https://goagent.top/sitemap.xml | grep -i goagent.top
 - `https://www.goagent.top/` 与 `https://www.goagent.top/download/` 均以 301 跳转到主域名的同一路径。
 - `https://download.goagent.top/` 与 `/index.html` 均以 301 跳转到 `https://goagent.top/download/`。
 - 页面中包含 `LizzieYzy Next`、`GoAgent`、官网下载入口和隐私说明入口。
-- `https://goagent.top/download/` 能读取稳定版目录并显示 Windows、macOS、CPU 与 TensorRT 下载项。
+- `https://goagent.top/download/` 能读取稳定版目录并显示 Windows、macOS、CPU、RX 9000 ROCm 实验版与 TensorRT 下载项；RX 9000 位于 NVIDIA CUDA 与 OpenCL 之间且不显示推荐标签。
 - `https://download.goagent.top/channels/stable/catalog.json`、`/releases/*` 和 Range 请求保持正常，不受根路径跳转规则影响。
 - `catalog.json` 对 `https://goagent.top` 返回正确的 `Access-Control-Allow-Origin`。
 
