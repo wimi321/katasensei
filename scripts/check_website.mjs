@@ -99,6 +99,8 @@ for (const keyword of [
   'https://github.com/wimi321/lizzieyzy-next/releases',
   'catalogFetchAttempts = 3',
   'fetchCatalogWithRetry',
+  'NVIDIA CUDA',
+  'RTX 20 / 30 / 40 / 50',
   'TensorRT 高性能版',
   'CPU 通用版',
   'Apple 芯片',
@@ -114,6 +116,9 @@ if (!edgeWorker.includes('301')) fail('edge worker must permanently redirect www
 if (existsSync(join(root, 'website/public/_redirects'))) fail('legacy _redirects must not compete with the edge worker')
 for (const keyword of ['Cloudflare R2', 'mirrorUrls', 'SHA256', 'manifest']) {
   if (downloadChooser.includes(keyword)) fail(`download chooser should avoid implementation wording: ${keyword}`)
+}
+for (const keyword of ['nvidia50.cuda', 'rtx50:', 'CPU build if unsure', '不确定时优先使用 CPU 通用版']) {
+  if (downloadChooser.includes(keyword)) fail(`download chooser must not restore the obsolete Windows recommendation: ${keyword}`)
 }
 for (const keyword of ['不用研究术语', '第一步：先下载 LizzieYzy Next', '官网下载中心']) {
   if (!docsPage.includes(keyword)) fail(`docs page must contain simple user guidance: ${keyword}`)
