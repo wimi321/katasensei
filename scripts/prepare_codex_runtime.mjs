@@ -51,7 +51,12 @@ for (const target of targets) {
     await download(asset.url, archive)
     const extracted = join(temporary, 'extracted')
     mkdirSync(extracted, { recursive: true })
-    const unpack = spawnSync('tar', ['-xzf', archive, '-C', extracted], { encoding: 'utf8' })
+    // GNU tar treats a Windows drive prefix such as `C:` as a remote host.
+    // Run inside the temporary directory so every tar argument is portable.
+    const unpack = spawnSync('tar', ['-xzf', basename(archive), '-C', basename(extracted)], {
+      cwd: temporary,
+      encoding: 'utf8'
+    })
     if (unpack.status !== 0) throw new Error(`Unable to extract Codex runtime: ${unpack.stderr || unpack.stdout}`)
     const source = join(extracted, ...asset.archivePath.split('/'))
     if (!existsSync(source)) throw new Error(`Codex runtime archive is missing ${asset.archivePath}`)
