@@ -33,7 +33,7 @@ const copyByLang = {
     openDirect: '打开 GitHub 备用下载',
     rows: {
       nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 统一版'],
-      tensorrt: ['TensorRT 高性能版', 'RTX 30 系及以下可选 · RTX 20 / GTX 16 通常比 CUDA 更快 · GTX 10 不支持 · 下载两个分卷'],
+      tensorrt: ['TensorRT 可选版', 'RTX 20 / GTX 16 可选 · 通常比 CUDA 更快 · GTX 10 不支持 · 下载两个分卷'],
       opencl: ['OpenCL 兼容版', 'AMD / Intel 显卡'],
       cpu: ['CPU 通用版', '没有独立显卡也能用'],
       noEngine: ['无引擎版', '已有自己的 KataGo'],
@@ -47,7 +47,7 @@ const copyByLang = {
     unavailable: '暫不可用', volume1: '分卷 1', volume2: '分卷 2', macTip: '下載後拖到「應用程式」即可安裝', updateTitle: '已經使用免安裝版？',
     updateText: '只更新主程式', updateAction: '下載小更新', help: '安裝說明', history: '歷史版本', error: '版本清單暫時無法載入，請重試。',
     retry: '重新載入', openDirect: '開啟 GitHub 備用下載',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 統一版'], tensorrt: ['TensorRT 高效能版', 'RTX 30 系及以下可選 · RTX 20 / GTX 16 通常比 CUDA 更快 · GTX 10 不支援 · 下載兩個分卷'], opencl: ['OpenCL 相容版', 'AMD / Intel 顯示卡'], cpu: ['CPU 通用版', '沒有獨立顯示卡也能用'], noEngine: ['無引擎版', '已有自己的 KataGo'], apple: ['Apple 晶片', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 晶片', '舊款 Intel Mac'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 統一版'], tensorrt: ['TensorRT 選配版', 'RTX 20 / GTX 16 可選 · 通常比 CUDA 更快 · GTX 10 不支援 · 下載兩個分卷'], opencl: ['OpenCL 相容版', 'AMD / Intel 顯示卡'], cpu: ['CPU 通用版', '沒有獨立顯示卡也能用'], noEngine: ['無引擎版', '已有自己的 KataGo'], apple: ['Apple 晶片', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 晶片', '舊款 Intel Mac'] }
   },
   en: {
     title: 'Choose your version', lead: 'Pick your computer, then download the matching build', loading: 'Loading the latest stable release…', release: 'Stable release',
@@ -55,7 +55,7 @@ const copyByLang = {
     unavailable: 'Unavailable', volume1: 'Part 1', volume2: 'Part 2', macTip: 'Drag the app to Applications after downloading', updateTitle: 'Already use the portable edition?',
     updateText: 'Update the app only', updateAction: 'Small update', help: 'Install help', history: 'Older releases', error: 'The version list could not be loaded. Please try again.',
     retry: 'Reload', openDirect: 'Open GitHub backup',
-    rows: { nvidia: ['NVIDIA CUDA', 'One build for RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT performance', 'Optional for RTX 30 and earlier · often faster on RTX 20 / GTX 16 · GTX 10 unsupported · download both parts'], opencl: ['OpenCL compatible', 'AMD / Intel graphics'], cpu: ['CPU universal', 'Works without dedicated graphics'], noEngine: ['No-engine build', 'For your own KataGo'], apple: ['Apple silicon', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel chip', 'Older Intel Macs'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'One build for RTX 20 / 30 / 40 / 50'], tensorrt: ['Optional TensorRT', 'For RTX 20 / GTX 16 · often faster than CUDA · GTX 10 unsupported · download both parts'], opencl: ['OpenCL compatible', 'AMD / Intel graphics'], cpu: ['CPU universal', 'Works without dedicated graphics'], noEngine: ['No-engine build', 'For your own KataGo'], apple: ['Apple silicon', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel chip', 'Older Intel Macs'] }
   },
   ja: {
     title: 'バージョンを選択', lead: 'パソコンを選び、環境に合う版をダウンロード', loading: '最新の安定版を取得中…', release: '安定版',
@@ -63,7 +63,7 @@ const copyByLang = {
     unavailable: '利用不可', volume1: '分割 1', volume2: '分割 2', macTip: 'ダウンロード後「アプリケーション」へドラッグ', updateTitle: 'ポータブル版を利用中ですか？',
     updateText: '本体だけ更新', updateAction: '小型更新', help: 'インストール案内', history: '過去の版', error: 'バージョン一覧を読み込めませんでした。再試行してください。',
     retry: '再読み込み', openDirect: 'GitHub の予備ダウンロードを開く',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 共通版'], tensorrt: ['TensorRT 高性能版', 'RTX 30 世代以前向け · RTX 20 / GTX 16 は CUDA より高速な場合あり · GTX 10 非対応 · 両方の分割を取得'], opencl: ['OpenCL 互換版', 'AMD / Intel GPU'], cpu: ['CPU 汎用版', '専用 GPU なしでも利用可能'], noEngine: ['エンジンなし', '自分の KataGo を使用'], apple: ['Apple シリコン', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel チップ', '旧型 Intel Mac'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 共通版'], tensorrt: ['TensorRT オプション版', 'RTX 20 / GTX 16 向け · CUDA より高速な場合あり · GTX 10 非対応 · 両方の分割を取得'], opencl: ['OpenCL 互換版', 'AMD / Intel GPU'], cpu: ['CPU 汎用版', '専用 GPU なしでも利用可能'], noEngine: ['エンジンなし', '自分の KataGo を使用'], apple: ['Apple シリコン', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel チップ', '旧型 Intel Mac'] }
   },
   ko: {
     title: '버전 선택', lead: '컴퓨터를 고른 뒤 하드웨어에 맞는 버전을 받으세요', loading: '최신 안정판을 불러오는 중…', release: '안정판',
@@ -71,7 +71,7 @@ const copyByLang = {
     unavailable: '사용 불가', volume1: '분할 1', volume2: '분할 2', macTip: '다운로드 후 응용 프로그램으로 드래그하세요', updateTitle: '포터블 버전을 이미 사용 중인가요?',
     updateText: '프로그램만 업데이트', updateAction: '작은 업데이트', help: '설치 도움말', history: '이전 버전', error: '버전 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
     retry: '다시 불러오기', openDirect: 'GitHub 예비 다운로드 열기',
-    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 통합판'], tensorrt: ['TensorRT 고성능', 'RTX 30 이하용 · RTX 20 / GTX 16은 CUDA보다 빠른 경우가 많음 · GTX 10 미지원 · 두 파일 모두 다운로드'], opencl: ['OpenCL 호환', 'AMD / Intel 그래픽'], cpu: ['CPU 범용', '외장 그래픽 없이 사용'], noEngine: ['엔진 없음', '자체 KataGo 사용'], apple: ['Apple 실리콘', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 칩', '구형 Intel Mac'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'RTX 20 / 30 / 40 / 50 통합판'], tensorrt: ['TensorRT 선택형', 'RTX 20 / GTX 16용 · CUDA보다 빠른 경우가 많음 · GTX 10 미지원 · 두 파일 모두 다운로드'], opencl: ['OpenCL 호환', 'AMD / Intel 그래픽'], cpu: ['CPU 범용', '외장 그래픽 없이 사용'], noEngine: ['엔진 없음', '자체 KataGo 사용'], apple: ['Apple 실리콘', 'M1 / M2 / M3 / M4 / M5'], intel: ['Intel 칩', '구형 Intel Mac'] }
   },
   th: {
     title: 'เลือกเวอร์ชันของคุณ', lead: 'เลือกคอมพิวเตอร์ แล้วดาวน์โหลดรุ่นที่ตรงกับฮาร์ดแวร์', loading: 'กำลังโหลดรุ่นเสถียรล่าสุด…', release: 'รุ่นเสถียร',
@@ -79,7 +79,7 @@ const copyByLang = {
     unavailable: 'ยังใช้ไม่ได้', volume1: 'ส่วน 1', volume2: 'ส่วน 2', macTip: 'ดาวน์โหลดแล้วลากไปยัง Applications', updateTitle: 'ใช้รุ่นพกพาอยู่แล้ว?',
     updateText: 'อัปเดตเฉพาะโปรแกรม', updateAction: 'อัปเดตขนาดเล็ก', help: 'วิธีติดตั้ง', history: 'รุ่นก่อนหน้า', error: 'โหลดรายการเวอร์ชันไม่สำเร็จ โปรดลองอีกครั้ง',
     retry: 'โหลดใหม่', openDirect: 'เปิดดาวน์โหลดสำรองบน GitHub',
-    rows: { nvidia: ['NVIDIA CUDA', 'รุ่นเดียวสำหรับ RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT ประสิทธิภาพสูง', 'ตัวเลือกสำหรับ RTX 30 หรือต่ำกว่า · RTX 20 / GTX 16 มักเร็วกว่า CUDA · ไม่รองรับ GTX 10 · ดาวน์โหลดทั้งสองส่วน'], opencl: ['รุ่น OpenCL', 'การ์ดจอ AMD / Intel'], cpu: ['รุ่น CPU', 'ใช้ได้โดยไม่มีการ์ดจอแยก'], noEngine: ['ไม่มีเอนจิน', 'สำหรับ KataGo ของคุณเอง'], apple: ['ชิป Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['ชิป Intel', 'Mac Intel รุ่นเก่า'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'รุ่นเดียวสำหรับ RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT ทางเลือก', 'สำหรับ RTX 20 / GTX 16 · มักเร็วกว่า CUDA · ไม่รองรับ GTX 10 · ดาวน์โหลดทั้งสองส่วน'], opencl: ['รุ่น OpenCL', 'การ์ดจอ AMD / Intel'], cpu: ['รุ่น CPU', 'ใช้ได้โดยไม่มีการ์ดจอแยก'], noEngine: ['ไม่มีเอนจิน', 'สำหรับ KataGo ของคุณเอง'], apple: ['ชิป Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['ชิป Intel', 'Mac Intel รุ่นเก่า'] }
   },
   vi: {
     title: 'Chọn phiên bản', lead: 'Chọn máy tính rồi tải bản phù hợp với phần cứng', loading: 'Đang tải bản ổn định mới nhất…', release: 'Bản ổn định',
@@ -87,7 +87,7 @@ const copyByLang = {
     unavailable: 'Chưa có', volume1: 'Phần 1', volume2: 'Phần 2', macTip: 'Sau khi tải, kéo ứng dụng vào Applications', updateTitle: 'Đã dùng bản portable?',
     updateText: 'Chỉ cập nhật chương trình', updateAction: 'Bản cập nhật nhỏ', help: 'Hướng dẫn cài', history: 'Phiên bản cũ', error: 'Không tải được danh sách phiên bản. Hãy thử lại.',
     retry: 'Tải lại', openDirect: 'Mở bản tải dự phòng trên GitHub',
-    rows: { nvidia: ['NVIDIA CUDA', 'Một bản cho RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT hiệu năng cao', 'Tùy chọn cho RTX 30 trở xuống · RTX 20 / GTX 16 thường nhanh hơn CUDA · không hỗ trợ GTX 10 · tải cả hai phần'], opencl: ['Tương thích OpenCL', 'Đồ họa AMD / Intel'], cpu: ['CPU phổ thông', 'Dùng được không cần GPU rời'], noEngine: ['Không kèm engine', 'Dùng KataGo riêng'], apple: ['Chip Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['Chip Intel', 'Mac Intel đời cũ'] }
+    rows: { nvidia: ['NVIDIA CUDA', 'Một bản cho RTX 20 / 30 / 40 / 50'], tensorrt: ['TensorRT tùy chọn', 'Dành cho RTX 20 / GTX 16 · thường nhanh hơn CUDA · không hỗ trợ GTX 10 · tải cả hai phần'], opencl: ['Tương thích OpenCL', 'Đồ họa AMD / Intel'], cpu: ['CPU phổ thông', 'Dùng được không cần GPU rời'], noEngine: ['Không kèm engine', 'Dùng KataGo riêng'], apple: ['Chip Apple', 'M1 / M2 / M3 / M4 / M5'], intel: ['Chip Intel', 'Mac Intel đời cũ'] }
   }
 } as const
 
