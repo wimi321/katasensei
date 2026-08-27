@@ -49,16 +49,16 @@ KataGo is the source of truth. The LLM is the teacher that turns those facts int
 
 Current release:
 
-[GoAgent v0.4.20](https://github.com/wimi321/GoAgent/releases/tag/v0.4.20)
+[GoAgent v0.4.21](https://github.com/wimi321/GoAgent/releases/tag/v0.4.21)
 
 | Platform | Download |
 | --- | --- |
-| macOS Apple Silicon | [GoAgent-0.4.20-mac-arm64.dmg](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-mac-arm64.dmg) |
-| macOS Intel | [GoAgent-0.4.20-mac-x64.dmg](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-mac-x64.dmg) |
-| Windows x64 Standard portable ZIP | [GoAgent-0.4.20-win-x64-portable.zip](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-win-x64-portable.zip) |
-| Windows x64 Standard installer | [GoAgent-0.4.20-win-x64.exe](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-win-x64.exe) |
-| Windows x64 NVIDIA portable 7z | [GoAgent-0.4.20-win-x64-nvidia-portable.7z](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-win-x64-nvidia-portable.7z) |
-| Windows x64 NVIDIA installer | [GoAgent-0.4.20-win-x64-nvidia.exe](https://github.com/wimi321/GoAgent/releases/download/v0.4.20/GoAgent-0.4.20-win-x64-nvidia.exe) |
+| macOS Apple Silicon | [GoAgent-0.4.21-mac-arm64.dmg](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-mac-arm64.dmg) |
+| macOS Intel | [GoAgent-0.4.21-mac-x64.dmg](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-mac-x64.dmg) |
+| Windows x64 Standard portable ZIP | [GoAgent-0.4.21-win-x64-portable.zip](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-win-x64-portable.zip) |
+| Windows x64 Standard installer | [GoAgent-0.4.21-win-x64.exe](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-win-x64.exe) |
+| Windows x64 NVIDIA portable 7z | [GoAgent-0.4.21-win-x64-nvidia-portable.7z](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-win-x64-nvidia-portable.7z) |
+| Windows x64 NVIDIA installer | [GoAgent-0.4.21-win-x64-nvidia.exe](https://github.com/wimi321/GoAgent/releases/download/v0.4.21/GoAgent-0.4.21-win-x64-nvidia.exe) |
 
 Release caveats:
 
@@ -124,7 +124,7 @@ Requirements:
 - pnpm 10+
 - Python 3.10+
 - KataGo binary and model
-- Optional OpenAI-compatible multimodal LLM API
+- Optional OpenAI-compatible multimodal LLM API, or ChatGPT sign-in through the official Codex App Server
 
 For remote compute, see [iKataGo Remote Engine](./docs/IKATAGO_REMOTE_ENGINE.md). GoAgent uses a local `ikatago-client -- analysis` process and does not send positions remotely unless the user explicitly enables that engine path.
 
@@ -151,10 +151,17 @@ pnpm dist:win
 pnpm dist:linux
 ```
 
+## AI Teacher Connections
+
+- **API key**: Continue using any OpenAI-compatible multimodal model service.
+- **ChatGPT sign-in**: Choose “Sign in with ChatGPT” under **Settings → AI Teacher**. GoAgent uses the official Codex App Server for sign-in, model discovery, and requests, and can use models in the active ChatGPT plan that accept board images.
+- ChatGPT sign-in uses a GoAgent-specific Codex App Server data directory. It does not read or modify Codex CLI or Codex Desktop sign-in. GoAgent application code does not read, copy, or print OAuth tokens.
+
 ## Privacy
 
 - Games, reports, settings, and student profiles stay under `~/.goagent` by default.
-- Saved LLM API keys are encrypted with Electron `safeStorage` when available.
+- Saved LLM API keys use GoAgent's local secret store and are only read back into Settings when the user explicitly chooses “Show key.”
+- The embedded official Codex App Server keeps ChatGPT credentials in GoAgent's dedicated data directory. GoAgent application code does not read or print OAuth tokens and does not touch the system Codex sign-in.
 - Current-move teaching may send a board screenshot, KataGo JSON, and selected knowledge cards to the configured LLM endpoint.
 - Web search is optional and should only use generic Go concepts.
 

@@ -198,6 +198,17 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Prepare embedded Codex App Server
+        shell: bash
+        run: |
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            pnpm prepare:codex-runtime:mac
+            node scripts/check_codex_runtime.mjs --mode=release --platform=darwin-arm64 --platform=darwin-x64
+          else
+            pnpm prepare:codex-runtime:win
+            node scripts/check_codex_runtime.mjs --mode=release --platform=win32-x64
+          fi
+
       - name: Download Kokoro TTS assets
         uses: actions/download-artifact@v4
         with:
@@ -322,7 +333,13 @@ jobs:
             fi
           fi
       - name: Bundle official KataGo Transformer model
-        run: pnpm prepare:katago-transformer
+        run: |
+          pnpm prepare:katago-transformer
+          node scripts/select_default_katago_model.mjs \
+            --model=data/katago/models/b10c512h8nbt3tflrs-fson-silu-rsnh.bin.gz \
+            --id=official-transformer-balanced \
+            "--display-name=KataGo Transformer 10B Balanced" \
+            --prune
 
       - name: Verify embedded KataGo release assets
         shell: bash
@@ -445,6 +462,15 @@ jobs:
             hdiutil verify "$dmg"
           done
 
+      - name: Verify packaged Codex App Server
+        shell: bash
+        run: |
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            node scripts/smoke_codex_packaged_runtime.mjs --root=release --expect=darwin-arm64 --expect=darwin-x64
+          else
+            node scripts/smoke_codex_packaged_runtime.mjs --root=release --expect=win32-x64
+          fi
+
       - name: Smoke packaged Windows app
         if: runner.os == 'Windows'
         run: node scripts/smoke_windows_packaged_app.mjs --mode=full --require-katago
@@ -499,6 +525,11 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Prepare embedded Codex App Server
+        run: |
+          pnpm prepare:codex-runtime:win
+          node scripts/check_codex_runtime.mjs --mode=release --platform=win32-x64
 
       - name: Download Kokoro TTS assets
         uses: actions/download-artifact@v4
@@ -568,7 +599,13 @@ jobs:
             --source-label="${GOAGENT_NVIDIA_KATAGO_ASSET_REPO}@${GOAGENT_NVIDIA_KATAGO_ASSET_RELEASE_TAG}:${GOAGENT_NVIDIA_KATAGO_ASSET_PATTERN}"
 
       - name: Bundle official KataGo Transformer model (NVIDIA)
-        run: pnpm prepare:katago-transformer
+        run: |
+          pnpm prepare:katago-transformer
+          node scripts/select_default_katago_model.mjs \
+            --model=data/katago/models/b10c512h8nbt3tflrs-fson-silu-rsnh.bin.gz \
+            --id=official-transformer-balanced \
+            "--display-name=KataGo Transformer 10B Balanced" \
+            --prune
 
       - name: Verify embedded NVIDIA KataGo release assets
         run: node scripts/check_katago_assets.mjs --mode=release --platform=win32-x64
@@ -621,6 +658,9 @@ jobs:
           if ($nvidiaPortable.Length -ge 2147483648) {
             throw "NVIDIA portable archive exceeds GitHub's 2 GiB asset limit: $($nvidiaPortable.Name) $($nvidiaPortable.Length)"
           }
+
+      - name: Verify packaged Codex App Server
+        run: node scripts/smoke_codex_packaged_runtime.mjs --root=release --expect=win32-x64
 
       - name: Smoke NVIDIA packaged Windows app
         run: node scripts/smoke_windows_packaged_app.mjs --mode=nvidia --require-katago
