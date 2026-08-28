@@ -109,7 +109,8 @@ for (const keyword of [
   'safeGithubReleaseUrl',
   'TensorRT 可选版',
   'tensorrt-optional',
-  'RTX 20 / GTX 16 可选',
+  'RTX 30 / 40 / 50 优先使用 CUDA，通常更快',
+  'TensorRT 仅为 RTX 20 / GTX 16 提速',
   '/\\.7z\\.(001|002)$/',
   'usable.length !== requiredAssets',
   'CPU 通用版',
@@ -130,6 +131,26 @@ for (const keyword of ['ROCm 實驗版', 'Experimental ROCm', 'ROCm 実験版', 
 }
 if (downloadChooser.includes('tensorrt-advanced')) fail('download chooser must use the stable TensorRT catalog category')
 if (downloadChooser.includes('RTX 30 系及以下可选')) fail('TensorRT recommendation must not target RTX 30')
+for (const keyword of [
+  'TensorRT 僅供 RTX 20 / GTX 16 加速',
+  'TensorRT is for speeding up RTX 20 / GTX 16 only',
+  'TensorRT は RTX 20 / GTX 16 の高速化用のみ',
+  'TensorRT는 RTX 20 / GTX 16 가속용만',
+  'TensorRT ใช้เร่ง RTX 20 / GTX 16 เท่านั้น',
+  'TensorRT chỉ để tăng tốc RTX 20 / GTX 16',
+]) {
+  if (!downloadChooser.includes(keyword)) fail(`download chooser must localize TensorRT guidance: ${keyword}`)
+}
+for (const keyword of [
+  '通常比 CUDA 更快',
+  'often faster than CUDA',
+  'CUDA より高速な場合あり',
+  'CUDA보다 빠른 경우가 많음',
+  'มักเร็วกว่า CUDA',
+  'thường nhanh hơn CUDA',
+]) {
+  if (downloadChooser.includes(keyword)) fail(`download chooser must not imply TensorRT is generally faster: ${keyword}`)
+}
 for (const keyword of ['www.goagent.top', 'goagent.top', 'Response.redirect', 'env.ASSETS.fetch']) {
   if (!edgeWorker.includes(keyword)) fail(`edge worker must contain: ${keyword}`)
 }
